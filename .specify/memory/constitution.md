@@ -1,20 +1,12 @@
 <!--
 Sync Impact Report
-- Version change: (template/unset) → 1.0.0
-- Modified principles: N/A (initial ratification from template placeholders)
-- Added sections:
-  - Core Principles (I–XV): capital protection, modes, pipeline, risk authority,
-    session bounds, net P&L, journals, fail-safe, emergency stop, simplicity,
-    strategies, evidence vs guarantees, no guaranteed-profit claims
-  - Product & Technology Constraints: UI areas, responsive UX, Python/React/SQL,
-    XT.COM adapter isolation, credential hygiene, withdrawals out of scope
-  - Market Sentiment Principles: emotion-free execution, external sentiment,
-    adapters, traceability, control-plane authority, Dashboard component,
-    composite score, Conservative Greed Principle, evaluation & history
-  - Spec-Driven Development: incremental Spec Kit workflow, trading tests,
-    specs as source of truth
-  - Governance: amendment, versioning, compliance review
-- Removed sections: N/A (template placeholders replaced)
+- Version change: 1.0.0 → 1.1.0
+- Modified principles: none (existing trading and product principles unchanged)
+- Added sections / principles:
+  - Spec-Driven Development → XXX. Git Commit Traceability (propose commit
+    messages after meaningful Spec Kit/implementation units; never auto-commit
+    without explicit user instruction; preferred conventional commit types)
+- Removed sections: none
 - Follow-up TODOs: none
 -->
 
@@ -276,6 +268,51 @@ spec through the amendment/clarification path before or with the code change.
 
 **Rationale**: Silent drift destroys auditability and governance.
 
+### XXX. Git Commit Traceability
+Development changes MUST be organized into coherent, reviewable units.
+
+After completing a meaningful Spec Kit stage or implementation unit that
+changes project files, the development agent MUST propose a concise,
+descriptive Git commit message appropriate for the completed work.
+
+The agent MUST NOT automatically create a Git commit unless explicitly
+instructed by the user.
+
+Commit messages SHOULD describe the purpose of the change rather than merely
+list modified files.
+
+Preferred format:
+
+`<type>(<scope>): <short description>`
+
+Examples:
+
+- `docs(constitution): establish CryptoAutoTrading governance principles`
+- `spec(foundation): define application foundation requirements`
+- `spec(foundation): clarify default dashboard navigation`
+- `feat(foundation): add responsive three-area application shell`
+- `feat(api): add backend health endpoint`
+- `test(foundation): add navigation and health checks`
+- `fix(foundation): preserve navigation on direct route refresh`
+- `refactor(exchange): isolate XT integration behind exchange adapter`
+
+Commit types SHOULD normally use:
+
+- `docs` — documentation or constitution changes
+- `spec` — specification, clarification, plan, or task artifacts
+- `feat` — new functionality
+- `fix` — defect correction
+- `test` — tests
+- `refactor` — structural change without intended behavior change
+- `chore` — tooling, dependencies, or maintenance
+
+Multiple closely related file changes SHOULD normally produce one coherent
+commit rather than one commit per file.
+
+**Rationale**: CryptoAutoTrading should maintain a Git history that explains
+how specifications and implementation evolved while keeping commit authority
+under explicit user control.
+
 ## Governance
 
 This constitution supersedes informal conventions, ad-hoc shortcuts, and
@@ -308,4 +345,4 @@ Use Spec Kit workflows (`/speckit-specify`, `/speckit-clarify`,
 `/speckit-plan`, `/speckit-tasks`, `/speckit-analyze`, `/speckit-implement`)
 for feature delivery. When guidance conflicts, this constitution wins.
 
-**Version**: 1.0.0 | **Ratified**: 2026-08-08 | **Last Amended**: 2026-08-08
+**Version**: 1.1.0 | **Ratified**: 2026-08-08 | **Last Amended**: 2026-08-08
