@@ -8,6 +8,12 @@
 
 **Input**: User description: "Create the initial project foundation for CryptoAutoTrading — minimal runnable application with placeholder Dashboard, Auto Trading, and Portfolio areas, responsive layout, backend health capability, and local developer runnability; no trading or market functionality."
 
+## Clarifications
+
+### Session 2026-08-08
+
+- Q: When someone first opens the running application (the default entry point), which primary area should they land on? → A: Dashboard
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Run the application locally (Priority: P1)
@@ -21,7 +27,7 @@ A developer starts the application on their machine using the project’s docume
 **Acceptance Scenarios**:
 
 1. **Given** the repository is set up per project docs, **When** the developer starts the application locally, **Then** the product UI becomes reachable in a browser without requiring trading credentials or exchange setup.
-2. **Given** the application is running, **When** the developer opens the home experience, **Then** they can identify that they are in the CryptoAutoTrading product shell (not a blank or broken page).
+2. **Given** the application is running, **When** the developer opens the default entry point, **Then** they land on the Dashboard primary area and can identify that they are in the CryptoAutoTrading product shell (not a blank or broken page).
 
 ---
 
@@ -84,7 +90,7 @@ A developer, the frontend, or an automated check asks whether the backend applic
 ### Functional Requirements
 
 - **FR-001**: The system MUST provide a locally runnable application that a developer can start and open in a browser using documented project steps.
-- **FR-002**: The product MUST expose exactly three primary navigable areas named Dashboard, Auto Trading, and Portfolio.
+- **FR-002**: The product MUST expose exactly three primary navigable areas named Dashboard, Auto Trading, and Portfolio. The default application entry point MUST open the Dashboard primary area.
 - **FR-003**: Each primary area MUST be clearly identifiable (distinct label/title) when selected.
 - **FR-004**: Primary-area content for this feature MUST be placeholder-only and MUST NOT display live or mocked trading activity, portfolio valuations, market prices, news, or market sentiment.
 - **FR-005**: Placeholder content MUST make it clear that real functionality for that area is not yet available (e.g., explicit “coming later” / foundation messaging), without implying guaranteed future profit or live trading readiness.
@@ -106,7 +112,7 @@ A developer, the frontend, or an automated check asks whether the backend applic
 ### Measurable Outcomes
 
 - **SC-001**: A developer following project documentation can start the application locally and open the product UI in a browser within 15 minutes on a clean machine that already has the documented prerequisite tools installed.
-- **SC-002**: From a cold open of the running application, a user can visit all three primary areas (Dashboard, Auto Trading, Portfolio) in under 30 seconds using primary navigation.
+- **SC-002**: From a cold open of the running application, a user lands on Dashboard by default and can visit all three primary areas (Dashboard, Auto Trading, Portfolio) in under 30 seconds using primary navigation.
 - **SC-003**: On a phone-width viewport (~375px), primary navigation to all three areas remains completable without desktop-only gestures or inaccessible controls.
 - **SC-004**: With the backend running, health verification returns a healthy result in under 2 seconds for a local check.
 - **SC-005**: With the backend stopped, health verification does not report healthy (100% of such checks fail or are unreachable).
@@ -119,6 +125,7 @@ A developer, the frontend, or an automated check asks whether the backend applic
 - “Phone-width” validation means a typical small mobile viewport around 375 CSS pixels wide; a physical device is desirable but a resized browser or device emulator is acceptable for acceptance.
 - Placeholder copy may briefly name future capabilities (e.g., that Auto Trading will exist later) but MUST NOT invent sample trades, balances, charts, or sentiment scores.
 - Documented local run steps will be introduced or updated as part of delivering this foundation (exact packaging is left to planning).
+- Opening the application without a specific primary-area location lands the user on Dashboard.
 - Backend health is a binary readiness signal for this feature (healthy vs not); detailed dependency diagnostics are deferred.
 - Constitution stack choices (Python backend, React frontend, SQL persistence) apply to planning/implementation but are intentionally not restated as functional requirements here.
 - No production deployment, CI pipeline, or multi-environment promotion is required for this feature’s success definition—local runnability is sufficient.
