@@ -9,7 +9,7 @@ areas on desktop and phone-width viewports, and verify backend health.
 ## Prerequisites
 
 - Documented toolchain installed (see root `README.md` after implementation):
-  Python 3.12+, Node.js LTS, package managers as documented
+  Python 3.12, Node.js LTS, package managers as documented
 - No XT.COM credentials or exchange setup required
 
 ## Start locally
@@ -24,16 +24,20 @@ Expected: product shell loads without trading credentials.
 
 ## Scenario A — Default entry (SC-002 / FR-002)
 
-1. Open the application default URL (no deep path).
-2. Confirm the active area is **Dashboard**.
-3. Confirm CryptoAutoTrading product shell identity is visible.
+1. Open `/` (application root).
+2. Confirm it resolves to **Dashboard** (canonical path `/dashboard`).
+3. Confirm the active area is **Dashboard** and CryptoAutoTrading product shell identity is visible.
 
 ## Scenario B — Navigate three areas (SC-002 / FR-002–FR-005)
 
-1. Select **Auto Trading** via primary navigation → placeholder only; no
-   strategies, sessions, or trades.
-2. Select **Portfolio** → placeholder only; no balances, positions, or P&L.
-3. Select **Dashboard** → placeholder only; no market, news, or sentiment data.
+Canonical primary routes: `/dashboard`, `/auto-trading`, `/portfolio`.
+
+1. Select **Auto Trading** via primary navigation (path `/auto-trading`) →
+   placeholder only; no strategies, sessions, or trades.
+2. Select **Portfolio** (path `/portfolio`) → placeholder only; no balances,
+   positions, or P&L.
+3. Select **Dashboard** (path `/dashboard`) → placeholder only; no market, news,
+   or sentiment data.
 4. Confirm the active area is visually indicated after each switch.
 
 ## Scenario C — Phone-width navigation (SC-003 / FR-006)
@@ -62,12 +66,12 @@ Expected: HTTP 200 and JSON including `"status":"healthy"` in under 2 seconds.
 
 1. Open a path that is not a primary area (e.g., `/this-is-not-a-page`).
 2. Expected: clear not-found experience with primary navigation still available.
-3. Navigate from there to Dashboard (or another primary area) successfully.
+3. Navigate from there to `/dashboard` (or another primary area) successfully.
 
 ## Scenario G — Deep link / refresh
 
-1. Open `/auto-trading` (or Portfolio path) directly.
-2. Refresh the browser.
+1. Open each canonical path directly: `/dashboard`, `/auto-trading`, `/portfolio`.
+2. Refresh the browser on each.
 3. Expected: same primary area placeholder, with navigation intact.
 
 ## Scenario H — Scope guard (SC-006 / SC-007 / FR-010–FR-011)

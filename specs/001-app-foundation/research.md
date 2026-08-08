@@ -5,9 +5,9 @@
 
 ## Decision 1: Backend framework
 
-**Decision**: Python 3.12+ with FastAPI and Uvicorn.
+**Decision**: Python 3.12 with FastAPI and Uvicorn (exact target version 3.12, not a floating 3.12+ range).
 
-**Rationale**: Constitution requires Python. FastAPI is lightweight, provides clear HTTP contracts for health checks, and stays simple for a foundation that will later host trading APIs. Aligns with Intentional Simplicity (X).
+**Rationale**: Constitution requires Python. Pinning 3.12 keeps local and CI expectations deterministic. FastAPI is lightweight, provides clear HTTP contracts for health checks, and stays simple for a foundation that will later host trading APIs. Aligns with Intentional Simplicity (X).
 
 **Alternatives considered**:
 - Django: heavier for a health-only foundation; more ceremony than needed.
@@ -67,11 +67,18 @@
 
 ## Decision 7: Routing & default entry
 
-**Decision**: Client-side routes for `/` (or `/dashboard`) → Dashboard, `/auto-trading`, `/portfolio`, plus catch-all → Not Found. Default entry resolves to Dashboard per clarification.
+**Decision**: Canonical primary routes are exactly:
 
-**Rationale**: Spec FR-002 and Clarifications session. Deep-link/refresh must preserve area (edge case).
+- `/dashboard` — Dashboard (canonical Dashboard path)
+- `/auto-trading` — Auto Trading
+- `/portfolio` — Portfolio
+
+Opening `/` MUST resolve to Dashboard (e.g., redirect or equivalent navigation to `/dashboard`). Catch-all unknown paths → Not Found. Default entry resolves to Dashboard per clarification.
+
+**Rationale**: Spec FR-002 and Clarifications session. A single canonical path per area avoids ambiguous `/` vs `/dashboard` deep links. Deep-link/refresh must preserve area (edge case).
 
 **Alternatives considered**:
+- Treat `/` itself as the Dashboard canonical path (no `/dashboard`): rejected in favor of explicit `/dashboard`.
 - Hash routing only: works but less conventional for Vite SPA; history API is fine for local/dev.
 
 ## Decision 8: Responsive navigation
@@ -98,7 +105,7 @@
 
 ## Decision 10: Local run documentation
 
-**Decision**: Root README documents prerequisite tools (Python, Node), how to start backend and frontend, default URLs, and how to verify health + three areas.
+**Decision**: Root README documents prerequisite tools (Python 3.12, Node), how to start backend and frontend, default URLs (`/`, `/dashboard`, `/auto-trading`, `/portfolio`), and how to verify health + three areas.
 
 **Rationale**: SC-001 and FR-001 require documented local runnability.
 

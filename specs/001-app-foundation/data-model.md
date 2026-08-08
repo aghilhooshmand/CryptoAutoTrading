@@ -14,14 +14,24 @@ Represents one of the three constitution-mandated product destinations.
 |-------|------|-------------|------------|
 | `id` | enum string | Stable identifier | MUST be one of `dashboard`, `auto-trading`, `portfolio` |
 | `label` | string | User-visible name | MUST be exactly `Dashboard`, `Auto Trading`, or `Portfolio` matching `id` |
-| `path` | string | Client route path | MUST be unique; recommended `/`, `/auto-trading`, `/portfolio` (or `/dashboard` aliased to default) |
-| `isDefaultEntry` | boolean | Whether this area is the default entry | Exactly one Primary Area MUST have `true` — **Dashboard** |
+| `path` | string | Canonical client route path | MUST be exactly one of `/dashboard`, `/auto-trading`, `/portfolio` (unique per area) |
+| `isDefaultEntry` | boolean | Whether this area is the default entry | Exactly one Primary Area MUST have `true` — **Dashboard** (`/dashboard`) |
 | `contentMode` | enum | Presentation mode | MUST be `placeholder` for this feature |
+
+### Canonical routes
+
+| Primary Area | `id` | `path` | Default entry |
+|--------------|------|--------|---------------|
+| Dashboard | `dashboard` | `/dashboard` | Yes — `/` MUST resolve here |
+| Auto Trading | `auto-trading` | `/auto-trading` | No |
+| Portfolio | `portfolio` | `/portfolio` | No |
+
+`/` is not a Primary Area path; it MUST resolve to Dashboard (typically `/dashboard`).
 
 ### Relationships
 
 - The application shell has exactly three Primary Area instances.
-- Primary navigation enumerates all three; unknown paths are **not** Primary Areas.
+- Primary navigation enumerates all three canonical paths; unknown paths are **not** Primary Areas.
 
 ### State transitions
 

@@ -7,14 +7,15 @@
 ## Summary
 
 Establish a minimal, locally runnable CryptoAutoTrading foundation: a Python
-backend with a health capability and a React frontend shell with exactly three
-placeholder primary areas (Dashboard, Auto Trading, Portfolio), responsive
-navigation, default landing on Dashboard, and a not-found recovery path—without
-any trading, market, portfolio, sentiment, or auth behavior.
+3.12 backend with a health capability and a React frontend shell with exactly
+three placeholder primary areas (Dashboard, Auto Trading, Portfolio) at
+canonical routes `/dashboard`, `/auto-trading`, and `/portfolio` (`/` resolves
+to Dashboard), responsive navigation, and a not-found recovery path—without any
+trading, market, portfolio, sentiment, or auth behavior.
 
 ## Technical Context
 
-**Language/Version**: Python 3.12+ (backend); TypeScript + React 18+ (frontend)
+**Language/Version**: Python 3.12 (backend); TypeScript + React 18+ (frontend)
 
 **Primary Dependencies**: FastAPI + Uvicorn (backend); Vite + React Router
 (frontend)
@@ -54,9 +55,9 @@ endpoint; documentation for local run
 | V–IX Session bounds, P&L, journals, fail-safe, stop | Pass | Deferred; not in foundation scope |
 | X Intentional simplicity | Pass | Minimal shell + health only |
 | XI–XII Strategies / no guaranteed profit | Pass | Placeholders; no profit claims or fake P&L |
-| XIII Exactly three primary UI areas | Pass | Dashboard, Auto Trading, Portfolio |
+| XIII Exactly three primary UI areas | Pass | Dashboard, Auto Trading, Portfolio at `/dashboard`, `/auto-trading`, `/portfolio` |
 | XIV Responsive UX | Pass | Phone-width nav required |
-| XV Python / React / SQL direction | Pass | Python+React now; SQL deferred until first data feature |
+| XV Python / React / SQL direction | Pass | Python 3.12 + React now; SQL deferred until first data feature |
 | XVI–XVIII Exchange adapter / credentials / withdrawals | Pass | No exchange or credentials |
 | XIX–XXVI Market sentiment | Pass | No sentiment UI/data (Dashboard placeholder only) |
 | XXVII–XXIX Spec-driven / tests / source of truth | Pass | Spec→plan; automated health + nav tests planned |
