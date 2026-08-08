@@ -176,7 +176,7 @@ implemented as part of the core trading path.
 **Rationale**: Narrowing scope reduces attack surface and operational risk.
 
 ## Market Sentiment Principles
-
+ 
 ### XIX. Remove User Emotion From Execution
 The user's personal fear, greed, excitement, or subjective market feeling
 MUST NOT be entered as a routine trading signal.
