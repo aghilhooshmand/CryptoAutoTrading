@@ -243,8 +243,10 @@ This conservative-exit policy MUST NEVER be described as guaranteeing profit.
 Its effectiveness MUST first be evaluated through backtesting and simulation
 before any real-money reliance.
 
-**Rationale**: Extreme greed historically precedes reversals; early securement
-is a risk posture, not a promise.
+**Rationale**: Elevated market optimism may increase the risk of adverse
+price movement or reduced future upside. Earlier profit realization is a
+risk-management hypothesis that must be evaluated empirically, not a
+prediction or promise.
 
 ### Philosophy
 Remove the user's emotion from execution, measure the market's collective
