@@ -18,7 +18,7 @@ Sync Impact Report
 - Follow-up TODOs: none
 -->
 
-# MyCrypto Constitution
+# CryptoAutoTrading Constitution
 
 ## Core Principles
 
@@ -184,7 +184,7 @@ MUST NOT be entered as a routine trading signal.
 **Rationale**: Human emotion is the failure mode this product exists to avoid.
 
 ### XX. Measure Market Sentiment Independently
-MyCrypto SHOULD independently measure broader market sentiment using external
+CryptoAutoTrading SHOULD independently measure broader market sentiment using external
 data sources where legally and technically practical. Potential inputs MAY
 include Crypto Fear & Greed indexes, cryptocurrency-specific sentiment, news
 sentiment, social/community sentiment, market momentum, volatility, trading
@@ -234,7 +234,7 @@ traceable to underlying inputs.
 to solve.
 
 ### XXVI. Conservative Greed Principle
-MyCrypto SHOULD investigate a Conservative Greed Principle: when an existing
+CryptoAutoTrading SHOULD investigate a Conservative Greed Principle: when an existing
 position is profitable and external market sentiment is unusually
 optimistic/greedy, the system MAY favor securing an acceptable profit earlier
 instead of trying to capture the final portion of a market rise.
@@ -277,7 +277,7 @@ spec through the amendment/clarification path before or with the code change.
 ## Governance
 
 This constitution supersedes informal conventions, ad-hoc shortcuts, and
-conflicting local practices for MyCrypto.
+conflicting local practices for CryptoAutoTrading.
 
 ### Amendment Procedure
 1. Propose the change with rationale, affected principles, and migration
