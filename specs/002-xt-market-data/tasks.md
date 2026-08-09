@@ -26,11 +26,11 @@
 
 **Purpose**: Extend Feature 001 packages with market-data directories and dependencies (no feature behavior yet)
 
-- [ ] T001 Create backend package dirs `backend/app/market_data/`, `backend/app/market_data/adapters/`, and ensure `backend/tests/contract/` + `backend/tests/unit/` exist per plan.md
-- [ ] T002 [P] Create frontend dirs `frontend/src/features/market-data/` and `frontend/src/services/` per plan.md
-- [ ] T003 [P] Add runtime `httpx` dependency in `backend/pyproject.toml` (keep pytest/httpx dev extras intact)
-- [ ] T004 [P] Add `lightweight-charts` dependency in `frontend/package.json`
-- [ ] T005 Extend Vite proxy in `frontend/vite.config.ts` to forward `/market` (and keep `/health`) to `http://127.0.0.1:8000`
+- [x] T001 Create backend package dirs `backend/app/market_data/`, `backend/app/market_data/adapters/`, and ensure `backend/tests/contract/` + `backend/tests/unit/` exist per plan.md
+- [x] T002 [P] Create frontend dirs `frontend/src/features/market-data/` and `frontend/src/services/` per plan.md
+- [x] T003 [P] Add runtime `httpx` dependency in `backend/pyproject.toml` (keep pytest/httpx dev extras intact)
+- [x] T004 [P] Add `lightweight-charts` dependency in `frontend/package.json`
+- [x] T005 Extend Vite proxy in `frontend/vite.config.ts` to forward `/market` (and keep `/health`) to `http://127.0.0.1:8000`
 
 ---
 
@@ -40,15 +40,15 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T006 [P] Define internal Pydantic models (`TradingPair`, `MarketQuote`, `Candlestick`, `CandlestickSeries`, status enums) with **decimal-string** financial fields and percent-point `changePercent` in `backend/app/market_data/models.py` per data-model.md
-- [ ] T007 [P] Define `MarketDataAdapter` protocol in `backend/app/market_data/adapters/base.py`
-- [ ] T008 Implement `XtSpotAdapter` in `backend/app/market_data/adapters/xt_spot.py` calling only public `https://sapi.xt.com` endpoints (`/v4/public/symbol`, `/ticker`, `/kline`), normalizing envelopes to internal models (convert XT `cr` ratio → percent-point decimal string; no credentials)
-- [ ] T009 Implement market-data service orchestration in `backend/app/market_data/service.py` over the adapter (USDT filter, default-pair helpers, typed failures)
-- [ ] T010 Create FastAPI routes `GET /market/pairs`, `GET /market/quote`, `GET /market/candles` in `backend/app/api/market_data.py` per `specs/002-xt-market-data/contracts/market-data.md`
-- [ ] T011 Mount market-data router in `backend/app/main.py` without breaking `GET /health`
-- [ ] T012 [P] Add package markers `backend/app/market_data/__init__.py` and `backend/app/market_data/adapters/__init__.py`
-- [ ] T013 [P] Create typed frontend client `frontend/src/services/marketDataApi.ts` for `/market/pairs|quote|candles` (normalized types only; no XT URLs/keys)
-- [ ] T014 [P] Create Dashboard prefs helpers (last symbol, last interval default `1h`, favorites) in `frontend/src/features/market-data/prefs.ts` using `localStorage` only
+- [x] T006 [P] Define internal Pydantic models (`TradingPair`, `MarketQuote`, `Candlestick`, `CandlestickSeries`, status enums) with **decimal-string** financial fields and percent-point `changePercent` in `backend/app/market_data/models.py` per data-model.md
+- [x] T007 [P] Define `MarketDataAdapter` protocol in `backend/app/market_data/adapters/base.py`
+- [x] T008 Implement `XtSpotAdapter` in `backend/app/market_data/adapters/xt_spot.py` calling only public `https://sapi.xt.com` endpoints (`/v4/public/symbol`, `/ticker`, `/kline`), normalizing envelopes to internal models (convert XT `cr` ratio → percent-point decimal string; no credentials)
+- [x] T009 Implement market-data service orchestration in `backend/app/market_data/service.py` over the adapter (USDT filter, default-pair helpers, typed failures)
+- [x] T010 Create FastAPI routes `GET /market/pairs`, `GET /market/quote`, `GET /market/candles` in `backend/app/api/market_data.py` per `specs/002-xt-market-data/contracts/market-data.md`
+- [x] T011 Mount market-data router in `backend/app/main.py` without breaking `GET /health`
+- [x] T012 [P] Add package markers `backend/app/market_data/__init__.py` and `backend/app/market_data/adapters/__init__.py`
+- [x] T013 [P] Create typed frontend client `frontend/src/services/marketDataApi.ts` for `/market/pairs|quote|candles` (normalized types only; no XT URLs/keys)
+- [x] T014 [P] Create Dashboard prefs helpers (last symbol, last interval default `1h`, favorites) in `frontend/src/features/market-data/prefs.ts` using `localStorage` only
 
 **Checkpoint**: Foundation ready — backend `/market/*` callable; frontend can call contracts; XT isolated in adapter
 
@@ -64,16 +64,16 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T015 [P] [US1] Add contract tests for `GET /market/quote` (decimal-string fields, `changePercent` percent points, `source: XT`, error/unsupported paths) in `backend/tests/contract/test_market_data.py`
-- [ ] T016 [P] [US1] Add unit tests for XT ticker→`MarketQuote` mapping (including `cr` → percent points) in `backend/tests/unit/test_xt_spot_adapter.py`
+- [x] T015 [P] [US1] Add contract tests for `GET /market/quote` (decimal-string fields, `changePercent` percent points, `source: XT`, error/unsupported paths) in `backend/tests/contract/test_market_data.py`
+- [x] T016 [P] [US1] Add unit tests for XT ticker→`MarketQuote` mapping (including `cr` → percent points) in `backend/tests/unit/test_xt_spot_adapter.py`
 
 ### Implementation for User Story 1
 
-- [ ] T017 [US1] Implement quote panel UI (price, available 24h stats, XT source, last update) in `frontend/src/features/market-data/MarketQuotePanel.tsx`
-- [ ] T018 [US1] Implement status badge component in `frontend/src/features/market-data/MarketStatusBadge.tsx` (at least loading/fresh/error/unavailable for MVP; STALE refined in US4)
-- [ ] T019 [US1] Implement `useMarketData` fetch + **manual refresh** + request-generation race guard in `frontend/src/features/market-data/useMarketData.ts` (auto-refresh NOT required)
-- [ ] T020 [US1] Compose market quote + refresh into `frontend/src/pages/DashboardPage.tsx`, replacing Feature 001 placeholder-only market messaging for this scope
-- [ ] T021 [US1] Run backend tests for T015–T016 and fix until passing; smoke `curl` quote path from quickstart.md; verify SC-002’s **5-second** Dashboard update bound after a completed refresh during the **manual** acceptance check unless already covered automatically
+- [x] T017 [US1] Implement quote panel UI (price, available 24h stats, XT source, last update) in `frontend/src/features/market-data/MarketQuotePanel.tsx`
+- [x] T018 [US1] Implement status badge component in `frontend/src/features/market-data/MarketStatusBadge.tsx` (at least loading/fresh/error/unavailable for MVP; STALE refined in US4)
+- [x] T019 [US1] Implement `useMarketData` fetch + **manual refresh** + request-generation race guard in `frontend/src/features/market-data/useMarketData.ts` (auto-refresh NOT required)
+- [x] T020 [US1] Compose market quote + refresh into `frontend/src/pages/DashboardPage.tsx`, replacing Feature 001 placeholder-only market messaging for this scope
+- [x] T021 [US1] Run backend tests for T015–T016 and fix until passing; smoke `curl` quote path from quickstart.md; verify SC-002’s **5-second** Dashboard update bound after a completed refresh during the **manual** acceptance check unless already covered automatically
 
 **Checkpoint**: MVP — Dashboard shows genuine XT quote with manual refresh
 
@@ -87,16 +87,16 @@
 
 ### Tests for User Story 2
 
-- [ ] T022 [P] [US2] Extend `backend/tests/contract/test_market_data.py` for `GET /market/pairs` (USDT-only symbols, failure → no invented pairs)
-- [ ] T023 [P] [US2] Add frontend tests for prefs restore + favorites ordering in `frontend/src/__tests__/marketPrefs.test.tsx` (or under `frontend/src/features/market-data/`)
+- [x] T022 [P] [US2] Extend `backend/tests/contract/test_market_data.py` for `GET /market/pairs` (USDT-only symbols, failure → no invented pairs)
+- [x] T023 [P] [US2] Add frontend tests for prefs restore + favorites ordering in `frontend/src/__tests__/marketPrefs.test.tsx` (or under `frontend/src/features/market-data/`)
 
 ### Implementation for User Story 2
 
-- [ ] T024 [US2] Implement searchable pair selector with favorites section-before-list in `frontend/src/features/market-data/PairSelector.tsx`
-- [ ] T025 [US2] Wire pair list load, selection, favorite/unfavorite, and last-symbol persistence via `prefs.ts` + `useMarketData.ts` + `DashboardPage.tsx`
-- [ ] T026 [US2] Enforce default pair rules (`btc_usdt` if available, else first USDT pair, else empty/unavailable) and drop unsupported persisted/favorite symbols without fabricating prices
-- [ ] T027 [US2] Confirm `frontend/src/pages/AutoTradingPage.tsx` and `frontend/src/pages/PortfolioPage.tsx` remain placeholders with no favorite-driven portfolio/trading state
-- [ ] T028 [US2] Run tests for T022–T023 and fix until passing
+- [x] T024 [US2] Implement searchable pair selector with favorites section-before-list in `frontend/src/features/market-data/PairSelector.tsx`
+- [x] T025 [US2] Wire pair list load, selection, favorite/unfavorite, and last-symbol persistence via `prefs.ts` + `useMarketData.ts` + `DashboardPage.tsx`
+- [x] T026 [US2] Enforce default pair rules (`btc_usdt` if available, else first USDT pair, else empty/unavailable) and drop unsupported persisted/favorite symbols without fabricating prices
+- [x] T027 [US2] Confirm `frontend/src/pages/AutoTradingPage.tsx` and `frontend/src/pages/PortfolioPage.tsx` remain placeholders with no favorite-driven portfolio/trading state
+- [x] T028 [US2] Run tests for T022–T023 and fix until passing
 
 **Checkpoint**: Pair selection + local favorites/persistence work on Dashboard only
 
@@ -110,16 +110,16 @@
 
 ### Tests for User Story 4
 
-- [ ] T029 [P] [US4] Add/extend adapter unit tests for malformed XT payloads and missing critical fields in `backend/tests/unit/test_xt_spot_adapter.py`
-- [ ] T030 [P] [US4] Add frontend tests that STALE uses quote timestamps (not candle `openTime`) and does not label stale as fresh in `frontend/src/__tests__/marketStatus.test.tsx`
+- [x] T029 [P] [US4] Add/extend adapter unit tests for malformed XT payloads and missing critical fields in `backend/tests/unit/test_xt_spot_adapter.py`
+- [x] T030 [P] [US4] Add frontend tests that STALE uses quote timestamps (not candle `openTime`) and does not label stale as fresh in `frontend/src/__tests__/marketStatus.test.tsx`
 
 ### Implementation for User Story 4
 
-- [ ] T031 [US4] Complete fail-safe mapping in `backend/app/market_data/service.py` and `backend/app/api/market_data.py` (`unsupported`/`unavailable`/`error` HTTP + bodies per contracts; no fabricated values)
-- [ ] T032 [US4] Implement client-side quote freshness (60s from `observedAt` else `retrievedAt`) and STALE display in `MarketStatusBadge.tsx` / `MarketQuotePanel.tsx` / `useMarketData.ts`
-- [ ] T033 [US4] Ensure race guard ignores stale responses so older pair/interval results cannot overwrite newer selection in `useMarketData.ts`
-- [ ] T034 [US4] Keep `GET /health` behavior unchanged in `backend/app/api/health.py` and ensure Dashboard distinguishes process health from market-data status where both are observable
-- [ ] T035 [US4] Run tests for T029–T030 and fix until passing
+- [x] T031 [US4] Complete fail-safe mapping in `backend/app/market_data/service.py` and `backend/app/api/market_data.py` (`unsupported`/`unavailable`/`error` HTTP + bodies per contracts; no fabricated values)
+- [x] T032 [US4] Implement client-side quote freshness (60s from `observedAt` else `retrievedAt`) and STALE display in `MarketStatusBadge.tsx` / `MarketQuotePanel.tsx` / `useMarketData.ts`
+- [x] T033 [US4] Ensure race guard ignores stale responses so older pair/interval results cannot overwrite newer selection in `useMarketData.ts`
+- [x] T034 [US4] Keep `GET /health` behavior unchanged in `backend/app/api/health.py` and ensure Dashboard distinguishes process health from market-data status where both are observable
+- [x] T035 [US4] Run tests for T029–T030 and fix until passing
 
 **Checkpoint**: Fail-safe + quote-based STALE meet FR-008/FR-009 / SC-005
 
@@ -133,15 +133,15 @@
 
 ### Tests for User Story 3
 
-- [ ] T036 [P] [US3] Extend `backend/tests/contract/test_market_data.py` for `GET /market/candles` (allowed intervals only, decimal-string OHLC, invalid interval → 400)
-- [ ] T037 [P] [US3] Extend `backend/tests/unit/test_xt_spot_adapter.py` for kline → `CandlestickSeries` mapping
+- [x] T036 [P] [US3] Extend `backend/tests/contract/test_market_data.py` for `GET /market/candles` (allowed intervals only, decimal-string OHLC, invalid interval → 400)
+- [x] T037 [P] [US3] Extend `backend/tests/unit/test_xt_spot_adapter.py` for kline → `CandlestickSeries` mapping
 
 ### Implementation for User Story 3
 
-- [ ] T038 [US3] Implement candle chart component using `lightweight-charts` in `frontend/src/features/market-data/CandleChart.tsx` (consume normalized series only; mockable in tests)
-- [ ] T039 [US3] Add interval control (`15m`/`1h`/`4h`/`1d`, default `1h`) and wire candles fetch + last-interval persistence in `useMarketData.ts`, `prefs.ts`, and `DashboardPage.tsx`
-- [ ] T040 [US3] On history failure/empty, show clear unavailable/error empty state in `CandleChart.tsx` / Dashboard without padding fake candles
-- [ ] T041 [US3] Run tests for T036–T037 and fix until passing
+- [x] T038 [US3] Implement candle chart component using `lightweight-charts` in `frontend/src/features/market-data/CandleChart.tsx` (consume normalized series only; mockable in tests)
+- [x] T039 [US3] Add interval control (`15m`/`1h`/`4h`/`1d`, default `1h`) and wire candles fetch + last-interval persistence in `useMarketData.ts`, `prefs.ts`, and `DashboardPage.tsx`
+- [x] T040 [US3] On history failure/empty, show clear unavailable/error empty state in `CandleChart.tsx` / Dashboard without padding fake candles
+- [x] T041 [US3] Run tests for T036–T037 and fix until passing
 
 **Checkpoint**: History + intervals work; STALE remains quote-based
 
@@ -155,13 +155,13 @@
 
 ### Tests for User Story 5
 
-- [ ] T042 [P] [US5] Add/extend narrow-viewport smoke assertions for Dashboard market controls in `frontend/src/__tests__/marketResponsive.test.tsx` (or extend existing responsive tests)
+- [x] T042 [P] [US5] Add/extend narrow-viewport smoke assertions for Dashboard market controls in `frontend/src/__tests__/marketResponsive.test.tsx` (or extend existing responsive tests)
 
 ### Implementation for User Story 5
 
-- [ ] T043 [US5] Adjust styles/layout in `frontend/src/features/market-data/*.tsx` and `frontend/src/pages/DashboardPage.tsx` so market UI is usable at ~375px
-- [ ] T044 [US5] Manually verify quickstart phone-width scenario; fix clipping/overflow in the same feature files
-- [ ] T045 [US5] Run frontend tests including T042 and fix until passing
+- [x] T043 [US5] Adjust styles/layout in `frontend/src/features/market-data/*.tsx` and `frontend/src/pages/DashboardPage.tsx` so market UI is usable at ~375px
+- [x] T044 [US5] Manually verify quickstart phone-width scenario; fix clipping/overflow in the same feature files
+- [x] T045 [US5] Run frontend tests including T042 and fix until passing
 
 **Checkpoint**: Phone-width market Dashboard satisfies SC-006 / FR-012
 
@@ -171,11 +171,11 @@
 
 **Purpose**: Docs, acceptance validation, adapter isolation check; auto-refresh only if trivial
 
-- [ ] T046 [P] Update root `README.md` with Feature 002 market-data run notes (no XT credentials; `/market` proxy; manual refresh) linking to `specs/002-xt-market-data/quickstart.md`
-- [ ] T047 [P] Confirm frontend has no `sapi.xt.com` / XT short-key coupling (search `frontend/src/`); XT calls only under `backend/app/market_data/adapters/`
-- [ ] T048 Run full quickstart.md validation scenarios (pairs, quote, candles, STALE, race, out-of-scope) and fix gaps in the touched app files
-- [ ] T049 [P] Optional polish ONLY: light ~60s auto-refresh for active pair in `useMarketData.ts` if trivial and rate-limit-safe — **MUST NOT block Feature 002 completion** if skipped
-- [ ] T050 Confirm out-of-scope remains unimplemented (no trading/simulation/risk/strategies/portfolio math/sentiment/news/auth/WebSockets/SQL prefs/futures/margin/leverage) per SC-008
+- [x] T046 [P] Update root `README.md` with Feature 002 market-data run notes (no XT credentials; `/market` proxy; manual refresh) linking to `specs/002-xt-market-data/quickstart.md`
+- [x] T047 [P] Confirm frontend has no `sapi.xt.com` / XT short-key coupling (search `frontend/src/`); XT calls only under `backend/app/market_data/adapters/`
+- [x] T048 Run full quickstart.md validation scenarios (pairs, quote, candles, STALE, race, out-of-scope) and fix gaps in the touched app files
+- [x] T049 [P] Optional polish ONLY: light ~60s auto-refresh for active pair in `useMarketData.ts` if trivial and rate-limit-safe — **MUST NOT block Feature 002 completion** if skipped — **skipped** (manual refresh only; keeps rate-limit posture simple)
+- [x] T050 Confirm out-of-scope remains unimplemented (no trading/simulation/risk/strategies/portfolio math/sentiment/news/auth/WebSockets/SQL prefs/futures/margin/leverage) per SC-008
 
 ---
 

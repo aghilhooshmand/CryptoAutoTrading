@@ -1,17 +1,18 @@
 # CryptoAutoTrading
 
-Responsive cryptocurrency auto-trading platform (foundation stage).
+Responsive cryptocurrency auto-trading platform.
 
-Feature `001-app-foundation` provides a locally runnable shell with three
-placeholder primary areas and a backend health capability. Trading, market
-data, sentiment, exchange integration, and authentication are intentionally
-out of scope.
+Feature `001-app-foundation` provides the local shell (three primary areas +
+health). Feature `002-xt-market-data` adds public XT Spot market data on the
+Dashboard (USDT pairs, quote, history). Trading, sentiment, portfolio math,
+and authentication remain out of scope.
 
 ## Prerequisites
 
 - **Python 3.12** (project target; `>=3.12` may work for local development)
 - **Node.js LTS** (includes npm)
-- No XT.COM credentials or exchange setup required
+- Network access to `https://sapi.xt.com` for live market data
+- **No XT.COM credentials** (public Spot REST only)
 
 ## Canonical routes
 
@@ -22,10 +23,6 @@ out of scope.
 | Portfolio | `/portfolio` | Wallet |
 
 Opening `/` resolves to Dashboard (`/dashboard`).
-
-Primary navigation may show these lightweight Lucide icons **beside** the
-visible text labels. Icons must not replace labels, must remain usable at
-~375px width, and are presentation aids only (no routing or behavior change).
 
 Unsupported paths show a dedicated **Not Found** page with primary navigation
 still available (no silent redirect).
@@ -56,53 +53,49 @@ npm run dev
 
 Frontend URL: `http://127.0.0.1:5173`
 
-Open the frontend URL. You should land on **Dashboard** without trading
-credentials.
+Vite proxies `/health` and `/market` to the backend. Open the frontend URL and
+use Dashboard **Refresh** to load XT public market data (manual refresh is
+required; auto-refresh is optional polish and not required).
+
+Feature 002 validation guide:
+[`specs/002-xt-market-data/quickstart.md`](specs/002-xt-market-data/quickstart.md)
 
 ## Backend health
 
-Contract: `specs/001-app-foundation/contracts/health.md`
-
-With the backend running:
-
 ```bash
-curl -sS -w "\nhttp_code=%{http_code} time=%{time_total}\n" http://127.0.0.1:8000/health
+curl -sS http://127.0.0.1:8000/health
 ```
 
-Expected: HTTP 200 and JSON `{"status":"healthy"}`. A successful local check
-must complete in under **2 seconds** (SC-004).
+Expected: HTTP 200 and JSON `{"status":"healthy"}` in under 2 seconds.
 
-Feature 001 does **not** require a Dashboard health widget.
+## Market data (Feature 002)
 
-### Manual stopped-backend check (SC-005 / FR-008)
+Normalized application contracts (not raw XT envelopes):
 
-1. Stop the backend process.
-2. Repeat the `curl` command above.
-3. Expected: connection failure / unreachable — not a healthy success.
+```bash
+curl -sS http://127.0.0.1:8000/market/pairs | head
+curl -sS "http://127.0.0.1:8000/market/quote?symbol=btc_usdt"
+curl -sS "http://127.0.0.1:8000/market/candles?symbol=btc_usdt&interval=1h&limit=3"
+```
 
-Do not add infrastructure solely to automate this unreachable-process check.
+Contract: `specs/002-xt-market-data/contracts/market-data.md`
 
 ## Tests
 
 ```bash
-# Backend contract tests
+# Backend
 cd backend
 source .venv/bin/activate
 pytest
 
-# Frontend navigation / placeholder / not-found / responsive smoke
+# Frontend
 cd frontend
 npm test
 ```
 
-## Quickstart validation
+## Out of scope
 
-See `specs/001-app-foundation/quickstart.md` for scenarios A–H, including
-phone-width (~375px) navigation checks.
-
-## Out of scope (Feature 001)
-
-Do not expect XT.COM integration, market data, strategies, Trading Controller,
-Risk Manager, simulation or real-money trading, portfolio calculations, news,
-market sentiment / Fear & Greed indexes, backtesting, AI/ML, Google
-authentication, or SQL domain schemas.
+Do not expect trading/simulation, Risk Manager / Trading Controller, portfolio
+calculations, news, market sentiment / Fear & Greed, WebSocket streaming,
+private XT APIs/credentials, futures/margin/leverage, auth, or SQL preference
+store for Dashboard favorites (local browser storage only).

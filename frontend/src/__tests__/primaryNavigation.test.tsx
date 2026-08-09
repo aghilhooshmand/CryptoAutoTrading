@@ -13,12 +13,10 @@ function renderAt(path: string) {
   );
 }
 
-const forbiddenContent = [
-  /\$[0-9]/i,
+const forbiddenTradingContent = [
   /fear\s*&\s*greed/i,
   /open position/i,
   /unrealized/i,
-  /BTC\/USDT/i,
   /place order/i,
 ];
 
@@ -46,6 +44,9 @@ describe("primary navigation", () => {
       within(autoTradingLink).getByText("Auto Trading"),
     ).toBeInTheDocument();
     expect(autoTradingLink.querySelector(".primary-nav-icon")).not.toBeNull();
+    for (const pattern of forbiddenTradingContent) {
+      expect(screen.queryByText(pattern)).not.toBeInTheDocument();
+    }
 
     await user.click(screen.getByRole("link", { name: "Portfolio" }));
     expect(
@@ -54,15 +55,14 @@ describe("primary navigation", () => {
     const portfolioLink = screen.getByRole("link", { name: "Portfolio" });
     expect(within(portfolioLink).getByText("Portfolio")).toBeInTheDocument();
     expect(portfolioLink.querySelector(".primary-nav-icon")).not.toBeNull();
+    for (const pattern of forbiddenTradingContent) {
+      expect(screen.queryByText(pattern)).not.toBeInTheDocument();
+    }
 
     await user.click(screen.getByRole("link", { name: "Dashboard" }));
     expect(
       screen.getByRole("heading", { name: "Dashboard" }),
     ).toBeInTheDocument();
-
-    for (const pattern of forbiddenContent) {
-      expect(screen.queryByText(pattern)).not.toBeInTheDocument();
-    }
   });
 
   it.each([
