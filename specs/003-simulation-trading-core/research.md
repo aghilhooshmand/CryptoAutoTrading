@@ -86,12 +86,13 @@ without optimizing profitability (Constitution XI + user preference).
 3. Quantity closed is always the **entire** open `qty`.
 
 **Starting vs allocated capital**: Session starts flat with
-`cash = starting_capital`. `allocated_capital` MUST be configured explicitly
-(positive) and enforced in sizing as above. v1 UI MAY default
-`allocated_capital` to equal `starting_capital` when the operator enters a
-single capital figure, but both fields remain distinct in session semantics
-and storage. If `starting_capital > allocated_capital`, excess cash is held
-but MUST NOT be deployed beyond `allocated_capital` on a full BUY.
+`cash = starting_capital`. Create/start MUST enforce
+`0 < max_position_size ≤ allocated_capital ≤ starting_capital`.
+`allocated_capital` MUST be configured explicitly (positive) and enforced in
+sizing as above. v1 UI MAY default `allocated_capital` to equal
+`starting_capital` when the operator enters a single capital figure, but both
+fields remain distinct. If `starting_capital > allocated_capital`, excess cash
+is held but MUST NOT be deployed beyond `allocated_capital` on a full BUY.
 
 **Rationale**: Matches long-only full-position model; makes allocated capital a
 real risk bound, not documentary-only; keeps fee coverage explicit; rejects
@@ -104,6 +105,8 @@ rather than silent partials.
 - Partial fills to use leftover cash dust: conflicts with single full-position
   simplicity.
 - Allow notional above allocated when cash is larger: rejected.
+- `allocated_capital > starting_capital` or `max_position_size > allocated_capital`:
+  rejected at create/start (capital invariant).
 
 ---
 
@@ -388,12 +391,20 @@ CONFIGURED → RUNNING → STOPPING → STOPPED
 
 **Flags**: `position_flatten_status`: `flat` | `forced_closed` | `unsafe_unflattened`.
 
-Emergency stop and automatic hard limits both enter `STOPPING` then `STOPPED`;
-emergency sets reason `emergency` and still attempts forced close if safe price
-exists.
+**Forced close on stop (shared path)**: Manual stop, emergency stop, and
+automatic hard limits all enter `STOPPING` then `STOPPED`. While LONG:
 
-**Rationale**: Makes “no new execution after stop” testable and supports
-flatten-without-inventing-price.
+- If a **safe** market price exists → perform **exactly one** forced full
+  simulated SELL (session fee/slippage), journal with `is_forced_close=true`,
+  then complete stop.
+- If no safe price exists → do **not** invent an exit; leave
+  `unsafe_unflattened`; stop new strategy execution.
+
+Manual stop uses this **same** forced-close path as hard/emergency stops.
+Backend restart remains distinct (Decision 7): no auto-flatten.
+
+**Rationale**: Makes “no new strategy execution after stop” testable and
+supports flatten-without-inventing-price for every operator/automatic stop.
 
 **Alternatives considered**:
 - Single ACTIVE/INACTIVE: too coarse for flatten-in-progress.
@@ -491,7 +502,8 @@ Use `Clock` for:
 - Journal timestamps.
 
 **Duplicate prevention**: Persist `last_processed_candle_open_time` per session.
-The same `open_time` MUST NOT enter strategy evaluation twice.
+The same closed candle `open_time` MUST NOT be strategy-evaluated more than
+once.
 
 **Forming candle**: If the newest bar is not yet closed per `Clock`, ignore it
 for signaling (no intrabar evaluation).

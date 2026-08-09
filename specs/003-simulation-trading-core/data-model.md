@@ -46,7 +46,7 @@ One bounded simulated trading run. At most one session may be in `RUNNING` or
 | `cumulative_fees` | decimal string | Actual fills only |
 | `cumulative_slippage_cost` | decimal string | |
 | `cumulative_gross_realized` | decimal string | |
-| `last_processed_candle_open_time` | int \| null | Epoch ms; duplicate guard |
+| `last_processed_candle_open_time` | int \| null | Epoch ms; MUST persist; same closed candle MUST NOT be evaluated twice |
 | `started_at` | datetime \| null | UTC; set on RUNNING |
 | `stopped_at` | datetime \| null | |
 | `stop_reason` | enum \| null | See research Decision 5 |
@@ -56,11 +56,12 @@ One bounded simulated trading run. At most one session may be in `RUNNING` or
 
 ### Validation (create / start)
 
-- All FR-005 bounds present and numerically valid (positive `starting_capital`,
-  positive `allocated_capital`, positive `max_position_size`,
-  `target_net_profit_rate` > 0, `max_session_loss_rate` > 0, max_trades ≥ 1,
-  duration_seconds ≥ 1).
-- On create/start, derive and persist:
+- All FR-005 bounds present and numerically valid.
+- Capital invariant (reject otherwise):
+  `0 < max_position_size ≤ allocated_capital ≤ starting_capital`.
+- `target_net_profit_rate` > 0, `max_session_loss_rate` > 0, max_trades ≥ 1,
+  duration_seconds ≥ 1.
+- On create/start, derive and persist **both** rates and amounts:
   `target_net_profit_amount = allocated_capital * target_net_profit_rate`,
   `max_session_loss_amount = allocated_capital * max_session_loss_rate`.
 - `fee_rate` / `slippage_rate` ≥ 0 when provided; else defaults.
@@ -68,8 +69,9 @@ One bounded simulated trading run. At most one session may be in `RUNNING` or
   unavailable — do not invent).
 - `mode` must be `simulation`.
 - Start rejected if another session is `RUNNING` or `STOPPING`.
-- Full BUY sizing MUST use
-  `min(current_cash/(1+fee_rate), allocated_capital, max_position_size)`.
+- Full BUY sizing MUST use:
+  `affordable_notional = current_cash / (1 + fee_rate)`,
+  `intended_notional = min(affordable_notional, allocated_capital, max_position_size)`.
 
 ### State transitions
 

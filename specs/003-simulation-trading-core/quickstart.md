@@ -66,8 +66,10 @@ Confirm:
 4. Leave fee/slippage blank → defaults **0.10%** / **0.05%** apply.
 5. Start session → state `RUNNING`; only one active session allowed.
 
-**Expect**: Second start while active fails with a clear conflict. Full BUY
-notional never exceeds `min(affordable cash, allocatedCapital, maxPositionSize)`.
+**Expect**: Second start while active fails with a clear conflict. Create/start
+rejects any break of `0 < maxPositionSize ≤ allocatedCapital ≤ startingCapital`.
+Full BUY notional uses
+`min(current_cash/(1+feeRate), allocatedCapital, maxPositionSize)`.
 
 ### 2. Pipeline authority (SC-002, US2)
 
@@ -93,18 +95,20 @@ flat) appear in Decision Journal with reasons and do not change cash.
 1. Configure a tiny `targetNetProfitRate` / `maxSessionLossRate` (e.g. relative
    to a small `allocatedCapital`) or short `durationSeconds` / `maxTrades: 1`.
    Confirm UI shows both percent and derived USDT amount.
-2. Run until stop fires. Profit/max-loss use **liquidation** Session NET while
-   LONG compared to the **derived absolute** thresholds (not raw mark equity).
+2. Run until stop fires **or** exercise **manual stop** / **emergency stop**.
+   Profit/max-loss use **liquidation** Session NET while LONG compared to the
+   **derived absolute** thresholds (not raw mark equity).
 3. If long and quote safe → one forced full `SELL` in Trade Journal with
    `isForcedClose: true`; `positionFlattenStatus` forced/flat. Actual exit
-   costs apply once (no double-count of the hypothetical evaluation).
+   costs apply once (no double-count of the hypothetical evaluation). Manual
+   and emergency stop use this same forced-close path.
 4. If stop with unsafe mark (simulate stale in tests) → no invented exit;
    `unsafe_unflattened`.
 5. With `maxTrades` exhausted while LONG: strategy fills stop; one forced
    close may still run so `tradeCount` can be `maxTrades + 1`.
 
-**Expect**: No further strategy-driven simulated executions in that session
-after `STOPPED`.
+**Expect**: After stop, **0 further strategy-driven** simulated executions.
+A single forced safety close during `STOPPING` is allowed when long + safe price.
 
 ### 5. Fail-safe market data (SC-006)
 

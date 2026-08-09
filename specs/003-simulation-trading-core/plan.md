@@ -52,15 +52,19 @@ sizes for one session.
 **Constraints**:
 - Simulation only; no private XT APIs; no real orders; no credentials
 - Long-only single full position; BUY only from FLAT; SELL only full close
-- Dual EMA crossover only; evaluate once per newly closed candle; no duplicate
-  processing of the same candle
+- Dual EMA crossover only; evaluate once per newly closed candle; persist
+  `last_processed_candle_open_time`; never evaluate the same closed candle twice
 - Controller + Risk mandatory before any simulated fill
 - Defaults: fee **0.10%** / adverse slippage **0.05%** per fill side; overridable
-- Full BUY notional: `min(cash/(1+fee), allocated_capital, max_position_size)`
-- Profit target / max loss configured as **% of allocated_capital**; derived USDT amounts stored; UI shows both
+- Capital invariant: `0 < max_position_size ≤ allocated_capital ≤ starting_capital`
+- Full BUY: `affordable_notional = cash/(1+fee)`;
+  `intended_notional = min(affordable_notional, allocated_capital, max_position_size)`
+- Profit target / max loss configured as **% of allocated_capital**; rates and
+  derived USDT amounts persisted; UI shows both
 - Session limits compare **liquidation** Session NET P&L to those derived amounts
 - `max_trades` caps strategy-driven fills; one forced safety close may exceed `trade_count` by one
-- Hard-stop flatten only with safe price; else fail-safe unflattened
+- Manual, emergency, and automatic hard stops share forced-close path: flatten if
+  safe price exists; else `unsafe_unflattened` (never invent exit)
 - Market data only via Feature 002 normalized boundary
 - No WebSockets, shorts, leverage, multi-session, multi-strategy, ML,
   sentiment/news, backtesting, production deploy
@@ -79,7 +83,7 @@ local file
 | I Capital protection | Pass | Hard limits, emergency stop, fail-safe, long-only bounds |
 | II Simulation before real money | Pass | Simulation only; real-money unavailable/non-startable |
 | III–IV Pipeline / controller–risk authority | Pass | Strategy advisory; Controller + Risk before SimulationExecution |
-| V Explicit session boundaries | Pass | All FR-005 bounds; allocated_capital enforceable in sizing |
+| V Explicit session boundaries | Pass | Capital nesting `0 < max_size ≤ allocated ≤ starting`; all FR-005 bounds |
 | VI Net P&L | Pass | Liquidation NET vs derived absolute thresholds from % of allocated; fees/slippage once |
 | VII Decision traceability | Pass | Decision Journal (HOLD/approve/reject) + Trade Journal |
 | VIII Fail safe | Pass | Stale/unsafe data rejects; no invented exit on hard stop |

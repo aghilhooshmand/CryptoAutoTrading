@@ -32,11 +32,21 @@ Limits **strategy-driven** fills only. After `strategyFillCount` reaches
 one forced safety close is still allowed and may make `tradeCount` equal
 `maxTrades + 1`; that trade MUST have `isForcedClose: true`.
 
+### Capital nesting
+
+Create/start MUST enforce:
+
+```text
+0 < maxPositionSize ≤ allocatedCapital ≤ startingCapital
+```
+
+Violations → HTTP `400` / `invalid_config`.
+
 ### Profit / loss rates
 
 Operator configures `targetNetProfitRate` and `maxSessionLossRate` as fractions
-of `allocatedCapital` (e.g. `"0.01"` = 1.0%). Server derives and returns
-absolute amounts:
+of `allocatedCapital` (e.g. `"0.01"` = 1.0%). Server derives, **persists**, and
+returns absolute amounts:
 
 ```text
 targetNetProfitAmount = allocatedCapital * targetNetProfitRate
@@ -45,6 +55,13 @@ maxSessionLossAmount  = allocatedCapital * maxSessionLossRate
 
 Hard limits compare liquidation-based Session NET P&L to these amounts.
 Frontend MUST display both percentage and currency amount.
+
+### Forced close on stop
+
+`POST .../stop`, `POST .../emergency-stop`, and automatic hard stops share one
+path: if LONG and a safe price exists → exactly one forced full simulated SELL
+(`isForcedClose: true`); if no safe price → `unsafe_unflattened` (never invent
+an exit). No further strategy-driven fills after stop.
 
 ---
 
@@ -73,8 +90,10 @@ Create a session in `CONFIGURED`.
 
 `allocatedCapital` is required for enforceable sizing (MUST NOT deploy above it).
 If omitted, server MAY default it to `startingCapital`, but the field remains
-distinct. Server MUST persist derived `targetNetProfitAmount` and
-`maxSessionLossAmount` (example: `"5"` and `"3.5"` for the rates above).
+distinct and MUST still satisfy
+`0 < maxPositionSize ≤ allocatedCapital ≤ startingCapital`. Server MUST persist
+derived `targetNetProfitAmount` and `maxSessionLossAmount` (example: `"5"` and
+`"3.5"` for the rates above) together with the configured rates.
 
 ### Success
 
@@ -111,7 +130,10 @@ Transition `CONFIGURED` → `RUNNING` if allowed.
 
 ## `POST /simulation/sessions/{id}/stop`
 
-Manual stop: `RUNNING` → `STOPPING` → `STOPPED` (forced close if safe price).
+Manual stop: `RUNNING` → `STOPPING` → `STOPPED`. Uses the **same** forced-close
+path as emergency/automatic hard stops: if LONG and safe price → exactly one
+forced full SELL (`isForcedClose: true`); else `unsafe_unflattened` (no invented
+exit).
 
 ### Success
 
@@ -216,6 +238,9 @@ startEquity`) and is compared to `targetNetProfitAmount` /
 informational. When mark unsafe while long: `netPnl`, `liquidationEquity`, and
 mark fields that require a price MAY be `null` with `markSafe: false`.
 
+`lastProcessedCandleOpenTime` is the duplicate-candle cursor: the same closed
+candle MUST NOT be evaluated twice.
+
 Hypothetical liquidation costs used to evaluate profit/loss stops are not
 separate ledger entries; an actual forced close applies fee/slippage once.
 ---
@@ -282,10 +307,12 @@ Same pagination idea as decisions.
 | FR-001, FR-020 | `mode` simulation; `label: SIMULATION`; real money rejected |
 | FR-004 | `session_already_active` on second start |
 | FR-010–011 | decisions + trades endpoints |
-| FR-005 | bounds include allocated capital + profit/loss **rates**; amounts derived |
+| FR-005 | capital nesting `0 < maxSize ≤ allocated ≤ starting`; rates + amounts persisted |
+| FR-005a | BUY sizing `min(affordable, allocated, maxSize)` |
+| FR-006a | persist `lastProcessedCandleOpenTime`; no duplicate candle eval |
 | FR-012a | fee/slippage defaults |
 | FR-014 | `netPnl` / limits use liquidation equity vs derived absolute thresholds |
 | FR-014a | forced close vs max_trades |
-| FR-015–016 | stop / emergency-stop; no new exec when stopped |
-| FR-015a | forced close reflected in trades + flatten status; `isForcedClose` |
+| FR-015–016 | stop / emergency-stop; no new **strategy-driven** exec when stopped |
+| FR-015a | manual/emergency/hard stop share forced close; `isForcedClose` |
 | SC-007 | no private XT trading routes; real_money rejected at API |
