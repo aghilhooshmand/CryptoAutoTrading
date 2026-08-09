@@ -31,7 +31,7 @@ Represents one of the three constitution-mandated product destinations.
 ### Relationships
 
 - The application shell has exactly three Primary Area instances.
-- Primary navigation enumerates all three canonical paths; unknown paths are **not** Primary Areas.
+- Primary navigation enumerates all three canonical paths; unknown paths are **not** Primary Areas and MUST render a dedicated Not Found experience (not a silent redirect to a Primary Area).
 
 ### State transitions
 
@@ -52,6 +52,8 @@ Concise readiness signal for the backend application process.
 
 - Independent of Primary Areas. Frontend navigation MUST work even when Health
   Status is unreachable.
+- Feature 001 does not model a Dashboard health widget; health is a backend
+  readiness signal for developers/automated checks.
 - No dependency on databases, exchanges, or market feeds in this feature.
 
 ### State transitions

@@ -32,6 +32,6 @@
 ## Notes
 
 - Validation iteration 1 (2026-08-08): All items pass.
-- Assumptions note constitution stack (Python/React/SQL) as planning guidance only; FRs/SCs remain technology-agnostic.
-- No clarification questions required; scope and success definition were explicit in the feature description.
+- Validation iteration 2 (2026-08-09): Spec updated post `/speckit-analyze` — canonical routes, Not Found-only unknown routes, no Dashboard health widget, SC-004 timing, manual SC-005. Checklist items remain passing.
+- Assumptions note constitution stack (Python/React/SQL) as planning guidance only; FRs/SCs remain technology-agnostic aside from user-visible route paths required for acceptance.
 - Items marked incomplete would require spec updates before `/speckit-clarify` or `/speckit-plan`; none remain.

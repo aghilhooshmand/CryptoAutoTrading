@@ -84,7 +84,7 @@ specs/001-app-foundation/
 
 ```text
 backend/
-├── pyproject.toml        # or requirements.txt
+├── pyproject.toml
 ├── app/
 │   ├── __init__.py
 │   ├── main.py           # FastAPI app entry
@@ -99,19 +99,22 @@ backend/
 frontend/
 ├── package.json
 ├── vite.config.ts
+├── vitest.config.ts
 ├── index.html
 ├── src/
 │   ├── main.tsx
 │   ├── App.tsx
+│   ├── config/
+│   │   └── primaryAreas.ts
 │   ├── components/
 │   │   ├── AppShell.tsx
 │   │   └── PrimaryNav.tsx
-│   └── pages/
-│       ├── DashboardPage.tsx
-│       ├── AutoTradingPage.tsx
-│       ├── PortfolioPage.tsx
-│       └── NotFoundPage.tsx
-└── src/__tests__/        # or tests/ — navigation & placeholder checks
+│   ├── pages/
+│   │   ├── DashboardPage.tsx
+│   │   ├── AutoTradingPage.tsx
+│   │   ├── PortfolioPage.tsx
+│   │   └── NotFoundPage.tsx
+│   └── __tests__/        # navigation & placeholder checks
 
 README.md                 # Local run + verification steps
 ```

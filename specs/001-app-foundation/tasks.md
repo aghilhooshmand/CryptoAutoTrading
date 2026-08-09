@@ -1,5 +1,5 @@
 # Tasks: Application Foundation
-
+      
 **Input**: Design documents from `/specs/001-app-foundation/`
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/, quickstart.md
@@ -28,7 +28,7 @@
 
 - [ ] T001 Create repository directories `backend/app/api/`, `backend/tests/contract/`, `backend/tests/unit/`, `frontend/src/components/`, `frontend/src/pages/`, and `frontend/src/__tests__/` per plan.md
 - [ ] T002 [P] Add root `.gitignore` covering Python venvs, `__pycache__`, Node `node_modules/`, build outputs, `.env` files, and OS junk (no secrets committed)
-- [ ] T003 [P] Initialize Python 3.12 backend project with FastAPI, Uvicorn, and pytest in `backend/pyproject.toml` (or `backend/requirements.txt` + pinned deps)
+- [ ] T003 [P] Initialize Python 3.12 backend project with FastAPI, Uvicorn, and pytest in `backend/pyproject.toml`
 - [ ] T004 [P] Initialize React 18 + TypeScript + Vite frontend in `frontend/package.json`, `frontend/vite.config.ts`, `frontend/tsconfig.json`, and `frontend/index.html`
 - [ ] T005 [P] Add frontend React Router dependency and baseline scripts (`dev`, `build`, `test`) in `frontend/package.json`
 
@@ -43,7 +43,7 @@
 - [ ] T006 Create FastAPI application entry in `backend/app/main.py` that starts with Uvicorn and mounts an empty/ready API router
 - [ ] T007 [P] Create API package markers `backend/app/__init__.py` and `backend/app/api/__init__.py`
 - [ ] T008 Create frontend entry `frontend/src/main.tsx` and root `frontend/src/App.tsx` with React Router provider
-- [ ] T009 Define Primary Area route constants (`/dashboard`, `/auto-trading`, `/portfolio`) and `/` → Dashboard resolution helper in `frontend/src/routes.ts` (or `frontend/src/config/primaryAreas.ts`) per data-model.md
+- [ ] T009 Define Primary Area route constants (`/dashboard`, `/auto-trading`, `/portfolio`) and `/` → Dashboard resolution helper in `frontend/src/config/primaryAreas.ts` per data-model.md
 - [ ] T010 Create `frontend/src/components/AppShell.tsx` product chrome (product name CryptoAutoTrading + outlet for page content) without trading widgets
 - [ ] T011 Create `frontend/src/components/PrimaryNav.tsx` with links to the three canonical primary routes (labels: Dashboard, Auto Trading, Portfolio)
 
@@ -78,7 +78,7 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T016 [P] [US2] Add Vitest + React Testing Library config in `frontend/vitest.config.ts` (or vite test config) and a sample setup file if needed
+- [ ] T016 [P] [US2] Add Vitest + React Testing Library config in `frontend/vitest.config.ts` and a sample setup file if needed
 - [ ] T017 [P] [US2] Write navigation/placeholder tests in `frontend/src/__tests__/primaryNavigation.test.tsx` asserting `/dashboard`, `/auto-trading`, `/portfolio`, active area, and absence of mocked trading/P&L/market/sentiment content
 - [ ] T018 [P] [US2] Write not-found recovery test in `frontend/src/__tests__/notFound.test.tsx` asserting unknown paths show not-found while primary nav remains usable
 
@@ -122,15 +122,15 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T029 [P] [US4] Add pytest config/markers as needed in `backend/pyproject.toml` or `backend/pytest.ini`
-- [ ] T030 [US4] Write contract test for `GET /health` in `backend/tests/contract/test_health.py` expecting HTTP 200 and JSON `{"status":"healthy"}` per `specs/001-app-foundation/contracts/health.md`
+- [ ] T029 [P] [US4] Add pytest config/markers as needed in `backend/pyproject.toml`
+- [ ] T030 [US4] Write contract test for `GET /health` in `backend/tests/contract/test_health.py` expecting HTTP 200, JSON `{"status":"healthy"}`, and local completion in under 2 seconds (SC-004) per `specs/001-app-foundation/contracts/health.md`
 
 ### Implementation for User Story 4
 
 - [ ] T031 [US4] Implement health route handler in `backend/app/api/health.py` returning `{"status":"healthy"}`
 - [ ] T032 [US4] Register health router on the FastAPI app in `backend/app/main.py` at path `/health`
-- [ ] T033 [US4] Run contract tests until T030 passes; manually confirm stopped-backend failure mode (SC-005) via curl as in quickstart.md
-- [ ] T034 [US4] Document health URL and curl verification in root `README.md` (link behavior to contracts/health.md)
+- [ ] T033 [US4] Run contract tests until T030 passes (including SC-004 under-2-seconds assertion); manually confirm stopped-backend failure mode (SC-005 / FR-008) via documented curl in quickstart.md — do not add infrastructure solely to automate unreachable-process testing
+- [ ] T034 [US4] Document health URL, curl verification, SC-004 timing expectation, and manual stopped-backend check in root `README.md` (no Dashboard health widget required for Feature 001)
 
 **Checkpoint**: Health contract satisfied; unavailable backend does not report healthy
 

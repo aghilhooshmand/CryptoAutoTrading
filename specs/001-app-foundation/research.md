@@ -49,7 +49,7 @@
 
 **Decision**: Dedicated not-found view that keeps primary navigation visible (Dashboard / Auto Trading / Portfolio). Do **not** silent-redirect to Dashboard.
 
-**Rationale**: Clarify session recommended this option; FR-012 allows either path. Explicit not-found is easier to test and debug during foundation work and avoids rewriting invalid URLs silently.
+**Rationale**: Spec FR-012 and Clarifications require a dedicated Not Found experience with primary navigation still available. Explicit not-found is easier to test and debug during foundation work and forbids silently rewriting invalid URLs.
 
 **Alternatives considered**:
 - Auto-redirect to Dashboard: simpler UX, hides mistakes.
@@ -57,9 +57,9 @@
 
 ## Decision 6: Health exposure
 
-**Decision**: Backend exposes `GET /health` returning a clear healthy payload when the process is up. Frontend does **not** require a Dashboard health widget for acceptance; developers/tests call the endpoint directly (and quickstart documents curl/browser check). Optional tiny status indicator is deferred.
+**Decision**: Backend exposes `GET /health` returning a clear healthy payload when the process is up. Feature 001 does **not** require a Dashboard health widget; developers/automated tests call the endpoint directly (quickstart/README document curl). Successful local health MUST complete in under 2 seconds (SC-004). Stopped-backend failure (SC-005) remains a documented manual acceptance check.
 
-**Rationale**: User Story 4 lists developer, frontend, or automated checks as consumers—not a mandatory UI surface. Spec SC-004/SC-005 are technology-agnostic verification outcomes. Avoid Dashboard clutter that could be mistaken for trading readiness.
+**Rationale**: Spec FR-007 / Clarifications make health checkable without a UI widget. Avoid Dashboard clutter that could be mistaken for trading readiness. Automating process-down detection would add infrastructure without proportional value for this foundation.
 
 **Alternatives considered**:
 - Always show health on Dashboard: helpful ops UX, but not required and risks “system looks live/trading-ready” confusion.

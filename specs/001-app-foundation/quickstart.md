@@ -54,19 +54,21 @@ With backend running, request health per [contracts/health.md](./contracts/healt
 curl -sS http://localhost:<backend-port>/health
 ```
 
-Expected: HTTP 200 and JSON including `"status":"healthy"` in under 2 seconds.
+Expected: HTTP 200 and JSON including `"status":"healthy"`, with the successful local check completing in under 2 seconds (SC-004). No Dashboard health widget is required.
 
-## Scenario E — Health failure (SC-005 / FR-008)
+## Scenario E — Health failure (SC-005 / FR-008) — manual acceptance
 
 1. Stop the backend.
 2. Repeat the health request.
 3. Expected: failure/unreachable — not a healthy success.
+4. This stopped-backend check is a documented manual acceptance step for Feature 001 (do not add infrastructure solely to automate it).
 
 ## Scenario F — Unknown location (FR-012)
 
 1. Open a path that is not a primary area (e.g., `/this-is-not-a-page`).
-2. Expected: clear not-found experience with primary navigation still available.
-3. Navigate from there to `/dashboard` (or another primary area) successfully.
+2. Expected: dedicated Not Found experience with primary navigation still available.
+3. MUST NOT silently redirect to `/dashboard` or another primary area.
+4. Navigate from Not Found to `/dashboard` (or another primary area) successfully via primary navigation.
 
 ## Scenario G — Deep link / refresh
 
