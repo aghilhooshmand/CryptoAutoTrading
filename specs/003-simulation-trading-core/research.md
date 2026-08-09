@@ -47,20 +47,31 @@ without optimizing profitability (Constitution XI + user preference).
 2. Let `P_ref` be the latest **safe** quote last price (Feature 002 normalized
    quote). Fail safe if unavailable/stale.
 3. Adverse BUY fill price: `P_fill = P_ref * (1 + slippage_rate)`.
-4. Maximum affordable notional from cash (cash must cover notional + fee):
+4. Maximum affordable notional from **current cash** (cash must cover notional
+   + fee):
 
-   `affordable_notional = cash / (1 + fee_rate)`
+   `affordable_notional = current_cash / (1 + fee_rate)`
 
-5. Intended full notional:
+5. Intended full notional (**enforceable** triple bound):
 
-   `intended_notional = min(affordable_notional, max_position_size)`
+   ```text
+   intended_notional = min(
+       affordable_notional,
+       allocated_capital,
+       max_position_size
+   )
+   ```
 
-   where `max_position_size` is the configured USDT notional cap.
+   `allocated_capital` is an enforceable trading bound: the simulation MUST NOT
+   deploy more than `allocated_capital` notional even when `starting_capital`
+   or `current_cash` is larger. `max_position_size` remains an additional USDT
+   notional cap.
 
 6. If `intended_notional <= 0` (or below a documented dust floor, e.g. notional
-   that would round to zero quantity), **reject** `insufficient_balance` —
-   do **not** silently shrink to a partial “almost full” size below the
-   intended rule after approval.
+   that would round to zero quantity), **reject** (`insufficient_balance` and/or
+   `allocated_capital_exceeded` / `position_size_limit` as applicable) — do
+   **not** silently shrink to a partial “almost full” size below the intended
+   rule after approval.
 
 7. Base quantity: `qty = intended_notional / P_fill` (decimal arithmetic).
 
@@ -74,21 +85,77 @@ without optimizing profitability (Constitution XI + user preference).
 2. `N = qty * P_fill`; `F = N * fee_rate`; cash credit `N - F`; position → FLAT.
 3. Quantity closed is always the **entire** open `qty`.
 
-**Starting vs allocated capital (v1)**: UI MAY collect a single capital figure
-stored as both `starting_capital` and `allocated_capital` (equal). Session
-starts flat with `cash = starting_capital`. `allocated_capital` documents the
-session bound; sizing uses **current cash** and `max_position_size` as above.
+**Starting vs allocated capital**: Session starts flat with
+`cash = starting_capital`. `allocated_capital` MUST be configured explicitly
+(positive) and enforced in sizing as above. v1 UI MAY default
+`allocated_capital` to equal `starting_capital` when the operator enters a
+single capital figure, but both fields remain distinct in session semantics
+and storage. If `starting_capital > allocated_capital`, excess cash is held
+but MUST NOT be deployed beyond `allocated_capital` on a full BUY.
 
-**Rationale**: Matches long-only full-position model; keeps fee coverage
-explicit; rejects rather than silent partials.
+**Rationale**: Matches long-only full-position model; makes allocated capital a
+real risk bound, not documentary-only; keeps fee coverage explicit; rejects
+rather than silent partials.
 
 **Alternatives considered**:
-- Always deploy 100% of starting capital ignoring max_position_size: violates
-  session bound.
-- Partial fills to use leftover cash dust: conflicts with “no partial silent
-  oversize” / single full position simplicity.
-- Size from allocated_capital even after cash reduced by fees: can overspend
-  cash; rejected.
+- Cap only by cash and max_position_size (ignore allocated): rejected — user
+  requires allocated_capital enforceable.
+- Always deploy 100% of starting capital ignoring caps: violates session bounds.
+- Partial fills to use leftover cash dust: conflicts with single full-position
+  simplicity.
+- Allow notional above allocated when cash is larger: rejected.
+
+---
+
+## Decision 2a: Profit target and max loss as % of allocated capital
+
+**Decision**: The operator configures **rates** (percentages of
+`allocated_capital`), not ambiguous raw currency amounts as the primary input.
+
+Example:
+
+| Input | Value |
+|-------|--------|
+| `allocated_capital` | `500` USDT |
+| `target_net_profit_rate` | `0.01` (1.0%) |
+| `max_session_loss_rate` | `0.007` (0.7%) |
+
+Derived absolute thresholds (computed at session create/start and stored):
+
+```text
+target_net_profit_amount = allocated_capital * target_net_profit_rate
+max_session_loss_amount  = allocated_capital * max_session_loss_rate
+```
+
+Example → target amount `5.00` USDT; max loss amount `3.50` USDT.
+
+**Persistence / audit**: Store **both** the configured rates and the derived
+absolute amounts on the session so journals, economics, and stop reasons remain
+auditable if display conventions change.
+
+**Hard-limit comparison** (unchanged metric): liquidation-based Session NET P&L
+is compared to these **derived absolute** thresholds:
+
+| Threshold | Fire when |
+|-----------|-----------|
+| Profit target | `session_net_pnl_for_limits >= target_net_profit_amount` |
+| Max loss | `session_net_pnl_for_limits <= -max_session_loss_amount` |
+
+**UI**: Auto Trading MUST show both the configured **percentage** and the
+resulting **currency amount** for target and max loss (e.g. “1.0% → 5.00 USDT”
+given allocated 500).
+
+Rates are fractions in storage/API (`"0.01"` = 1%); UI MAY accept percent-point
+entry (`1.0`) and convert.
+
+**Rationale**: Removes ambiguity between currency vs percent; keeps liquidation
+NET as the evaluation metric; dual storage aids audit.
+
+**Alternatives considered**:
+- Raw USDT-only config: ambiguous and error-prone — rejected for Feature 003.
+- Percent of starting_capital: rejected — user requires percent of allocated.
+- Store rates only and re-derive later without persisting amounts: weaker
+  audit trail — rejected.
 
 ---
 
@@ -223,15 +290,16 @@ hypothetical `liquidation_equity` (within decimal rounding rules).
 
 ## Decision 4: Profit target / max loss vs liquidation NET
 
-**Decision**: Evaluate `target_net_profit` and `max_session_loss` using
-**liquidation-based Session NET P&L** only when liquidation equity is
-computable (FLAT, or LONG with safe mark).
+**Decision**: Evaluate thresholds using **liquidation-based Session NET P&L**
+only when liquidation equity is computable (FLAT, or LONG with safe mark).
+Operator-configured inputs are **rates of allocated_capital** (Decision 2a);
+comparison uses the stored **derived absolute amounts**.
 
 | Threshold | Fire when |
 |-----------|-----------|
-| Profit target | `session_net_pnl_for_limits >= target_net_profit` |
-| Max loss | `session_net_pnl_for_limits <= -max_session_loss` |
-  (`max_session_loss` stored as a **positive** magnitude) |
+| Profit target | `session_net_pnl_for_limits >= target_net_profit_amount` |
+| Max loss | `session_net_pnl_for_limits <= -max_session_loss_amount` |
+  (`max_session_loss_amount` is a **positive** magnitude) |
 
 Raw mark-to-market equity and unrealized gross MAY be shown in UI/economics but
 MUST NOT be the profit-target / max-loss trigger while LONG.
@@ -247,12 +315,14 @@ inability to obtain safe data MAY escalate to hard stop
 `unrecoverable_unsafe_market_data` (worker policy: e.g. consecutive failed
 safe-quote attempts ≥ N, document N=3 in implementation/tasks).
 
-**Rationale**: Securable NET under documented costs; aligns capital protection
-with simulation realism.
+**Rationale**: Securable NET under documented costs; absolute thresholds derived
+transparently from allocated capital percentages.
 
 **Alternatives considered**:
 - Raw MTM equity for limits: can stop “in profit” that fees/slippage would erase
   on exit — rejected.
+- Compare rates directly to NET/allocated without storing amounts: weaker audit
+  — rejected (store both).
 - Realized-only limits: understates open risk — rejected.
 - Assume last mark forever when stale: violates fail-safe.
 
@@ -443,7 +513,8 @@ tests.
 |------|------------|
 | Accounting invariants | Mark vs liquidation equity; limit NET uses liquidation; fee/slippage defaults; round-trip cash |
 | No double-count | Hyp. liquidation costs not ledgered; actual forced close applies costs once |
-| Position sizing | `min(affordable, max_position_size)`; reject when cannot afford |
+| Position sizing | `min(affordable, allocated_capital, max_position_size)`; never above allocated |
+| Profit/loss config | Rates of allocated → stored amounts; limits compare liquidation NET to amounts |
 | State transitions | Legal transitions only; no exec in STOPPED |
 | Duplicate candle | Second pass same `open_time` → no re-eval / no second fill |
 | Rejected signals | BUY while LONG, SELL while FLAT, stale data, max trades, etc. journaled |

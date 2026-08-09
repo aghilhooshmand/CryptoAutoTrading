@@ -13,9 +13,10 @@ crossover** once per newly **closed** candle, route every signal through
 Trading Controller → Risk Manager → **Simulation** execution, persist session +
 Decision/Trade journals in **SQLite**, enforce Session **NET P&L** hard limits
 using **liquidation equity** while LONG (hypothetical adverse SELL with
-fee/slippage; raw MTM remains informational), and never place real XT orders
-or call private APIs. At most one active session; backend restart must not
-silently resume execution.
+fee/slippage; raw MTM remains informational), with profit/max-loss as **% of
+allocated capital** (derived absolute thresholds stored), and never place real
+XT orders or call private APIs. At most one active session; backend restart
+must not silently resume execution.
 
 ## Technical Context
 
@@ -55,7 +56,9 @@ sizes for one session.
   processing of the same candle
 - Controller + Risk mandatory before any simulated fill
 - Defaults: fee **0.10%** / adverse slippage **0.05%** per fill side; overridable
-- Session limits on **liquidation** Session NET P&L while LONG (mark equity informational)
+- Full BUY notional: `min(cash/(1+fee), allocated_capital, max_position_size)`
+- Profit target / max loss configured as **% of allocated_capital**; derived USDT amounts stored; UI shows both
+- Session limits compare **liquidation** Session NET P&L to those derived amounts
 - `max_trades` caps strategy-driven fills; one forced safety close may exceed `trade_count` by one
 - Hard-stop flatten only with safe price; else fail-safe unflattened
 - Market data only via Feature 002 normalized boundary
@@ -76,8 +79,8 @@ local file
 | I Capital protection | Pass | Hard limits, emergency stop, fail-safe, long-only bounds |
 | II Simulation before real money | Pass | Simulation only; real-money unavailable/non-startable |
 | III–IV Pipeline / controller–risk authority | Pass | Strategy advisory; Controller + Risk before SimulationExecution |
-| V Explicit session boundaries | Pass | All FR-005 bounds required to start |
-| VI Net P&L | Pass | Hard limits use liquidation equity − start equity while LONG; fees/slippage in hyp. eval and actual fills once |
+| V Explicit session boundaries | Pass | All FR-005 bounds; allocated_capital enforceable in sizing |
+| VI Net P&L | Pass | Liquidation NET vs derived absolute thresholds from % of allocated; fees/slippage once |
 | VII Decision traceability | Pass | Decision Journal (HOLD/approve/reject) + Trade Journal |
 | VIII Fail safe | Pass | Stale/unsafe data rejects; no invented exit on hard stop |
 | IX Emergency stop | Pass | Immediate halt of new execution + stop path |
@@ -141,7 +144,7 @@ backend/
 │   │   ├── clock.py               # Clock protocol, SystemClock, FakeClock
 │   │   ├── money.py               # decimal helpers / percent rates
 │   │   ├── accounting.py          # mark vs liquidation equity, NET P&L, fill math
-│   │   ├── position_sizing.py     # full-long notional from cash + max size
+│   │   ├── position_sizing.py     # min(affordable, allocated, max_position_size)
 │   │   ├── state_machine.py       # session state transitions
 │   │   ├── recovery.py            # startup: RUNNING/STOPPING → STOPPED
 │   │   ├── strategy/

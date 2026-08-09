@@ -22,10 +22,12 @@ One bounded simulated trading run. At most one session may be in `RUNNING` or
 | `symbol` | string | e.g. `btc_usdt` (Feature 002 symbol) |
 | `timeframe` | enum | `15m` \| `1h` \| `4h` \| `1d` (session strategy candle TF) |
 | `starting_capital` | decimal string | Initial cash; start equity |
-| `allocated_capital` | decimal string | Session bound; v1 MAY equal starting |
-| `max_position_size` | decimal string | USDT notional cap |
-| `target_net_profit` | decimal string | Stop when **liquidation** Session NET ≥ this |
-| `max_session_loss` | decimal string | Positive magnitude; stop when liquidation NET ≤ −this |
+| `allocated_capital` | decimal string | Enforceable notional bound for full BUY sizing |
+| `max_position_size` | decimal string | Additional USDT notional cap |
+| `target_net_profit_rate` | decimal string | Fraction of allocated (e.g. `0.01` = 1.0%) |
+| `max_session_loss_rate` | decimal string | Fraction of allocated (e.g. `0.007` = 0.7%) |
+| `target_net_profit_amount` | decimal string | `allocated_capital * target_net_profit_rate` (stored) |
+| `max_session_loss_amount` | decimal string | `allocated_capital * max_session_loss_rate` (stored, positive) |
 | `max_trades` | int | Max **strategy-driven** fills (forced close may raise `trade_count` by one more) |
 | `duration_seconds` | int | Session length bound |
 | `fee_rate` | decimal string | Fraction, default `0.001` |
@@ -54,13 +56,20 @@ One bounded simulated trading run. At most one session may be in `RUNNING` or
 
 ### Validation (create / start)
 
-- All FR-005 bounds present and numerically valid (positive capital, max size,
-  targets/loss ≥ 0 as specified, max_trades ≥ 1, duration_seconds ≥ 1).
+- All FR-005 bounds present and numerically valid (positive `starting_capital`,
+  positive `allocated_capital`, positive `max_position_size`,
+  `target_net_profit_rate` > 0, `max_session_loss_rate` > 0, max_trades ≥ 1,
+  duration_seconds ≥ 1).
+- On create/start, derive and persist:
+  `target_net_profit_amount = allocated_capital * target_net_profit_rate`,
+  `max_session_loss_amount = allocated_capital * max_session_loss_rate`.
 - `fee_rate` / `slippage_rate` ≥ 0 when provided; else defaults.
 - `symbol` must be a supported Feature 002 USDT pair at start time (fail if
   unavailable — do not invent).
 - `mode` must be `simulation`.
 - Start rejected if another session is `RUNNING` or `STOPPING`.
+- Full BUY sizing MUST use
+  `min(current_cash/(1+fee_rate), allocated_capital, max_position_size)`.
 
 ### State transitions
 
@@ -142,6 +151,10 @@ Decisions 3–4a.
 | `unrealizedGross` | Informational; when long+safe |
 | `liquidationEquity` | Hard-limit equity: cash when flat; `cash + hyp. net adverse SELL proceeds` when long+safe |
 | `netPnl` | **Hard-limit** Session NET = `liquidationEquity - startEquity` when computable; else null |
+| `targetNetProfitRate` | Configured rate (fraction) |
+| `targetNetProfitAmount` | Derived absolute threshold |
+| `maxSessionLossRate` | Configured rate (fraction) |
+| `maxSessionLossAmount` | Derived absolute threshold (positive) |
 | `grossPnl` | Realized gross + unrealized gross when computable (informational) |
 | `fees` | `cumulative_fees` (**actual** fills only; never hyp. exit fees alone) |
 | `slippageCost` | `cumulative_slippage_cost` (**actual** fills only) |

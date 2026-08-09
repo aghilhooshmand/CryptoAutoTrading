@@ -32,6 +32,20 @@ Limits **strategy-driven** fills only. After `strategyFillCount` reaches
 one forced safety close is still allowed and may make `tradeCount` equal
 `maxTrades + 1`; that trade MUST have `isForcedClose: true`.
 
+### Profit / loss rates
+
+Operator configures `targetNetProfitRate` and `maxSessionLossRate` as fractions
+of `allocatedCapital` (e.g. `"0.01"` = 1.0%). Server derives and returns
+absolute amounts:
+
+```text
+targetNetProfitAmount = allocatedCapital * targetNetProfitRate
+maxSessionLossAmount  = allocatedCapital * maxSessionLossRate
+```
+
+Hard limits compare liquidation-based Session NET P&L to these amounts.
+Frontend MUST display both percentage and currency amount.
+
 ---
 
 ## `POST /simulation/sessions`
@@ -45,11 +59,11 @@ Create a session in `CONFIGURED`.
   "mode": "simulation",
   "symbol": "btc_usdt",
   "timeframe": "1h",
-  "startingCapital": "10000",
-  "allocatedCapital": "10000",
-  "maxPositionSize": "10000",
-  "targetNetProfit": "100",
-  "maxSessionLoss": "200",
+  "startingCapital": "500",
+  "allocatedCapital": "500",
+  "maxPositionSize": "500",
+  "targetNetProfitRate": "0.01",
+  "maxSessionLossRate": "0.007",
   "maxTrades": 20,
   "durationSeconds": 3600,
   "feeRate": "0.001",
@@ -57,7 +71,10 @@ Create a session in `CONFIGURED`.
 }
 ```
 
-`allocatedCapital` MAY be omitted; server sets it equal to `startingCapital`.
+`allocatedCapital` is required for enforceable sizing (MUST NOT deploy above it).
+If omitted, server MAY default it to `startingCapital`, but the field remains
+distinct. Server MUST persist derived `targetNetProfitAmount` and
+`maxSessionLossAmount` (example: `"5"` and `"3.5"` for the rates above).
 
 ### Success
 
@@ -150,16 +167,18 @@ Full session resource + embedded economics snapshot when computable.
   "symbol": "btc_usdt",
   "timeframe": "1h",
   "strategyId": "dual_ema_9_21",
-  "startingCapital": "10000",
-  "allocatedCapital": "10000",
-  "maxPositionSize": "10000",
-  "targetNetProfit": "100",
-  "maxSessionLoss": "200",
+  "startingCapital": "500",
+  "allocatedCapital": "500",
+  "maxPositionSize": "500",
+  "targetNetProfitRate": "0.01",
+  "maxSessionLossRate": "0.007",
+  "targetNetProfitAmount": "5",
+  "maxSessionLossAmount": "3.5",
   "maxTrades": 20,
   "durationSeconds": 3600,
   "feeRate": "0.001",
   "slippageRate": "0.0005",
-  "cash": "10000",
+  "cash": "500",
   "positionSide": "flat",
   "positionQty": "0",
   "tradeCount": 0,
@@ -170,16 +189,20 @@ Full session resource + embedded economics snapshot when computable.
   "positionFlattenStatus": "n/a",
   "lastProcessedCandleOpenTime": null,
   "economics": {
-    "startEquity": "10000",
-    "cash": "10000",
-    "markEquity": "10000",
+    "startEquity": "500",
+    "cash": "500",
+    "markEquity": "500",
     "markNetPnl": "0",
     "unrealizedGross": "0",
-    "liquidationEquity": "10000",
+    "liquidationEquity": "500",
     "grossPnl": "0",
     "fees": "0",
     "slippageCost": "0",
     "netPnl": "0",
+    "targetNetProfitRate": "0.01",
+    "targetNetProfitAmount": "5",
+    "maxSessionLossRate": "0.007",
+    "maxSessionLossAmount": "3.5",
     "markPrice": "65000.00",
     "markSafe": true
   },
@@ -188,7 +211,8 @@ Full session resource + embedded economics snapshot when computable.
 ```
 
 `economics.netPnl` is the **hard-limit** Session NET (`liquidationEquity -
-startEquity`). `markEquity` / `markNetPnl` / `unrealizedGross` are
+startEquity`) and is compared to `targetNetProfitAmount` /
+`maxSessionLossAmount`. `markEquity` / `markNetPnl` / `unrealizedGross` are
 informational. When mark unsafe while long: `netPnl`, `liquidationEquity`, and
 mark fields that require a price MAY be `null` with `markSafe: false`.
 
@@ -258,8 +282,10 @@ Same pagination idea as decisions.
 | FR-001, FR-020 | `mode` simulation; `label: SIMULATION`; real money rejected |
 | FR-004 | `session_already_active` on second start |
 | FR-010–011 | decisions + trades endpoints |
+| FR-005 | bounds include allocated capital + profit/loss **rates**; amounts derived |
 | FR-012a | fee/slippage defaults |
-| FR-014 | `netPnl` / limits use liquidation equity while LONG |
+| FR-014 | `netPnl` / limits use liquidation equity vs derived absolute thresholds |
+| FR-014a | forced close vs max_trades |
 | FR-015–016 | stop / emergency-stop; no new exec when stopped |
 | FR-015a | forced close reflected in trades + flatten status; `isForcedClose` |
 | SC-007 | no private XT trading routes; real_money rejected at API |

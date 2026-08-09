@@ -58,13 +58,16 @@ Confirm:
 
 1. Open `http://127.0.0.1:5173/auto-trading`.
 2. Confirm a clear **SIMULATION** label; real-money controls unavailable.
-3. Configure: symbol (e.g. `btc_usdt`), capital, max position size, profit
-   target, max loss, max trades, duration, timeframe (`1h` recommended for
-   demos — or `15m` for faster closes).
+3. Configure: symbol (e.g. `btc_usdt`), starting capital, **allocated capital**
+   (enforceable deploy cap), max position size, **target net profit %** and
+   **max loss %** of allocated capital (UI shows both % and derived USDT
+   amounts), max trades, duration, timeframe (`1h` recommended for demos —
+   or `15m` for faster closes).
 4. Leave fee/slippage blank → defaults **0.10%** / **0.05%** apply.
 5. Start session → state `RUNNING`; only one active session allowed.
 
-**Expect**: Second start while active fails with a clear conflict.
+**Expect**: Second start while active fails with a clear conflict. Full BUY
+notional never exceeds `min(affordable cash, allocatedCapital, maxPositionSize)`.
 
 ### 2. Pipeline authority (SC-002, US2)
 
@@ -87,10 +90,11 @@ flat) appear in Decision Journal with reasons and do not change cash.
 
 ### 4. Hard stop + forced close (SC-005, US4)
 
-1. Configure a tiny `targetNetProfit` or `maxSessionLoss` / short
-   `durationSeconds` / `maxTrades: 1`.
+1. Configure a tiny `targetNetProfitRate` / `maxSessionLossRate` (e.g. relative
+   to a small `allocatedCapital`) or short `durationSeconds` / `maxTrades: 1`.
+   Confirm UI shows both percent and derived USDT amount.
 2. Run until stop fires. Profit/max-loss use **liquidation** Session NET while
-   LONG (hypothetical adverse SELL with fee/slippage), not raw mark equity.
+   LONG compared to the **derived absolute** thresholds (not raw mark equity).
 3. If long and quote safe → one forced full `SELL` in Trade Journal with
    `isForcedClose: true`; `positionFlattenStatus` forced/flat. Actual exit
    costs apply once (no double-count of the hypothetical evaluation).
