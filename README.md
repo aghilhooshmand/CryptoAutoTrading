@@ -15,13 +15,17 @@ out of scope.
 
 ## Canonical routes
 
-| Area | Path |
-|------|------|
-| Dashboard (default) | `/dashboard` |
-| Auto Trading | `/auto-trading` |
-| Portfolio | `/portfolio` |
+| Area | Path | Nav icon |
+|------|------|----------|
+| Dashboard (default) | `/dashboard` | LayoutDashboard |
+| Auto Trading | `/auto-trading` | Bot |
+| Portfolio | `/portfolio` | Wallet |
 
 Opening `/` resolves to Dashboard (`/dashboard`).
+
+Primary navigation may show these lightweight Lucide icons **beside** the
+visible text labels. Icons must not replace labels, must remain usable at
+~375px width, and are presentation aids only (no routing or behavior change).
 
 Unsupported paths show a dedicated **Not Found** page with primary navigation
 still available (no silent redirect).

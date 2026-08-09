@@ -17,21 +17,26 @@ Represents one of the three constitution-mandated product destinations.
 | `path` | string | Canonical client route path | MUST be exactly one of `/dashboard`, `/auto-trading`, `/portfolio` (unique per area) |
 | `isDefaultEntry` | boolean | Whether this area is the default entry | Exactly one Primary Area MUST have `true` — **Dashboard** (`/dashboard`) |
 | `contentMode` | enum | Presentation mode | MUST be `placeholder` for this feature |
+| `navIcon` | string | Optional decorative nav icon name | For Feature 001: `LayoutDashboard`, `Bot`, `Wallet` respectively; MUST NOT replace `label` |
 
 ### Canonical routes
 
-| Primary Area | `id` | `path` | Default entry |
-|--------------|------|--------|---------------|
-| Dashboard | `dashboard` | `/dashboard` | Yes — `/` MUST resolve here |
-| Auto Trading | `auto-trading` | `/auto-trading` | No |
-| Portfolio | `portfolio` | `/portfolio` | No |
+| Primary Area | `id` | `path` | Nav icon (Feature 001) | Default entry |
+|--------------|------|--------|------------------------|---------------|
+| Dashboard | `dashboard` | `/dashboard` | LayoutDashboard | Yes — `/` MUST resolve here |
+| Auto Trading | `auto-trading` | `/auto-trading` | Bot | No |
+| Portfolio | `portfolio` | `/portfolio` | Wallet | No |
 
 `/` is not a Primary Area path; it MUST resolve to Dashboard (typically `/dashboard`).
 
 ### Relationships
 
 - The application shell has exactly three Primary Area instances.
-- Primary navigation enumerates all three canonical paths; unknown paths are **not** Primary Areas and MUST render a dedicated Not Found experience (not a silent redirect to a Primary Area).
+- Primary navigation enumerates all three canonical paths with visible labels;
+  optional lightweight icons are presentation aids only and do not change
+  routing or behavior.
+- Unknown paths are **not** Primary Areas and MUST render a dedicated Not Found
+  experience (not a silent redirect to a Primary Area).
 
 ### State transitions
 

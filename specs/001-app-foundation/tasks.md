@@ -242,3 +242,11 @@ Task: "Implement placeholder pages and routes in frontend/src/pages/* and App.ts
 - Do not add XT integration, market data, strategies, risk, simulation, real money, portfolio math, news, sentiment, backtesting, AI/ML, Google auth, or fake trading UI
 - Prefer one coherent commit per meaningful unit; propose message; commit only when user asks (constitution XXX)
 - Stop at any checkpoint to validate the story independently
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: Close remaining gaps between Feature 001 artifacts and the current codebase
+
+- [x] T039 Review unrequested Lucide primary-nav icons in `frontend/src/components/PrimaryNav.tsx` and `frontend/package.json`: either remove them to match Feature 001 spec/plan/tasks, or retain them and add a brief note in `README.md` that decorative Lucide icons (LayoutDashboard, Bot, Wallet) accompany nav labels without changing routes or placeholders per plan: Feature 001 scope (unrequested)

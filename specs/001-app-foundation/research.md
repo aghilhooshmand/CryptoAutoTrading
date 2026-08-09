@@ -83,12 +83,18 @@ Opening `/` MUST resolve to Dashboard (e.g., redirect or equivalent navigation t
 
 ## Decision 8: Responsive navigation
 
-**Decision**: Single primary nav pattern that works at ~375px (e.g., compact top or bottom nav with three labeled targets). No desktop-only hover-only navigation.
+**Decision**: Single primary nav pattern that works at ~375px (e.g., compact top
+nav with three labeled targets). Primary navigation MAY show lightweight Lucide
+icons beside labels: Dashboard → `LayoutDashboard`, Auto Trading → `Bot`,
+Portfolio → `Wallet`. Icons MUST NOT replace text labels, MUST remain usable at
+~375px, and MUST NOT change routing or product behavior.
 
-**Rationale**: Constitution XIV and SC-003. Keep visual design minimal; polish is out of scope.
+**Rationale**: Constitution XIV and SC-003. Icons are presentation aids only;
+labels remain the accessible identity of each area.
 
 **Alternatives considered**:
 - Hamburger-only with hidden labels: risks failing “clearly identifiable” on phone.
+- Icon-only navigation: rejected — labels must remain visible (FR-003).
 - Separate mobile app: out of scope.
 
 ## Decision 9: Testing approach

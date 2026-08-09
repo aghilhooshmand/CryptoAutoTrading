@@ -16,6 +16,7 @@
 - Q: What are the canonical primary routes, and how does `/` behave? → A: Canonical routes are `/dashboard` (Dashboard), `/auto-trading` (Auto Trading), and `/portfolio` (Portfolio). `/dashboard` is the canonical Dashboard route. Opening `/` MUST resolve to Dashboard.
 - Q: How must unsupported routes be handled? → A: Show a dedicated Not Found experience while keeping primary navigation available. Silent redirect of an unknown route to a primary area is NOT allowed.
 - Q: Must Feature 001 show backend health on the Dashboard? → A: No. Backend health verification MUST be available to developers and automated checks; a Dashboard health widget is NOT required for this feature.
+- Q: May primary navigation use icons? → A: Yes. Lightweight icons MAY appear beside visible text labels (not instead of them): Dashboard → LayoutDashboard, Auto Trading → Bot, Portfolio → Wallet. Icons MUST remain usable at ~375px and MUST NOT change routing or product behavior.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -48,7 +49,8 @@ A user (or developer reviewing the shell) moves among Dashboard, Auto Trading, a
 2. **Given** the application is open, **When** the user selects Auto Trading (route `/auto-trading`), **Then** a clearly identified Auto Trading area is shown with placeholder content only (no strategies, sessions, or simulated trades).
 3. **Given** the application is open, **When** the user selects Portfolio (route `/portfolio`), **Then** a clearly identified Portfolio area is shown with placeholder content only (no balances, positions, or P&L figures presented as real).
 4. **Given** the user is on any primary area, **When** they switch to another primary area, **Then** navigation completes and the newly selected area is visibly active.
-5. **Given** the application is open, **When** the user opens an unsupported location, **Then** a dedicated Not Found experience is shown and primary navigation to Dashboard, Auto Trading, and Portfolio remains available (no silent redirect to a primary area).
+5. **Given** the application is open, **When** the user views primary navigation, **Then** each primary link shows its text label and MAY show a lightweight icon beside the label (icons must not replace labels).
+6. **Given** the application is open, **When** the user opens an unsupported location, **Then** a dedicated Not Found experience is shown and primary navigation to Dashboard, Auto Trading, and Portfolio remains available (no silent redirect to a primary area).
 
 ---
 
@@ -99,7 +101,7 @@ A developer or an automated check asks whether the backend application is health
   - Auto Trading → `/auto-trading`
   - Portfolio → `/portfolio`
   Opening `/` MUST resolve to Dashboard. The default application entry point MUST open the Dashboard primary area.
-- **FR-003**: Each primary area MUST be clearly identifiable (distinct label/title) when selected.
+- **FR-003**: Each primary area MUST be clearly identifiable (distinct label/title) when selected. Primary navigation MAY include lightweight decorative icons alongside the visible text labels; icons MUST NOT replace labels. For Feature 001 the icons are: Dashboard → LayoutDashboard, Auto Trading → Bot, Portfolio → Wallet. Icons MUST preserve responsive usability at approximately 375px width. Icons are navigation/presentation aids only and MUST NOT change product behavior, routing, or placeholder content.
 - **FR-004**: Primary-area content for this feature MUST be placeholder-only and MUST NOT display live or mocked trading activity, portfolio valuations, market prices, news, or market sentiment.
 - **FR-005**: Placeholder content MUST make it clear that real functionality for that area is not yet available (e.g., explicit “coming later” / foundation messaging), without implying guaranteed future profit or live trading readiness.
 - **FR-006**: Users MUST be able to move among the three primary areas using primary navigation on both desktop-width and phone-width viewports.

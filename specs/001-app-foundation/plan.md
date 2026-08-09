@@ -17,8 +17,8 @@ trading, market, portfolio, sentiment, or auth behavior.
 
 **Language/Version**: Python 3.12 (backend); TypeScript + React 18+ (frontend)
 
-**Primary Dependencies**: FastAPI + Uvicorn (backend); Vite + React Router
-(frontend)
+**Primary Dependencies**: FastAPI + Uvicorn (backend); Vite + React Router +
+Lucide React (frontend; decorative primary-nav icons only)
 
 **Storage**: N/A for this feature (no domain persistence). Future persistence
 MUST be SQL (SQLite locally per constitution); not scaffolded with unused
@@ -108,7 +108,7 @@ frontend/
 │   │   └── primaryAreas.ts
 │   ├── components/
 │   │   ├── AppShell.tsx
-│   │   └── PrimaryNav.tsx
+│   │   └── PrimaryNav.tsx   # labels + Lucide icons (LayoutDashboard, Bot, Wallet)
 │   ├── pages/
 │   │   ├── DashboardPage.tsx
 │   │   ├── AutoTradingPage.tsx

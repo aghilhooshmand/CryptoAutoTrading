@@ -39,12 +39,16 @@ Canonical primary routes: `/dashboard`, `/auto-trading`, `/portfolio`.
 3. Select **Dashboard** (path `/dashboard`) → placeholder only; no market, news,
    or sentiment data.
 4. Confirm the active area is visually indicated after each switch.
+5. Confirm each primary nav item shows its text label; lightweight icons
+   (LayoutDashboard, Bot, Wallet) MAY appear beside labels but must not replace
+   them.
 
 ## Scenario C — Phone-width navigation (SC-003 / FR-006)
 
 1. Resize viewport to ~375px width (or use device emulation).
 2. Complete navigation to all three primary areas.
-3. Confirm controls remain reachable and labels/titles remain readable.
+3. Confirm controls remain reachable and labels/titles remain readable (icons
+   must not displace or hide labels).
 
 ## Scenario D — Backend health (SC-004 / FR-007)
 
