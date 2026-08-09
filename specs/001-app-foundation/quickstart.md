@@ -5,9 +5,9 @@
 
 Validate that a developer can run the app locally, navigate the three primary
 areas on desktop and phone-width viewports, and verify backend health.
-
+    
 ## Prerequisites
-
+ 
 - Documented toolchain installed (see root `README.md` after implementation):
   Python 3.12, Node.js LTS, package managers as documented
 - No XT.COM credentials or exchange setup required
