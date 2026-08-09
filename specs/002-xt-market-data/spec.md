@@ -162,6 +162,7 @@ On an approximately 375px-wide viewport, the user can still select/view a pair, 
 - **SC-005**: In forced failure/unsupported/malformed cases, 100% of observed outcomes show a clear non-success status and 0 fabricated prices/candles.
 - **SC-006**: On ~375px width, pair selection/view, price or error status, and source/status remain completable/readable without desktop-only controls.
 - **SC-007**: Code review / architecture check confirms XT-specific calls are confined behind the exchange/market-data adapter boundary (no direct XT coupling in Dashboard presentation logic).
+- **SC-008**: 100% of the out-of-scope capabilities listed in this specification remain unimplemented in this feature’s deliverable.
 - **SC-009**: After favoriting a supported USDT Spot pair, a Dashboard reload on the same local device still shows that pair in the favorites section before the full searchable list, without creating portfolio or Auto Trading state.
 
 ## Assumptions
