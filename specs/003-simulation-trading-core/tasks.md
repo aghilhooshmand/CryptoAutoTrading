@@ -283,3 +283,16 @@ Task: "risk.py"
 - Market data only via Feature 002 normalized boundary
 - Commit after each task or logical group when the user requests commits
 - Format validation: all tasks use `- [x] Txxx ...` with file paths; story tasks include `[USn]`
+
+---
+
+## Phase 9: Convergence
+
+**Purpose**: Close remaining gaps between Feature 003 artifacts and the current implementation (post `/speckit-implement`).
+
+- [ ] T069 CRITICAL Add trading-critical automated tests for SC-005 (0 strategy fills after stop), forced close + `unsafe_unflattened`, `max_trades + 1` forced overflow, emergency/profit/loss/duration stops, duplicate-candle `last_processed_candle_open_time` guard, and risk rejects (SELL-while-flat, stale/unsafe mark) in `backend/tests/unit/` + `backend/tests/contract/test_simulation_api.py` + `backend/tests/integration/test_simulation_pipeline.py` per Constitution XXVIII / plan Testing / SC-005 / FR-015a (missing)
+- [ ] T070 Align `/simulation` HTTP error bodies to top-level `{"error":{"code","message"}}` per `contracts/simulation-api.md` (Feature 002 `JSONResponse` pattern) in `backend/app/api/simulation.py` and update contract assertions; keep frontend client compatible (contradicts)
+- [ ] T071 Apply `UNSAFE_QUOTE_LIMIT` (N=3) unrecoverable stop on candle/market-data fetch failures in `backend/app/simulation/pipeline.py` (same path as unsafe quotes) per FR-015 / FR-021 (partial)
+- [ ] T072 Re-validate session is still `RUNNING` immediately before strategy fill commit (serialize stop vs worker) in `backend/app/simulation/pipeline.py` / `worker.py` and add regression coverage so SC-005 / FR-016 cannot race a post-stop strategy fill (partial)
+- [ ] T073 Move insufficient-balance / dust / allocated-or-max-size binding rejects into `RiskManager` (or Controller) before `SimulationExecutionEngine.execute` in `backend/app/simulation/control/risk.py` per FR-008 / FR-009 (partial)
+- [ ] T074 Idle or stop the simulation worker when no active `RUNNING` session remains (on STOPPED) in `backend/app/simulation/worker.py` / `session_service.py` per plan worker lifecycle T040/T059 (partial)
