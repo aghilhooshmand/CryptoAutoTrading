@@ -33,9 +33,10 @@
 
 - Validation iteration 1 (2026-08-09): All items pass.
 - Clarification session 2026-08-09 (5/5): long-only full position; dual MA crossover; hard-stop force close if safe price; closed-candle evaluation; defaults 0.10% fee + 0.05% adverse slippage per side (overridable).
+- Clarification continuation 2026-08-09 (+4): manual stop force-close; allocated ≤ starting; Decision Journal includes HOLD; max_position_size ≤ allocated.
 - Plan update 2026-08-09: hard-limit NET uses **liquidation equity** while LONG; `max_trades` is strategy-driven with one forced-close exception; no real-money engine module in Feature 003.
 - Plan update 2026-08-09 (2): `allocated_capital` enforceable in sizing; profit/max-loss are % of allocated with stored derived amounts; UI shows % and currency.
 - Session NET P&L hard-limit rule defined in FR-014 / FR-014a (liquidation equity vs derived absolute thresholds; actual exit costs applied once; max_trades semantics).
 - Mentions of “normalized market-data layer” and “Feature 002” are product-boundary references, not stack/framework details.
 - Constitution: Simulation before real money, controlled pipeline, journals, NET P&L, emergency stop, and fail-safe are encoded; sentiment trading and real XT execution remain out of scope.
-- Concrete MA period lengths remain a planning detail under FR-006 (must be conventional, documented, testable).
+- EMA(9)/EMA(21) periods are locked in FR-006 / plan.
