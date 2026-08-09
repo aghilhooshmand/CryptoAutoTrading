@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/003-simulation-trading-core/`
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/, quickstart.md
-
+    
 **Tests**: Included — Constitution XXVIII and plan/research Decision 10 require trading-critical automated tests (accounting, pipeline, stops, journals, recovery).
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
