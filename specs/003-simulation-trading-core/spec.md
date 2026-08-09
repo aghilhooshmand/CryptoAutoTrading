@@ -8,6 +8,16 @@
 
 **Input**: User description: "Create Feature 003: Simulation Trading Core for CryptoAutoTrading — first end-to-end automated trading machine using simulated money only; consume Feature 002 normalized market data; strategy proposes, Trading Controller and Risk Manager decide; one active simulation session; journals; NET P&L; hard session stops; emergency stop; no real XT orders or credentials."
 
+## Clarifications
+
+### Session 2026-08-09
+
+- Q: For Feature 003 simulation, which position model should BUY and SELL signals use? → A: Long-only with single full position: BUY only from flat; SELL only closes entire long; no partial adds
+- Q: Which single baseline strategy should Feature 003 use for simulation signals? → A: Dual moving-average crossover on the session candle timeframe (fast MA crosses slow MA → BUY/SELL; otherwise HOLD)
+- Q: When a hard stop ends a session that still holds a long position, what should happen to that simulated position? → A: Force one simulated full close (SELL) at the latest safe market price with documented fees/slippage and journal the trade, if a safe price exists; if no safe price exists, do not invent a close—stop the session, leave the position unresolved for execution, and fail safe
+- Q: When should the dual moving-average strategy evaluate and emit a new BUY, SELL, or HOLD signal during an active session? → A: Evaluate only on each new closed candle for the session timeframe
+- Q: What default simulated fee and slippage assumptions should Feature 003 apply when the operator does not override costs? → A: Documented non-zero defaults, overridable per session: 0.10% fee + 0.05% adverse slippage per side
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Configure and start one simulation session (Priority: P1)
@@ -38,7 +48,8 @@ While a session is active, the system consumes public market data for the sessio
 **Acceptance Scenarios**:
 
 1. **Given** an active simulation session and safe market data, **When** the strategy emits HOLD, **Then** no simulated trade executes and no balance/position change occurs from that signal.
-2. **Given** an active session and a non-HOLD signal, **When** control and risk approve it, **Then** a simulated trade executes using market prices from the existing normalized market-data layer (no private exchange trading APIs).
+2. **Given** an active session and a non-HOLD signal that is valid for the long-only full-position model, **When** control and risk approve it, **Then** a simulated trade executes using market prices from the existing normalized market-data layer (no private exchange trading APIs): BUY opens a full long from flat, or SELL fully closes the long.
+2a. **Given** an active session, **When** the current candle for the session timeframe is still forming, **Then** the strategy does not emit a new trading signal from that incomplete candle or from intrabar quote ticks alone.
 3. **Given** a non-HOLD signal, **When** control or risk rejects it (e.g., max trades, insufficient balance, stale data, emergency stop), **Then** balances and positions remain unchanged by that signal and the rejection reason is recorded.
 4. **Given** any strategy output, **When** processing completes, **Then** the strategy never bypasses the Trading Controller and Risk Manager to modify simulated funds or positions.
 
@@ -77,6 +88,8 @@ The session stops automatically when a hard limit is hit (profit target, max los
 4. **Given** an active session, **When** the user activates emergency stop, **Then** new trading activity for that session halts immediately under operator control.
 5. **Given** an active session, **When** the user stops the session manually, **Then** the session ends without requiring emergency stop, and new signals do not execute afterward.
 6. **Given** market data required for decisions is stale, malformed, missing, or otherwise unsafe, **When** a trading decision would otherwise proceed, **Then** the system rejects/suspends execution rather than guessing; if the state is unrecoverable per session rules, the session stops.
+7. **Given** a hard stop fires while a long is open and a safe market price is available, **When** the session terminates, **Then** the system performs one forced simulated full close, journals it, and stops further signal execution.
+8. **Given** a hard stop fires while a long is open and no safe market price is available, **When** the session terminates, **Then** the system does not invent an exit price, stops further signal execution, and leaves the unsafely-unflattened state inspectable.
 
 ---
 
@@ -96,14 +109,17 @@ On Auto Trading (and any minimal session summary allowed elsewhere), the user ca
 
 ### Edge Cases
 
-- Strategy emits BUY while a long position already exists (or SELL with no position) → reject or no-op per explicit conflicting-position rules; journal the decision; do not invent an illegal state.
-- Insufficient simulated balance for the proposed size → reject; no partial silent oversize.
-- Position-size limit would be exceeded → reject.
+- Strategy emits BUY while already long → reject as conflicting position state (Feature 003 allows only flat → full long via BUY; no adds); journal the decision.
+- Strategy emits SELL while flat (no long) → reject as conflicting position state; journal the decision.
+- Strategy emits SELL while long → only a full close of the entire long is allowed (no partial reduce).
+- Insufficient simulated balance for the proposed full BUY size → reject; no partial silent oversize.
+- Position-size limit would be exceeded by a full BUY → reject.
 - Market data becomes stale mid-session → reject/suspend new execution; do not trade on guessed prices.
+- Incomplete (still-forming) candle or quote tick alone → no new strategy signal; wait for the session-timeframe candle to close.
 - Hard limit and a new signal arrive near the same time → hard stop wins; no new execution after stop.
 - User spams start/stop/emergency stop → system remains consistent; at most one active session; emergency stop remains decisive.
-- Fees/slippage configuration missing → use documented feature defaults; never pretend costs are zero unless defaults explicitly say zero (defaults should include non-zero cost assumptions unless planning documents otherwise).
-- Session ends with an open simulated position → unrealized P&L remains visible in session economics per the NET P&L rule; no real exchange close order is sent.
+- Fees/slippage configuration missing → apply initial documented defaults: **0.10% fee** and **0.05% adverse slippage per side**; never pretend costs are zero unless the operator explicitly overrides to zero.
+- Session ends with an open simulated position under a hard stop → if a safe price exists, force one simulated full close and journal it; if not, do not invent a close; stop new execution and keep the unsafe-unflattened state inspectable; never send a real exchange order.
 - Feature 002 market-data failure while session active → fail safe; do not fabricate prices to keep trading.
 
 ## Requirements *(mandatory)*
@@ -114,17 +130,21 @@ On Auto Trading (and any minimal session summary allowed elsewhere), the user ca
 - **FR-002**: The system MUST consume the existing normalized public market-data layer (Feature 002) for session pricing and strategy inputs; it MUST NOT call private/authenticated exchange trading APIs.
 - **FR-003**: The system MUST enforce the pipeline: Market Data → Strategy Engine → Trading Signal → Trading Controller → Risk Manager → Simulation Execution → Simulated Position/Balance → Session P&L → Continue or Stop. Strategies MUST NOT modify balances or positions directly.
 - **FR-004**: The system MUST allow at most one active simulated trading session at a time.
-- **FR-005**: A simulation session MUST be configurable with: trading pair, starting simulated capital, capital allocated to the session, one baseline strategy, strategy signal timeframe, session duration, target net profit, maximum session loss, maximum number of trades, and maximum position size. Sessions MUST NOT start without these bounds defined.
-- **FR-006**: The feature MUST use exactly one understandable baseline strategy that is conventional, deterministic, explainable, and testable. The specific strategy identity MAY be finalized during planning, but MUST meet those qualities.
+- **FR-005**: A simulation session MUST be configurable with: trading pair, starting simulated capital, capital allocated to the session, one baseline strategy, strategy signal timeframe, session duration, target net profit, maximum session loss, maximum number of trades, and maximum position size. Sessions MUST NOT start without these bounds defined. Simulated fee and slippage rates MUST be overridable per session; when omitted, FR-012a defaults apply.
+- **FR-006**: The feature MUST use exactly one baseline strategy: a **dual moving-average crossover** on the session’s strategy signal timeframe (candles). A deterministic fast/slow MA cross produces BUY or SELL; otherwise HOLD. Exact MA lengths MAY be fixed at planning but MUST be documented, conventional, and testable. No other strategies are in scope for Feature 003.
+- **FR-006a**: The strategy MUST evaluate and emit a new signal **only when a candle for the session timeframe closes**. It MUST NOT emit trading signals from intrabar quote ticks or from still-forming (incomplete) candles. Between closed-candle evaluations, the prior signal does not re-trigger execution by itself.
 - **FR-007**: The strategy MUST be able to emit BUY, SELL, and HOLD signals only for this feature’s signal vocabulary.
+- **FR-007a**: Feature 003 MUST use a **long-only single full-position** model: the simulated account is either **flat** or holding **one full long** for the session pair. BUY is valid only from flat and opens the entire allowed long in one fill (subject to capital and max position size). SELL is valid only while long and closes the **entire** long in one fill. Partial adds, partial reduces, pyramiding, and short selling MUST NOT be supported. Invalid BUY/SELL relative to position state MUST be rejected as conflicting position state and journaled.
 - **FR-008**: Every non-HOLD signal MUST pass through the Trading Controller and Risk Manager before simulated execution. HOLD MUST NOT execute a trade.
 - **FR-009**: The Trading Controller and Risk Manager MUST be able to reject signals for explicit reasons including at least: session not active; profit target already reached; maximum loss already reached; maximum trades reached; insufficient simulated balance; position-size limit exceeded; invalid or stale market data; conflicting position state; emergency stop active; and other explicit control/risk rules introduced by this feature.
 - **FR-010**: Every material strategy decision MUST create a Decision Journal record, including rejected non-HOLD signals and their rejection reasons.
 - **FR-011**: Every executed simulated trade MUST create a Trade Journal record.
-- **FR-012**: Simulated execution MUST use market prices from the normalized market-data layer, apply configurable or documented simulated trading fees, apply a simple documented slippage assumption, update simulated balances and positions deterministically, and compute realized and unrealized P&L.
+- **FR-012**: Simulated execution MUST use market prices from the normalized market-data layer, apply configurable simulated trading fees, apply a simple documented slippage assumption, update simulated balances and positions deterministically, and compute realized and unrealized P&L.
+- **FR-012a**: Unless the operator overrides them for the session, Feature 003 MUST apply these **initial documented defaults per fill side**: trading fee **0.10%** of notional and **0.05% adverse slippage** (BUY fills worse/higher; SELL fills worse/lower). Defaults MUST be visible in product/docs; zero-cost simulation MUST NOT be the silent default.
 - **FR-013**: The system MUST distinguish gross P&L, fees, slippage/execution costs, and net P&L in session economics.
 - **FR-014**: Session profit-target and maximum-loss thresholds MUST be evaluated using **Session NET P&L** under one precise rule: Session NET P&L equals the change in simulated session equity versus session start equity, where equity is simulated cash plus the mark-to-market value of any open simulated position using the latest **safe** market price from the normalized market-data layer, and where all simulated fills incorporate the feature’s documented fee and slippage cost assumptions. Gross price movement alone MUST NOT be used as the hard-limit metric.
 - **FR-015**: The session MUST automatically stop when any hard termination condition occurs: target net profit reached; maximum session loss reached; maximum trades reached; session duration expires; emergency stop activated; or unrecoverable unsafe market-data state per session rules.
+- **FR-015a**: If a hard stop (including emergency stop and automatic hard limits) ends a session while a long position is open, and a **safe** market price is available, the system MUST execute one forced simulated full close (SELL of the entire long) at that price using documented fees/slippage, create a Trade Journal record, then complete the stop. If no safe price is available, the system MUST NOT invent a close price: it MUST still stop new signal execution, fail safe, and leave the position marked as not safely flattened (inspectable), without fabricating P&L from a guessed exit.
 - **FR-016**: When a session is stopped by a hard control condition (or manual/emergency stop), new strategy signals MUST NOT execute within that session.
 - **FR-017**: Users MUST be able to create/configure a simulation session, start it, inspect current state, stop it manually, activate an emergency stop, and inspect simulated balance/position, gross/net P&L, trade count, Decision Journal, and Trade Journal.
 - **FR-018**: Auto Trading MUST be extended enough to configure and monitor the simulated session for this feature.
@@ -136,10 +156,10 @@ On Auto Trading (and any minimal session summary allowed elsewhere), the user ca
 ### Key Entities
 
 - **Simulation Session**: One bounded simulated trading run with pair, capital, strategy, timeframe, duration, and hard limits; at most one active at a time.
-- **Strategy Signal**: BUY, SELL, or HOLD proposal produced by the baseline strategy; advisory only.
+- **Strategy Signal**: BUY, SELL, or HOLD proposal from the dual moving-average crossover baseline, produced only on closed candles for the session timeframe; advisory only.
 - **Control/Risk Decision**: Approve or reject outcome for a non-HOLD signal, with explicit reason when rejected.
 - **Simulated Trade**: Deterministic simulated fill using public market prices plus documented fee and slippage assumptions; never a real exchange order.
-- **Simulated Balance / Position**: Session cash and open position state updated only by approved simulated execution (and mark-to-market for unrealized P&L).
+- **Simulated Balance / Position**: Session cash and open position state updated only by approved simulated execution (and mark-to-market for unrealized P&L). Position state is long-only: flat or one full long; no partial size changes and no shorts.
 - **Session Economics**: Gross P&L, fees, slippage/execution costs, net P&L, trade count, and Session NET P&L used for hard limits.
 - **Decision Journal Entry**: Trace record of a material strategy decision, including rejections.
 - **Trade Journal Entry**: Trace record of an executed simulated trade.
@@ -163,11 +183,14 @@ On Auto Trading (and any minimal session summary allowed elsewhere), the user ca
 
 - Feature 002 normalized public Spot market data (USDT pairs, quotes, history, freshness/STALE rules) remains the market-data source for simulation decisions.
 - Feature 001 shell (three primary areas, routing, health) remains the host application; Auto Trading is the primary surface for simulation control; Dashboard market viewing may continue to exist independently.
-- Exactly one baseline strategy will be chosen during planning from conventional, deterministic candidates (for example moving-average crossover or similar); the spec requires qualities, not a specific named algorithm yet.
-- Simulated fees and slippage use simple, documented assumptions finalized at planning (defaults MUST be explicit; zero-cost simulation is discouraged unless deliberately justified).
+- The sole baseline strategy is a dual moving-average crossover on the session candle timeframe (clarified 2026-08-09); concrete MA periods are set at planning and documented.
+- Strategy evaluation runs only on each newly **closed** candle for the session timeframe; no intrabar signal emission (clarified 2026-08-09).
+- Position model is long-only single full position (BUY only from flat; SELL only full close); clarified 2026-08-09.
+- Simulated fees and slippage use documented non-zero defaults of **0.10% fee** and **0.05% adverse slippage per fill side**, overridable per session (clarified 2026-08-09). Zero-cost simulation is not the silent default.
 - “Safe” market data for trading decisions means data that passes this feature’s freshness and validity rules aligned with Feature 002 stale/fail-safe principles (exact thresholds may be set at planning but MUST be explicit).
 - Starting simulated capital and allocated session capital may be equal in the first version if the UI collects a single capital figure, provided both concepts remain represented in session configuration semantics.
 - Mark-to-market for unrealized P&L uses the latest safe market price; if no safe price exists, unrealized valuation and new execution both fail safe rather than invent a price.
+- On hard stop with an open long: forced simulated full close if a safe price exists; otherwise fail-safe stop without inventing an exit (clarified 2026-08-09).
 - Journals are inspectable in-product for local single-operator use; multi-user auth is out of scope.
 - Persistence for sessions/journals may use the project’s SQL direction when first needed; planning will choose the minimal store. Local-only durability for a single operator is acceptable for Feature 003 acceptance.
 - Constitution Market Sentiment Dashboard capability remains out of scope here (no sentiment-driven trading, no Fear & Greed trading inputs).

@@ -32,7 +32,8 @@
 ## Notes
 
 - Validation iteration 1 (2026-08-09): All items pass.
-- Baseline strategy identity intentionally deferred to planning (FR-006 / Assumptions) while requiring conventional, deterministic, explainable, testable qualities.
+- Clarification session 2026-08-09 (5/5): long-only full position; dual MA crossover; hard-stop force close if safe price; closed-candle evaluation; defaults 0.10% fee + 0.05% adverse slippage per side (overridable).
 - Session NET P&L hard-limit rule defined in FR-014 (equity change vs start, mark-to-market with safe prices, fees/slippage included).
 - Mentions of “normalized market-data layer” and “Feature 002” are product-boundary references, not stack/framework details.
 - Constitution: Simulation before real money, controlled pipeline, journals, NET P&L, emergency stop, and fail-safe are encoded; sentiment trading and real XT execution remain out of scope.
+- Concrete MA period lengths remain a planning detail under FR-006 (must be conventional, documented, testable).
