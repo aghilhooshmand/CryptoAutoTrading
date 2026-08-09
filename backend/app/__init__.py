@@ -1,0 +1,1 @@
+"""CryptoAutoTrading backend application package."""

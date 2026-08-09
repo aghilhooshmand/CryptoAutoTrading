@@ -26,11 +26,11 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create repository directories `backend/app/api/`, `backend/tests/contract/`, `backend/tests/unit/`, `frontend/src/components/`, `frontend/src/pages/`, and `frontend/src/__tests__/` per plan.md
-- [ ] T002 [P] Add root `.gitignore` covering Python venvs, `__pycache__`, Node `node_modules/`, build outputs, `.env` files, and OS junk (no secrets committed)
-- [ ] T003 [P] Initialize Python 3.12 backend project with FastAPI, Uvicorn, and pytest in `backend/pyproject.toml`
-- [ ] T004 [P] Initialize React 18 + TypeScript + Vite frontend in `frontend/package.json`, `frontend/vite.config.ts`, `frontend/tsconfig.json`, and `frontend/index.html`
-- [ ] T005 [P] Add frontend React Router dependency and baseline scripts (`dev`, `build`, `test`) in `frontend/package.json`
+- [x] T001 Create repository directories `backend/app/api/`, `backend/tests/contract/`, `backend/tests/unit/`, `frontend/src/components/`, `frontend/src/pages/`, `frontend/src/config/`, and `frontend/src/__tests__/` per plan.md
+- [x] T002 [P] Add root `.gitignore` covering Python venvs, `__pycache__`, Node `node_modules/`, build outputs, `.env` files, and OS junk (no secrets committed)
+- [x] T003 [P] Initialize Python 3.12 backend project with FastAPI, Uvicorn, and pytest in `backend/pyproject.toml`
+- [x] T004 [P] Initialize React 18 + TypeScript + Vite frontend in `frontend/package.json`, `frontend/vite.config.ts`, `frontend/tsconfig.json`, and `frontend/index.html`
+- [x] T005 [P] Add frontend React Router dependency and baseline scripts (`dev`, `build`, `test`) in `frontend/package.json`
 
 ---
 
@@ -40,12 +40,12 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T006 Create FastAPI application entry in `backend/app/main.py` that starts with Uvicorn and mounts an empty/ready API router
-- [ ] T007 [P] Create API package markers `backend/app/__init__.py` and `backend/app/api/__init__.py`
-- [ ] T008 Create frontend entry `frontend/src/main.tsx` and root `frontend/src/App.tsx` with React Router provider
-- [ ] T009 Define Primary Area route constants (`/dashboard`, `/auto-trading`, `/portfolio`) and `/` → Dashboard resolution helper in `frontend/src/config/primaryAreas.ts` per data-model.md
-- [ ] T010 Create `frontend/src/components/AppShell.tsx` product chrome (product name CryptoAutoTrading + outlet for page content) without trading widgets
-- [ ] T011 Create `frontend/src/components/PrimaryNav.tsx` with links to the three canonical primary routes (labels: Dashboard, Auto Trading, Portfolio)
+- [x] T006 Create FastAPI application entry in `backend/app/main.py` that starts with Uvicorn and mounts an empty/ready API router
+- [x] T007 [P] Create API package markers `backend/app/__init__.py` and `backend/app/api/__init__.py`
+- [x] T008 Create frontend entry `frontend/src/main.tsx` and root `frontend/src/App.tsx` with React Router provider
+- [x] T009 Define Primary Area route constants (`/dashboard`, `/auto-trading`, `/portfolio`) and `/` → Dashboard resolution helper in `frontend/src/config/primaryAreas.ts` per data-model.md
+- [x] T010 Create `frontend/src/components/AppShell.tsx` product chrome (product name CryptoAutoTrading + outlet for page content) without trading widgets
+- [x] T011 Create `frontend/src/components/PrimaryNav.tsx` with links to the three canonical primary routes (labels: Dashboard, Auto Trading, Portfolio)
 
 **Checkpoint**: Foundation ready — backend and frontend skeletons exist; user story implementation can begin
 
@@ -59,10 +59,10 @@
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Wire `AppShell` + `PrimaryNav` into `frontend/src/App.tsx` routes so `/` resolves to Dashboard and `/dashboard` renders a minimal Dashboard outlet
-- [ ] T013 [US1] Add minimal `frontend/src/pages/DashboardPage.tsx` so the default entry is not a blank/broken page (placeholder-only; no market/trading/sentiment data)
-- [ ] T014 [US1] Document local prerequisites (Python 3.12, Node LTS), backend start, frontend start, and default URLs in root `README.md`
-- [ ] T015 [US1] Verify both processes start cleanly and the browser reaches the shell without exchange credentials (manual check against FR-001 / SC-001)
+- [x] T012 [US1] Wire `AppShell` + `PrimaryNav` into `frontend/src/App.tsx` routes so `/` resolves to Dashboard and `/dashboard` renders a minimal Dashboard outlet
+- [x] T013 [US1] Add minimal `frontend/src/pages/DashboardPage.tsx` so the default entry is not a blank/broken page (placeholder-only; no market/trading/sentiment data)
+- [x] T014 [US1] Document local prerequisites (Python 3.12, Node LTS), backend start, frontend start, and default URLs in root `README.md`
+- [x] T015 [US1] Verify both processes start cleanly and the browser reaches the shell without exchange credentials (manual check against FR-001 / SC-001)
 
 **Checkpoint**: Local run works; MVP shell reachable at `/` → Dashboard
 
@@ -78,19 +78,19 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T016 [P] [US2] Add Vitest + React Testing Library config in `frontend/vitest.config.ts` and a sample setup file if needed
-- [ ] T017 [P] [US2] Write navigation/placeholder tests in `frontend/src/__tests__/primaryNavigation.test.tsx` asserting `/dashboard`, `/auto-trading`, `/portfolio`, active area, and absence of mocked trading/P&L/market/sentiment content
-- [ ] T018 [P] [US2] Write not-found recovery test in `frontend/src/__tests__/notFound.test.tsx` asserting unknown paths show not-found while primary nav remains usable
+- [x] T016 [P] [US2] Add Vitest + React Testing Library config in `frontend/vitest.config.ts` and a sample setup file if needed
+- [x] T017 [P] [US2] Write navigation/placeholder tests in `frontend/src/__tests__/primaryNavigation.test.tsx` asserting `/dashboard`, `/auto-trading`, `/portfolio`, active area, and absence of mocked trading/P&L/market/sentiment content
+- [x] T018 [P] [US2] Write not-found recovery test in `frontend/src/__tests__/notFound.test.tsx` asserting unknown paths show not-found while primary nav remains usable
 
 ### Implementation for User Story 2
 
-- [ ] T019 [P] [US2] Implement placeholder `frontend/src/pages/AutoTradingPage.tsx` (coming-later messaging only; no strategies/sessions/trades)
-- [ ] T020 [P] [US2] Implement placeholder `frontend/src/pages/PortfolioPage.tsx` (coming-later messaging only; no balances/positions/P&L)
-- [ ] T021 [P] [US2] Implement `frontend/src/pages/NotFoundPage.tsx` with clear not-found copy and primary nav still available (no silent redirect)
-- [ ] T022 [US2] Complete route table in `frontend/src/App.tsx`: `/` → Dashboard, `/dashboard`, `/auto-trading`, `/portfolio`, catch-all → NotFound; highlight active area in `frontend/src/components/PrimaryNav.tsx`
-- [ ] T023 [US2] Refine `frontend/src/pages/DashboardPage.tsx` placeholder copy so it does not imply live trading readiness or guaranteed profit (FR-005)
-- [ ] T024 [US2] Ensure deep-link/refresh preserves the current primary area for `/dashboard`, `/auto-trading`, and `/portfolio` (SPA history routing)
-- [ ] T025 [US2] Run frontend tests and fix until T017–T018 pass
+- [x] T019 [P] [US2] Implement placeholder `frontend/src/pages/AutoTradingPage.tsx` (coming-later messaging only; no strategies/sessions/trades)
+- [x] T020 [P] [US2] Implement placeholder `frontend/src/pages/PortfolioPage.tsx` (coming-later messaging only; no balances/positions/P&L)
+- [x] T021 [P] [US2] Implement `frontend/src/pages/NotFoundPage.tsx` with clear not-found copy and primary nav still available (no silent redirect)
+- [x] T022 [US2] Complete route table in `frontend/src/App.tsx`: `/` → Dashboard, `/dashboard`, `/auto-trading`, `/portfolio`, catch-all → NotFound; highlight active area in `frontend/src/components/PrimaryNav.tsx`
+- [x] T023 [US2] Refine `frontend/src/pages/DashboardPage.tsx` placeholder copy so it does not imply live trading readiness or guaranteed profit (FR-005)
+- [x] T024 [US2] Ensure deep-link/refresh preserves the current primary area for `/dashboard`, `/auto-trading`, and `/portfolio` (SPA history routing)
+- [x] T025 [US2] Run frontend tests and fix until T017–T018 pass
 
 **Checkpoint**: All three areas navigable with placeholders; unknown routes fail closed to not-found
 
@@ -104,9 +104,9 @@
 
 ### Implementation for User Story 3
 
-- [ ] T026 [US3] Add responsive layout/styles for the shell and nav in `frontend/src/components/AppShell.tsx` and/or `frontend/src/components/PrimaryNav.tsx` (and shared CSS module/file under `frontend/src/` as needed) usable at ~375px
-- [ ] T027 [US3] Verify labels/titles remain readable on Dashboard, Auto Trading, and Portfolio at phone width (manual quickstart Scenario C); adjust styles in the same shell/nav/page files if clipped
-- [ ] T028 [P] [US3] Add a lightweight responsive smoke assertion or documented viewport checklist note in `frontend/src/__tests__/responsiveNav.test.tsx` (or extend `primaryNavigation.test.tsx`) so nav targets remain present/accessible in a narrow viewport
+- [x] T026 [US3] Add responsive layout/styles for the shell and nav in `frontend/src/components/AppShell.tsx` and/or `frontend/src/components/PrimaryNav.tsx` (and shared CSS module/file under `frontend/src/` as needed) usable at ~375px
+- [x] T027 [US3] Verify labels/titles remain readable on Dashboard, Auto Trading, and Portfolio at phone width (manual quickstart Scenario C); adjust styles in the same shell/nav/page files if clipped
+- [x] T028 [P] [US3] Add a lightweight responsive smoke assertion or documented viewport checklist note in `frontend/src/__tests__/responsiveNav.test.tsx` (or extend `primaryNavigation.test.tsx`) so nav targets remain present/accessible in a narrow viewport
 
 **Checkpoint**: Phone-width navigation satisfies SC-003 / FR-006
 
@@ -122,15 +122,15 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T029 [P] [US4] Add pytest config/markers as needed in `backend/pyproject.toml`
-- [ ] T030 [US4] Write contract test for `GET /health` in `backend/tests/contract/test_health.py` expecting HTTP 200, JSON `{"status":"healthy"}`, and local completion in under 2 seconds (SC-004) per `specs/001-app-foundation/contracts/health.md`
+- [x] T029 [P] [US4] Add pytest config/markers as needed in `backend/pyproject.toml`
+- [x] T030 [US4] Write contract test for `GET /health` in `backend/tests/contract/test_health.py` expecting HTTP 200, JSON `{"status":"healthy"}`, and local completion in under 2 seconds (SC-004) per `specs/001-app-foundation/contracts/health.md`
 
 ### Implementation for User Story 4
 
-- [ ] T031 [US4] Implement health route handler in `backend/app/api/health.py` returning `{"status":"healthy"}`
-- [ ] T032 [US4] Register health router on the FastAPI app in `backend/app/main.py` at path `/health`
-- [ ] T033 [US4] Run contract tests until T030 passes (including SC-004 under-2-seconds assertion); manually confirm stopped-backend failure mode (SC-005 / FR-008) via documented curl in quickstart.md — do not add infrastructure solely to automate unreachable-process testing
-- [ ] T034 [US4] Document health URL, curl verification, SC-004 timing expectation, and manual stopped-backend check in root `README.md` (no Dashboard health widget required for Feature 001)
+- [x] T031 [US4] Implement health route handler in `backend/app/api/health.py` returning `{"status":"healthy"}`
+- [x] T032 [US4] Register health router on the FastAPI app in `backend/app/main.py` at path `/health`
+- [x] T033 [US4] Run contract tests until T030 passes (including SC-004 under-2-seconds assertion); manually confirm stopped-backend failure mode (SC-005 / FR-008) via documented curl in quickstart.md — do not add infrastructure solely to automate unreachable-process testing
+- [x] T034 [US4] Document health URL, curl verification, SC-004 timing expectation, and manual stopped-backend check in root `README.md` (no Dashboard health widget required for Feature 001)
 
 **Checkpoint**: Health contract satisfied; unavailable backend does not report healthy
 
@@ -140,10 +140,10 @@
 
 **Purpose**: Documentation alignment, scope guard, quickstart validation
 
-- [ ] T035 [P] Align root `README.md` with all quickstart scenarios A–H (routes, health, phone-width note, out-of-scope list)
-- [ ] T036 [P] Confirm no trading mocks, market data, sentiment, auth, exchange, or SQL schemas were introduced (scope guard FR-010/FR-011); remove any accidental stubs
-- [ ] T037 Run full `specs/001-app-foundation/quickstart.md` validation (local start, three routes, `/` → Dashboard, not-found, health up/down, phone-width)
-- [ ] T038 [P] Propose a concise Git commit message for the completed foundation work (do not auto-commit unless the user explicitly asks) per constitution XXX
+- [x] T035 [P] Align root `README.md` with all quickstart scenarios A–H (routes, health, phone-width note, out-of-scope list)
+- [x] T036 [P] Confirm no trading mocks, market data, sentiment, auth, exchange, or SQL schemas were introduced (scope guard FR-010/FR-011); remove any accidental stubs
+- [x] T037 Run full `specs/001-app-foundation/quickstart.md` validation (local start, three routes, `/` → Dashboard, not-found, health up/down, phone-width)
+- [x] T038 [P] Propose a concise Git commit message for the completed foundation work (do not auto-commit unless the user explicitly asks) per constitution XXX
 
 ---
 
