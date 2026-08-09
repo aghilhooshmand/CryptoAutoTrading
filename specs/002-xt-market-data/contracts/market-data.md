@@ -10,8 +10,21 @@ models only. XT-specific field names and URLs MUST NOT appear in responses.
 Base path: `/market`  
 Content-Type: `application/json`
 
-Shared freshness rule for clients: data with `observedAt` / successful receipt
-older than **60 seconds** MUST be treated as `stale` when still displayed.
+### Decimal strings
+
+All financial numeric fields in successful JSON bodies MUST be **decimal
+strings** (not JSON numbers): prices, absolute/percent changes, highs, lows,
+and volumes. Example: `"65220.00"`, `"2.35"`.
+
+### Dashboard market freshness (quote-based)
+
+Dashboard **fresh** / **STALE** for market price and 24h stats MUST be computed
+from the active quote’s `observedAt` when present, otherwise from that quote’s
+`retrievedAt`. Threshold: older than **60 seconds** → `stale` when last-known
+values remain visible.
+
+Do **not** determine Dashboard market freshness from candlestick `openTime` or
+from candle-series age alone. Candle `retrievedAt` is provenance only.
 
 ---
 
@@ -91,7 +104,7 @@ Returns latest price and available 24h statistics for one symbol.
   "symbol": "btc_usdt",
   "lastPrice": "65220.00",
   "changeAbsolute": "129.99",
-  "changePercent": "0.0019",
+  "changePercent": "0.19",
   "high24h": "65300.00",
   "low24h": "64730.08",
   "volumeBase": "1762.90919",
@@ -107,10 +120,14 @@ Notes:
 
 - Omit optional stats that XT did not provide; do not send sentinel zeros as
   fillers unless XT actually returned zero.
-- `changePercent` normalization (ratio vs percent points) MUST be documented in
-  implementation comments and kept consistent in UI formatting.
+- All financial fields above are decimal strings.
+- `changePercent` is **percent points**, not a unit ratio: `"2.35"` means
+  **+2.35%**. If XT returns a ratio (e.g. `0.0235`), the adapter MUST convert
+  before responding (e.g. `"2.35"`). UI may append a `%` suffix for display
+  without multiplying again.
 - `status` MAY be computed server-side as `fresh` at retrieval; clients MUST
-  still recompute staleness after 60s for displayed values.
+  recompute quote staleness after 60s from `observedAt` / `retrievedAt` as
+  defined above.
 
 ### Error / unsupported
 
@@ -165,6 +182,13 @@ Returns historical OHLC series for one symbol and allowed interval.
   ]
 }
 ```
+
+Notes:
+
+- OHLC and volume fields are decimal strings; `openTime` is epoch milliseconds
+  (integer).
+- Candle `openTime` and series `retrievedAt` MUST NOT drive Dashboard market
+  **STALE** labeling (quote timestamps do).
 
 ### Error / unsupported
 

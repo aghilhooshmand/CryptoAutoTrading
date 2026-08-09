@@ -81,8 +81,10 @@ contract/unit and Dashboard preference/status tests pass.
 
 1. Stop backend or block XT (e.g. disconnect network after a successful load) and
    refresh — clear unavailable/error; no fabricated price.
-2. After a successful load, wait **>60 seconds** without refresh — last-known
-   values may remain but MUST show **STALE**, not fresh/current.
+2. After a successful **quote** load, wait **>60 seconds** without refresh —
+   last-known price/stats may remain but MUST show **STALE**, not fresh/current.
+   Staleness is based on quote `observedAt` / `retrievedAt`, **not** candle
+   `openTime`.
 3. Confirm `GET /health` success is still distinguishable from market-data
    failure when both are observable.
 
@@ -116,9 +118,10 @@ contract/unit and Dashboard preference/status tests pass.
 
 Confirm no trading, simulation, risk, strategies, portfolio calculations,
 sentiment/news, auth, WebSockets, futures/margin/leverage, or SQL preference
-store shipped for this feature.
+store shipped for this feature. Confirm Feature 002 can be accepted with
+**manual refresh only** (auto-refresh absent or unfinished is OK).
 
-**Pass**: SC-008 / FR-014–FR-016.
+**Pass**: SC-008 / FR-014–FR-017.
 
 ## Contract smoke (optional curl)
 

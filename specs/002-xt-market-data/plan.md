@@ -11,8 +11,11 @@ market data for USDT-quoted pairs: searchable pair selection (with local
 favorites), latest price and available 24h stats, candlestick history for
 intervals `15m` / `1h` / `4h` / `1d` (default `1h`), explicit XT source/status
 (including STALE after 60s), and manual refresh. XT REST access is confined to
-a backend market-data adapter that normalizes payloads into internal models;
-the frontend consumes only application HTTP contracts. No credentials, private
+a backend market-data adapter that normalizes payloads into internal models
+(financial values as decimal strings; `changePercent` as percent points);
+the frontend consumes only application HTTP contracts. Dashboard freshness/
+STALE is quote-timed (60s). Manual refresh is required; auto-refresh is
+optional polish and must not block completion. No credentials, private
 APIs, WebSockets, trading, sentiment, portfolio math, or SQL preference store.
 
 ## Technical Context
@@ -41,10 +44,12 @@ price, source, and last-update within 5 seconds of a completed refresh locally
 (SC-002); pair selection and status remain usable on ~375px (SC-006)
 
 **Constraints**: Public XT Spot REST only (`https://sapi.xt.com`); no API keys;
-no private endpoints; no WebSocket streaming; no fabricated values; stale
-threshold 60 seconds; race-safe pair/interval changes; adapter isolation; no
-trading/simulation/risk/strategies/portfolio/sentiment/news/auth/futures/
-margin/leverage
+no private endpoints; no WebSocket streaming; no fabricated values; financial
+API fields as decimal strings; `changePercent` in percent points; quote-based
+stale threshold 60 seconds (not candle `openTime`); race-safe pair/interval
+changes; adapter isolation; manual refresh required; auto-refresh optional
+polish only; no trading/simulation/risk/strategies/portfolio/sentiment/news/
+auth/futures/margin/leverage
 
 **Scale/Scope**: Single local operator; one Dashboard market-data surface; XT
 USDT Spot pair universe (~hundreds of symbols); three thin backend read APIs
@@ -60,7 +65,7 @@ plus Dashboard UI
 | II Simulation before real money | Pass | Neither mode implemented |
 | III–IV Trading pipeline / controller | Pass | No strategy→order paths |
 | V–IX Session bounds, P&L, journals, fail-safe, stop | Pass | Fail-safe market status only; trading controls deferred |
-| X Intentional simplicity | Pass | REST adapter + thin APIs + Dashboard UI; optional auto-refresh only if trivial |
+| X Intentional simplicity | Pass | REST adapter + thin APIs + Dashboard UI; auto-refresh optional polish only (not required for completion) |
 | XI–XII Strategies / no guaranteed profit | Pass | No strategies or P&L claims |
 | XIII Exactly three primary UI areas | Pass | Market data extends Dashboard only; Auto Trading / Portfolio stay placeholders |
 | XIV Responsive UX | Pass | Pair/price/status/history usable at ~375px |
@@ -131,7 +136,7 @@ frontend/
 │   │       ├── MarketQuotePanel.tsx
 │   │       ├── CandleChart.tsx
 │   │       ├── MarketStatusBadge.tsx
-│   │       ├── useMarketData.ts   # fetch + race guard + optional auto-refresh
+│   │       ├── useMarketData.ts   # fetch + race guard; auto-refresh optional polish only
 │   │       └── prefs.ts           # localStorage pair/interval/favorites
 │   ├── services/
 │   │   └── marketDataApi.ts       # typed calls to backend contracts

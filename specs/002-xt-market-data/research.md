@@ -24,12 +24,13 @@ read-only endpoints (verified live on 2026-08-09):
 | `o` | 24h open |
 | `h` | 24h high |
 | `l` | 24h low |
-| `cv` | absolute change |
-| `cr` | change ratio |
+| `cv` | absolute change (normalize to decimal string) |
+| `cr` | change **ratio** from XT (e.g. `0.0235`); convert to percent points in adapter |
 | `q` | base volume |
 | `v` | quote volume |
 
 **Kline bar mapping**: `t` (open time ms), `o`, `h`, `l`, `c`, `q` (base vol), `v` (quote vol).
+Financial OHLC/volume fields normalize to decimal strings; `t` stays epoch ms.
 
 **Rationale**: Current XT Spot public market surface (not legacy
 `/data/api/v1/*`) matches Feature 002 needs without credentials. Live probes
@@ -47,7 +48,8 @@ intervals.
 
 **Decision**: Introduce `MarketDataAdapter` (protocol) with an `XtSpotAdapter`
 implementation under `backend/app/market_data/adapters/`. Adapter owns XT URLs,
-envelope parsing (`rc == 0` / `mc == SUCCESS`), short-key mapping, and HTTP
+envelope parsing (`rc == 0` / `mc == SUCCESS`), short-key mapping, decimal-string
+normalization (including `cr` → percent-point `changePercent`), and HTTP
 errors. `service.py` returns only internal models. FastAPI routes and frontend
 never see XT payload shapes.
 
@@ -90,31 +92,46 @@ it to runtime keeps one HTTP stack. Fail-safe aligns with FR-008/FR-009.
 - Retries with backoff: optional later; keep Feature 002 simple unless flaky
   local networks force a single retry.
 
-## Decision 5: Freshness, STALE, and refresh
+## Decision 5: Decimal strings and `changePercent` semantics
 
-**Decision**:
-- Freshness threshold: **60 seconds** since last successful observation
-  timestamp carried with the quote/series (or client receipt time if XT omits
-  usable time — prefer XT `t` when present).
-- Status values: `loading` | `fresh` | `stale` | `unavailable` | `unsupported` | `error`.
-- When `stale`, last-known values MAY remain visible with explicit **STALE**
-  labeling; never imply fresh/current.
-- Manual refresh control is required.
-- Optional light auto-refresh: **60s** interval when enabled, refreshing only
-  the active symbol’s quote + candles (and not hammering `/symbol`). Keep off
-  by default or behind a simple toggle; skip if it adds non-trivial complexity
-  during implement.
+**Decision**: All financial numerics in internal models and `/market` JSON are
+**decimal strings**. `changePercent` is percent points: `"2.35"` means
+**+2.35%**, never a unit ratio `0.0235`. XT ticker `cr` is observed as a
+ratio; the adapter multiplies by 100 (as decimal arithmetic on strings/`Decimal`)
+when mapping to `changePercent`.
 
-**Rationale**: Spec assumptions + user direction. 60s auto-refresh matches the
-stale threshold and stays well under typical public IP rate limits for ~2
-requests per minute per operator.
+**Rationale**: Removes ambiguous float JSON and UI double-scaling bugs.
 
 **Alternatives considered**:
-- 30s auto-refresh: more load for little Dashboard value.
+- JSON numbers: simpler for some clients; invites float ambiguity.
+- Exposing XT ratio unchanged: ambiguous for Dashboard labeling.
+
+## Decision 6: Freshness, STALE, and refresh
+
+**Decision**:
+- Dashboard market freshness/STALE uses the active **quote** only: prefer
+  `observedAt` (from XT ticker `t` when present), else quote `retrievedAt`.
+- Threshold: **60 seconds**. When older, last-known price/stats MAY remain with
+  explicit **STALE**; never imply fresh/current.
+- Do **not** mark Dashboard market data STALE from candlestick `openTime` or
+  candle-series age alone (historical bars are expected to be “old”).
+- Status values: `loading` | `fresh` | `stale` | `unavailable` | `unsupported` | `error`.
+- **Manual refresh is required** for Feature 002 acceptance and completion.
+- Automatic refresh is **optional polish only**. It MUST NOT block Feature 002
+  completion. If implemented later/when trivial, prefer ~60s for the active
+  symbol’s quote + candles only; otherwise omit entirely.
+
+**Rationale**: Spec assumptions + tightened planning direction. Quote age
+matches “is this price current?”; candle open times do not. Auto-refresh stays
+non-blocking polish.
+
+**Alternatives considered**:
+- Stale from last candle openTime: false positives on every closed bar.
+- Requiring auto-refresh for acceptance: contradicts manual-refresh-required.
 - WebSocket streams: explicitly out of scope.
 - Hide stale values: worse UX; clarification chose labeled last-known.
 
-## Decision 6: Race-safe pair/interval changes
+## Decision 7: Race-safe pair/interval changes
 
 **Decision**: Frontend request generation counter (or AbortController): ignore
 responses whose request id is older than the latest selection. Changing pair
@@ -128,7 +145,7 @@ interval/series.
 - Backend cancellation tokens: unnecessary for short REST GETs.
 - Debounce-only: reduces races but does not eliminate slow-response overwrites.
 
-## Decision 7: Charting library
+## Decision 8: Charting library
 
 **Decision**: Use **lightweight-charts** for responsive candlestick rendering
 of normalized OHLC bars.
@@ -142,7 +159,7 @@ series only.
 - Chart.js financial plugin: heavier / less idiomatic for this stack.
 - SVG/table-only: simplest, weaker market readability for SC-004.
 
-## Decision 8: Local preferences and favorites
+## Decision 9: Local preferences and favorites
 
 **Decision**: Persist in `localStorage` keys scoped to this app, e.g.:
 
@@ -161,7 +178,7 @@ API.
 - SQLite preference tables: rejected for this feature (Complexity Tracking).
 - Cookies: unnecessary; `localStorage` is enough for same-device reload.
 
-## Decision 9: Pair universe filtering and defaults
+## Decision 10: Pair universe filtering and defaults
 
 **Decision**: Supported pairs = XT Spot symbols with `quoteCurrency == "usdt"`
 and tradable/openapi-friendly state when those flags exist. Default first load
@@ -175,16 +192,19 @@ else empty/unavailable.
 - Hard-coded top-N pairs only: simpler but contradicts searchable full USDT
   universe requirement.
 
-## Decision 10: Rate-limit posture
+## Decision 11: Rate-limit posture
 
 **Decision**: Do not scrape all tickers on a timer. Load pair list on Dashboard
 entry (cache in memory for the session or until manual pair-list refresh).
-Quote + candles fetch on selection change, manual refresh, and optional 60s
-auto-refresh for the **active** pair only. Cap candle `limit` modestly (e.g.
+Quote + candles fetch on selection change and **manual refresh**. Optional
+auto-refresh (polish only; not required for completion) may refresh the
+**active** pair only at ~60s if implemented. Cap candle `limit` modestly (e.g.
 100–200, well under XT spot max ~1000).
 
-**Rationale**: Keeps traffic low vs public IP limits; intentional simplicity.
+**Rationale**: Keeps traffic low vs public IP limits; intentional simplicity;
+manual path is sufficient for acceptance.
 
 **Alternatives considered**:
 - Polling all USDT tickers: wasteful and rate-limit risky.
 - Aggressive multi-retry storms: can worsen bans; fail clearly instead.
+- Treating auto-refresh as mandatory: blocks completion without necessity.
