@@ -24,9 +24,9 @@ One bounded simulated trading run. At most one session may be in `RUNNING` or
 | `starting_capital` | decimal string | Initial cash; start equity |
 | `allocated_capital` | decimal string | Session bound; v1 MAY equal starting |
 | `max_position_size` | decimal string | USDT notional cap |
-| `target_net_profit` | decimal string | Stop when NET ≥ this |
-| `max_session_loss` | decimal string | Positive magnitude; stop when NET ≤ −this |
-| `max_trades` | int | Max simulated fills (incl. forced close) |
+| `target_net_profit` | decimal string | Stop when **liquidation** Session NET ≥ this |
+| `max_session_loss` | decimal string | Positive magnitude; stop when liquidation NET ≤ −this |
+| `max_trades` | int | Max **strategy-driven** fills (forced close may raise `trade_count` by one more) |
 | `duration_seconds` | int | Session length bound |
 | `fee_rate` | decimal string | Fraction, default `0.001` |
 | `slippage_rate` | decimal string | Fraction, default `0.0005` |
@@ -39,8 +39,9 @@ One bounded simulated trading run. At most one session may be in `RUNNING` or
 | `entry_fee` | decimal string \| null | |
 | `entry_slippage_cost` | decimal string \| null | |
 | `cost_basis` | decimal string \| null | Cash outlay for open long |
-| `trade_count` | int | Fills so far |
-| `cumulative_fees` | decimal string | |
+| `trade_count` | int | All fills including forced closes |
+| `strategy_fill_count` | int | Strategy-driven fills only; gated by `max_trades` |
+| `cumulative_fees` | decimal string | Actual fills only |
 | `cumulative_slippage_cost` | decimal string | |
 | `cumulative_gross_realized` | decimal string | |
 | `last_processed_candle_open_time` | int \| null | Epoch ms; duplicate guard |
@@ -129,21 +130,33 @@ closes. No row without an actual simulation engine fill.
 
 ## Entity: SessionEconomics (derived view)
 
-Not a table — computed from session + optional safe mark:
+Not a table — computed from session + optional safe mark. See research
+Decisions 3–4a.
 
 | Field | Rule |
 |-------|------|
 | `startEquity` | `starting_capital` |
 | `cash` | session cash |
-| `equity` | cash (+ `qty * P_mark` if long and safe) |
-| `grossPnl` | realized gross + unrealized gross when computable |
-| `fees` | `cumulative_fees` |
-| `slippageCost` | `cumulative_slippage_cost` |
-| `netPnl` | `equity - startEquity` when equity computable; else null + unsafe flag |
-| `tradeCount` | `trade_count` |
+| `markEquity` | Informational MTM: cash, or `cash + qty * P_mark` when long+safe |
+| `markNetPnl` | `markEquity - startEquity` when mark equity computable; else null |
+| `unrealizedGross` | Informational; when long+safe |
+| `liquidationEquity` | Hard-limit equity: cash when flat; `cash + hyp. net adverse SELL proceeds` when long+safe |
+| `netPnl` | **Hard-limit** Session NET = `liquidationEquity - startEquity` when computable; else null |
+| `grossPnl` | Realized gross + unrealized gross when computable (informational) |
+| `fees` | `cumulative_fees` (**actual** fills only; never hyp. exit fees alone) |
+| `slippageCost` | `cumulative_slippage_cost` (**actual** fills only) |
+| `tradeCount` | `trade_count` (includes forced closes) |
+| `strategyFillCount` | `strategy_fill_count` |
 | `position` | side/qty/entry fields |
 | `markPrice` | safe last or null |
 | `markSafe` | bool |
+
+**Hard-limit rule while LONG**: use `liquidationEquity` / `netPnl`, not
+`markEquity` / `markNetPnl`.
+
+**Forced close accounting**: hypothetical liquidation costs used for threshold
+evaluation are not ledgered; the subsequent actual forced SELL applies fee and
+slippage once (`is_forced_close=true`).
 
 ---
 
@@ -161,7 +174,10 @@ SimulationSession 1──* TradeJournalEntry
 - `position_side = flat` ⇒ `position_qty = 0` and entry fields null.
 - `position_side = long` ⇒ `position_qty > 0` and entry fields set.
 - No short. No partial qty changes except full open / full close.
-- `trade_count` increments by 1 per Trade Journal insert.
+- `trade_count` increments by 1 per Trade Journal insert (strategy or forced).
+- `strategy_fill_count` increments only for non-forced strategy-driven fills.
+- `strategy_fill_count <= max_trades`; `trade_count` MAY equal `max_trades + 1`
+  when a single forced safety close follows a `max_trades` stop while LONG.
 
 ---
 

@@ -22,7 +22,15 @@ When omitted on create:
 | `strategyId` | `"dual_ema_9_21"` |
 | `mode` | `"simulation"` |
 
-`mode: "real_money"` MUST be rejected.
+`mode: "real_money"` MUST be rejected at create/start with
+`real_money_unavailable`. Feature 003 does not implement real XT execution.
+
+### `maxTrades`
+
+Limits **strategy-driven** fills only. After `strategyFillCount` reaches
+`maxTrades`, no further strategy execution is allowed. If the session is LONG,
+one forced safety close is still allowed and may make `tradeCount` equal
+`maxTrades + 1`; that trade MUST have `isForcedClose: true`.
 
 ---
 
@@ -155,6 +163,7 @@ Full session resource + embedded economics snapshot when computable.
   "positionSide": "flat",
   "positionQty": "0",
   "tradeCount": 0,
+  "strategyFillCount": 0,
   "startedAt": "2026-08-09T17:00:00.000Z",
   "stoppedAt": null,
   "stopReason": null,
@@ -162,7 +171,11 @@ Full session resource + embedded economics snapshot when computable.
   "lastProcessedCandleOpenTime": null,
   "economics": {
     "startEquity": "10000",
-    "equity": "10000",
+    "cash": "10000",
+    "markEquity": "10000",
+    "markNetPnl": "0",
+    "unrealizedGross": "0",
+    "liquidationEquity": "10000",
     "grossPnl": "0",
     "fees": "0",
     "slippageCost": "0",
@@ -174,9 +187,13 @@ Full session resource + embedded economics snapshot when computable.
 }
 ```
 
-When mark unsafe while long: `economics.netPnl` MAY be `null` and
-`markSafe: false`.
+`economics.netPnl` is the **hard-limit** Session NET (`liquidationEquity -
+startEquity`). `markEquity` / `markNetPnl` / `unrealizedGross` are
+informational. When mark unsafe while long: `netPnl`, `liquidationEquity`, and
+mark fields that require a price MAY be `null` with `markSafe: false`.
 
+Hypothetical liquidation costs used to evaluate profit/loss stops are not
+separate ledger entries; an actual forced close applies fee/slippage once.
 ---
 
 ## `GET /simulation/sessions/{id}/decisions`
@@ -242,6 +259,7 @@ Same pagination idea as decisions.
 | FR-004 | `session_already_active` on second start |
 | FR-010–011 | decisions + trades endpoints |
 | FR-012a | fee/slippage defaults |
+| FR-014 | `netPnl` / limits use liquidation equity while LONG |
 | FR-015–016 | stop / emergency-stop; no new exec when stopped |
-| FR-015a | forced close reflected in trades + flatten status |
-| SC-007 | no private XT trading routes in this contract |
+| FR-015a | forced close reflected in trades + flatten status; `isForcedClose` |
+| SC-007 | no private XT trading routes; real_money rejected at API |

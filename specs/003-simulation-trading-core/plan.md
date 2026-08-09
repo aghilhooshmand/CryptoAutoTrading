@@ -12,7 +12,8 @@ consume Feature 002 normalized market data, evaluate a **dual EMA(9)/EMA(21)
 crossover** once per newly **closed** candle, route every signal through
 Trading Controller → Risk Manager → **Simulation** execution, persist session +
 Decision/Trade journals in **SQLite**, enforce Session **NET P&L** hard limits
-(including unrealized via safe mark-to-market), and never place real XT orders
+using **liquidation equity** while LONG (hypothetical adverse SELL with
+fee/slippage; raw MTM remains informational), and never place real XT orders
 or call private APIs. At most one active session; backend restart must not
 silently resume execution.
 
@@ -30,11 +31,12 @@ cursor). Path via env (default under `backend/data/`). Feature 002
 `localStorage` prefs remain UI-only and are not reused for trading domain
 records.
 
-**Testing**: pytest (unit: accounting, EMA/crossover, state machine, clock,
-duplicate-candle guard, risk rejects, forced close; contract: simulation HTTP
-API; integration: pipeline with fake market data + fake clock). Vitest + RTL
-for Auto Trading configure/start/status/stop/emergency-stop and simulation
-labeling (~375px).
+**Testing**: pytest (unit: accounting incl. liquidation vs mark equity and
+no double-count of exit costs, EMA/crossover, state machine, clock,
+duplicate-candle guard, risk rejects, max_trades + forced close; contract:
+simulation HTTP API; integration: pipeline with fake market data + fake clock).
+Vitest + RTL for Auto Trading configure/start/status/stop/emergency-stop and
+simulation labeling (~375px).
 
 **Target Platform**: Local developer machines via browser; phone-width ~375px
 
@@ -53,12 +55,13 @@ sizes for one session.
   processing of the same candle
 - Controller + Risk mandatory before any simulated fill
 - Defaults: fee **0.10%** / adverse slippage **0.05%** per fill side; overridable
-- Session limits on **NET P&L** (includes unrealized when safely marked)
+- Session limits on **liquidation** Session NET P&L while LONG (mark equity informational)
+- `max_trades` caps strategy-driven fills; one forced safety close may exceed `trade_count` by one
 - Hard-stop flatten only with safe price; else fail-safe unflattened
 - Market data only via Feature 002 normalized boundary
 - No WebSockets, shorts, leverage, multi-session, multi-strategy, ML,
   sentiment/news, backtesting, production deploy
-- Structural separation so future real execution cannot bypass control/risk
+- `ExecutionEngine` port with simulation implementation only; reject real_money at API (no real XT engine in 003)
 
 **Scale/Scope**: Single local operator; one simulation session; Auto Trading
 primary UI; optional thin Portfolio read of recent simulation summary; SQLite
@@ -74,11 +77,11 @@ local file
 | II Simulation before real money | Pass | Simulation only; real-money unavailable/non-startable |
 | III–IV Pipeline / controller–risk authority | Pass | Strategy advisory; Controller + Risk before SimulationExecution |
 | V Explicit session boundaries | Pass | All FR-005 bounds required to start |
-| VI Net P&L | Pass | Session NET P&L = equity − start equity; fees/slippage in fills |
+| VI Net P&L | Pass | Hard limits use liquidation equity − start equity while LONG; fees/slippage in hyp. eval and actual fills once |
 | VII Decision traceability | Pass | Decision Journal (HOLD/approve/reject) + Trade Journal |
 | VIII Fail safe | Pass | Stale/unsafe data rejects; no invented exit on hard stop |
 | IX Emergency stop | Pass | Immediate halt of new execution + stop path |
-| X Intentional simplicity | Pass | One strategy, one session, SQLite, injectable clock |
+| X Intentional simplicity | Pass | One strategy, one session, SQLite, injectable clock; no unused real-money engine module |
 | XI Conventional strategies | Pass | Dual EMA crossover only |
 | XII No guaranteed profit | Pass | Simulation evidence only; UI must not imply guarantees |
 | XIII Three primary UI areas | Pass | Auto Trading extended; Portfolio optional thin summary only |
@@ -94,11 +97,13 @@ local file
 ### Post-design Constitution Check
 
 Re-evaluated after `research.md`, `data-model.md`, `contracts/`, and
-`quickstart.md`: still **PASS**. Simulation execution is isolated behind an
-execution port; real-money remains a non-implemented/unavailable path; SQLite
-holds only simulation domain records; market data stays behind Feature 002
-normalized APIs/services with no XT payload leakage into strategy/risk/
-simulation code.
+`quickstart.md` (including liquidation-equity hard limits and max_trades
+clarification): still **PASS**. Simulation execution is isolated behind an
+`ExecutionEngine` port with **only** a simulation implementation; real-money
+mode is rejected at the API/session boundary with no XT execution module in
+this feature; SQLite holds only simulation domain records; market data stays
+behind Feature 002 normalized APIs/services with no XT payload leakage into
+strategy/risk/simulation code.
 
 ## Project Structure
 
@@ -135,7 +140,7 @@ backend/
 │   │   ├── __init__.py
 │   │   ├── clock.py               # Clock protocol, SystemClock, FakeClock
 │   │   ├── money.py               # decimal helpers / percent rates
-│   │   ├── accounting.py          # equity, NET P&L, fill math
+│   │   ├── accounting.py          # mark vs liquidation equity, NET P&L, fill math
 │   │   ├── position_sizing.py     # full-long notional from cash + max size
 │   │   ├── state_machine.py       # session state transitions
 │   │   ├── recovery.py            # startup: RUNNING/STOPPING → STOPPED
@@ -147,8 +152,7 @@ backend/
 │   │   │   └── risk.py            # Risk Manager
 │   │   ├── execution/
 │   │   │   ├── port.py            # ExecutionEngine protocol
-│   │   │   ├── simulation.py      # SimulationExecutionEngine
-│   │   │   └── real_money.py      # UnavailableRealMoneyExecution (rejects)
+│   │   │   └── simulation.py      # SimulationExecutionEngine only (no real-money module in 003)
 │   │   ├── pipeline.py            # orchestrate MD → strategy → control → risk → exec
 │   │   ├── session_service.py     # create/start/stop/emergency + queries
 │   │   └── worker.py              # RUNNING loop: poll closed candles via Clock
@@ -161,6 +165,7 @@ backend/
     │   ├── test_state_machine.py
     │   ├── test_duplicate_candle.py
     │   ├── test_risk_rejects.py
+    │   ├── test_max_trades.py
     │   ├── test_forced_close.py
     │   └── test_recovery.py
     ├── contract/

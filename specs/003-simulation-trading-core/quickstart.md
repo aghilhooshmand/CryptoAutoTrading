@@ -89,13 +89,18 @@ flat) appear in Decision Journal with reasons and do not change cash.
 
 1. Configure a tiny `targetNetProfit` or `maxSessionLoss` / short
    `durationSeconds` / `maxTrades: 1`.
-2. Run until stop fires.
-3. If long and quote safe → one forced full `SELL` in Trade Journal;
-   `positionFlattenStatus` forced/flat.
+2. Run until stop fires. Profit/max-loss use **liquidation** Session NET while
+   LONG (hypothetical adverse SELL with fee/slippage), not raw mark equity.
+3. If long and quote safe → one forced full `SELL` in Trade Journal with
+   `isForcedClose: true`; `positionFlattenStatus` forced/flat. Actual exit
+   costs apply once (no double-count of the hypothetical evaluation).
 4. If stop with unsafe mark (simulate stale in tests) → no invented exit;
    `unsafe_unflattened`.
+5. With `maxTrades` exhausted while LONG: strategy fills stop; one forced
+   close may still run so `tradeCount` can be `maxTrades + 1`.
 
-**Expect**: No further simulated executions in that session after `STOPPED`.
+**Expect**: No further strategy-driven simulated executions in that session
+after `STOPPED`.
 
 ### 5. Fail-safe market data (SC-006)
 
@@ -129,9 +134,10 @@ cd backend && pytest
 cd frontend && npm test
 ```
 
-Priority backend suites: accounting, dual EMA, duplicate candle, state machine,
-risk rejects, forced close, recovery, simulation API contract, pipeline
-integration with `FakeClock` + fake market data.
+Priority backend suites: accounting (liquidation vs mark; no double-count),
+dual EMA, duplicate candle, state machine, risk rejects, max_trades + forced
+close, recovery, simulation API contract, pipeline integration with `FakeClock`
++ fake market data.
 
 ---
 

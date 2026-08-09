@@ -132,61 +132,109 @@ for reporting, define:
 
   This equals cash delta for a round trip when mark-ups match fill math.
 
-### Session aggregates
+### Session aggregates — mark equity vs liquidation equity
 
 - `start_equity = starting_capital` (session starts flat).
 - `cash` = running simulated cash.
-- If FLAT: `equity = cash`.
+
+**Informational mark-to-market** (display only; not the hard-limit metric while LONG):
+
+- If FLAT: `mark_equity = cash`.
 - If LONG and **safe** mark `P_mark` available:  
-  `equity = cash + qty * P_mark`  
-  (mark uses safe last price **without** applying slippage — valuation, not
-  execution).
-- If LONG and **no** safe mark: equity / unrealized / Session NET P&L for
-  limit checks are **unavailable** (fail safe; do not invent).
+  `mark_equity = cash + qty * P_mark`  
+  (`P_mark` is safe last **without** slippage — valuation only).
+- `unrealized_gross = (P_mark - entry_ref_price) * qty` when LONG and mark safe.
+- If LONG and **no** safe mark: mark equity / unrealized are unavailable (do not invent).
 
-**Session NET P&L** (hard-limit metric):
+**Liquidation equity** (hard-limit Session NET P&L basis while LONG):
 
-```text
-session_net_pnl = equity - start_equity
-```
-
-when equity is computable; else undefined for threshold evaluation.
-
-**Unrealized** (when LONG and safe mark):
+When FLAT:
 
 ```text
-unrealized_gross = (P_mark - entry_ref_price) * qty
-# Session NET already includes MTM via equity; unrealized is displayed
-# distinctly for UI. Fees/slippage already paid on entry remain in cash.
+liquidation_equity = cash
 ```
+
+When LONG and **safe** mark `P_mark` (`P_ref`) available, compute a **hypothetical**
+full adverse SELL with the same rules as Decision 2 (do not mutate cash yet):
+
+```text
+P_fill_hyp = P_mark * (1 - slippage_rate)
+N_hyp = qty * P_fill_hyp
+F_hyp = N_hyp * fee_rate
+net_sell_proceeds_hyp = N_hyp - F_hyp
+liquidation_equity = cash + net_sell_proceeds_hyp
+```
+
+When LONG and mark unsafe: liquidation equity / hard-limit Session NET P&L are
+**unavailable** (fail safe; do not invent).
+
+**Session NET P&L for profit-target / max-loss evaluation**:
+
+```text
+session_net_pnl_for_limits = liquidation_equity - start_equity
+```
+
+when liquidation equity is computable; else undefined for those thresholds.
+
+Rationale: a profit target means profit that could actually be **secured** under
+the session’s fee and slippage assumptions, not raw mark value.
+
+### No double-counting of exit costs
+
+Hypothetical liquidation math is used **only** to decide whether a profit/loss
+hard stop fires. It MUST NOT debit cash, increment fees/slippage ledgers, or
+write a Trade Journal row by itself.
+
+When a hard stop then performs a **real** forced SELL:
+
+1. Execute one actual full close with the same fee/slippage formulas.
+2. Apply fee and slippage **once** via that fill to cash and cumulative ledgers.
+3. Journal the fill with `is_forced_close=true`.
+4. Do **not** also subtract the previously computed hypothetical `F_hyp` /
+   slippage again.
+
+After the forced close, the session is FLAT and
+`cash - start_equity` equals the realized Session NET (actual costs applied
+once). While still LONG, display may show both mark-based and liquidation-based
+figures; only liquidation-based NET drives target/max-loss.
 
 **Displayed session economics** (distinct fields):
 
 | Field | Meaning |
 |-------|---------|
-| `grossPnl` | Sum of realized gross + current unrealized gross (when mark safe) |
-| `fees` | Cumulative fees paid on all fills |
-| `slippageCost` | Cumulative slippage costs on all fills |
-| `netPnl` | `session_net_pnl` when computable (= equity − start_equity) |
-| `tradeCount` | Count of simulated fills (including forced closes) |
+| `markEquity` | Informational MTM equity (`cash + qty * P_mark` when long+safe) |
+| `markNetPnl` | `markEquity - startEquity` (informational) |
+| `unrealizedGross` | Informational unrealized gross when mark safe |
+| `liquidationEquity` | Hard-limit equity basis (`cash` when flat; hyp. net SELL when long+safe) |
+| `netPnl` | **Hard-limit** Session NET = `liquidationEquity - startEquity` when computable |
+| `grossPnl` | Realized gross + current unrealized gross (informational) |
+| `fees` | Cumulative fees paid on **actual** fills only |
+| `slippageCost` | Cumulative slippage on **actual** fills only |
+| `tradeCount` | All simulated fills including forced closes |
+| `strategyFillCount` | Strategy-driven fills only (see Decision 4a) |
 
-Invariant to test: after any fill while FLAT, `cash == start_equity + netPnl`.
-While LONG with safe mark, `equity == cash + qty * P_mark` and
-`netPnl == equity - start_equity`.
+Invariant to test: after any fill while FLAT, `cash == start_equity + netPnl`
+(and mark/liquidation equity both equal cash). While LONG with safe mark,
+`netPnl` for limits uses liquidation equity, not raw mark equity; after a forced
+close matching the same `P_mark`/rates, post-close `cash` equals the pre-close
+hypothetical `liquidation_equity` (within decimal rounding rules).
 
 ---
 
-## Decision 4: Profit target / max loss vs unrealized
+## Decision 4: Profit target / max loss vs liquidation NET
 
 **Decision**: Evaluate `target_net_profit` and `max_session_loss` using
-**Session NET P&L only when equity is computable** (FLAT, or LONG with safe
-mark). Unrealized P&L **is included** via mark-to-market inside equity.
+**liquidation-based Session NET P&L** only when liquidation equity is
+computable (FLAT, or LONG with safe mark).
 
 | Threshold | Fire when |
 |-----------|-----------|
-| Profit target | `session_net_pnl >= target_net_profit` |
-| Max loss | `session_net_pnl <= -max_session_loss` |
+| Profit target | `session_net_pnl_for_limits >= target_net_profit` |
+| Max loss | `session_net_pnl_for_limits <= -max_session_loss` |
   (`max_session_loss` stored as a **positive** magnitude) |
+
+Raw mark-to-market equity and unrealized gross MAY be shown in UI/economics but
+MUST NOT be the profit-target / max-loss trigger while LONG.
 
 **Evaluation points** (at least): after every simulated fill; after every
 closed-candle pipeline pass when a safe mark exists; on explicit status
@@ -199,11 +247,44 @@ inability to obtain safe data MAY escalate to hard stop
 `unrecoverable_unsafe_market_data` (worker policy: e.g. consecutive failed
 safe-quote attempts ≥ N, document N=3 in implementation/tasks).
 
-**Rationale**: Matches FR-014; prevents fake stop/continue under uncertainty.
+**Rationale**: Securable NET under documented costs; aligns capital protection
+with simulation realism.
 
 **Alternatives considered**:
-- Realized-only limits: understates risk while long; rejected by spec.
+- Raw MTM equity for limits: can stop “in profit” that fees/slippage would erase
+  on exit — rejected.
+- Realized-only limits: understates open risk — rejected.
 - Assume last mark forever when stale: violates fail-safe.
+
+---
+
+## Decision 4a: `max_trades` semantics
+
+**Decision**:
+
+- `max_trades` limits **normal strategy-driven** simulated fills only (approved
+  BUY/SELL that originate from the strategy → controller → risk → execution
+  path, including ordinary strategy SELLs).
+- Maintain `strategy_fill_count` for that gate and `trade_count` for all fills
+  (strategy + forced).
+- When `strategy_fill_count` reaches `max_trades`, the session MUST enter the
+  stop path (`stop_reason = max_trades`): no further strategy-driven execution.
+- If that stop occurs while **LONG**, **one** forced safety close is still
+  allowed even if it makes `trade_count == max_trades + 1`. That fill MUST be
+  journaled with `is_forced_close=true` and MUST NOT enable any additional
+  strategy execution afterward.
+- If already FLAT when `max_trades` is reached, no forced close is needed.
+- Forced closes from other stop reasons (profit/loss, duration, emergency,
+  manual, unsafe-data escalate) follow the same “one safety close, journaled,
+  no further strategy exec” rule; they are not strategy-driven and do not
+  consume the `max_trades` budget, but they do increment `trade_count`.
+
+**Rationale**: Hard stop must be able to flatten without being blocked by the
+trade cap that triggered or coincided with termination.
+
+**Alternatives considered**:
+- Count forced closes against `max_trades` and block flatten: unsafe — rejected.
+- Unlimited forced closes: unnecessary; at most one flatten is required.
 
 ---
 
@@ -298,24 +379,26 @@ app.
 
 **Decision**:
 
-- Package all fills under `simulation/execution/`.
-- `ExecutionEngine` protocol with `execute(intent) -> FillResult`.
-- `SimulationExecutionEngine` is the only wired implementation for sessions.
-- `UnavailableRealMoneyExecution` always rejects with
-  `real_money_unavailable`.
-- Session `mode` is always `simulation` for creatable sessions; API MUST reject
-  create/start with `mode=real_money`.
-- Strategy, Controller, and Risk MUST depend on normalized market models +
-  execution port — never XT adapters or private APIs.
-- Future real XT execution would add a new engine behind the same port and a
-  separate explicit activation path (out of scope now).
+- Keep an `ExecutionEngine` protocol (`execute(intent) -> FillResult`) so
+  simulation fills stay behind a clear port.
+- Feature 003 ships **only** `SimulationExecutionEngine` — do **not** add a
+  real-money / XT execution implementation (stub or otherwise) in this feature.
+- Reject `mode=real_money` explicitly at the **API / session** boundary
+  (`real_money_unavailable`). Creatable sessions are always `simulation`.
+- Strategy, Controller, and Risk MUST depend on normalized market models + the
+  simulation execution path — never XT adapters or private APIs.
+- Future real XT execution remains **entirely out of scope** for Feature 003;
+  a later feature may add a separate engine behind the same port with an
+  explicit activation path.
 
-**Rationale**: Prevents accidental bypass when real money arrives later.
+**Rationale**: Preserve the abstraction without shipping unused real-money code
+paths that invite accidental wiring.
 
 **Alternatives considered**:
-- Single `ExecutionEngine` with a boolean `simulate=True`: easier to misuse.
-- Strategy calling market_data adapter directly: leaks XT risk into control
-  plane — forbidden.
+- `UnavailableRealMoneyExecution` class in-tree: unnecessary surface for 003 —
+  rejected in favor of API rejection only.
+- Boolean `simulate=True` on a shared engine: easier to misuse.
+- Strategy calling market_data adapter directly: forbidden.
 
 ---
 
@@ -358,18 +441,20 @@ tests.
 
 | Area | Assertions |
 |------|------------|
-| Accounting invariants | Equity/NET formulas; fee/slippage defaults; round-trip cash |
+| Accounting invariants | Mark vs liquidation equity; limit NET uses liquidation; fee/slippage defaults; round-trip cash |
+| No double-count | Hyp. liquidation costs not ledgered; actual forced close applies costs once |
 | Position sizing | `min(affordable, max_position_size)`; reject when cannot afford |
 | State transitions | Legal transitions only; no exec in STOPPED |
 | Duplicate candle | Second pass same `open_time` → no re-eval / no second fill |
 | Rejected signals | BUY while LONG, SELL while FLAT, stale data, max trades, etc. journaled |
 | HOLD | Decision journaled; no trade; no balance change |
-| Hard stops | Profit/loss (with unrealized), duration, max trades → STOPPING/STOPPED |
+| Hard stops | Profit/loss via liquidation NET, duration, max trades → STOPPING/STOPPED |
+| max_trades | Strategy fills capped; one forced close may make `trade_count = max_trades + 1` |
 | Unsafe market data | No fabricated prices; reject/suspend |
-| Forced close | Safe price → SELL + trade journal; unsafe → unsafe_unflattened |
+| Forced close | Safe price → SELL + `is_forced_close`; unsafe → unsafe_unflattened |
 | Recovery | RUNNING on boot → STOPPED `backend_restart`; worker not resumed |
 | Pipeline authority | Strategy cannot mutate balances without controller/risk/sim engine |
-| API mode | Real-money create/start rejected |
+| API mode | Real-money create/start rejected; no real-money engine module required |
 
 **Rationale**: Constitution XXVIII.
 
@@ -381,8 +466,8 @@ tests.
 `market_data.service` (or equivalent) returning normalized models — not XT
 adapter types. Align “safe” with Feature 002 quote freshness: prefer
 `observedAt` else `retrievedAt`; age ≤ **60 seconds** and payload valid → safe.
-STALE or missing/malformed → unsafe for execution and for MTM hard-limit
-equity when LONG.
+STALE or missing/malformed → unsafe for execution and for liquidation-equity
+hard-limit evaluation when LONG.
 
 Candles: use normalized OHLC; strategy uses closed bars only (Decision 9).
 Candle age does not redefine quote safety.
