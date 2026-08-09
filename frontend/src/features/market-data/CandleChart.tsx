@@ -68,6 +68,10 @@ export function CandleChart({
 
   useEffect(() => {
     if (!seriesRef.current) return;
+    if (loading || statusMessage || candles.length === 0) {
+      seriesRef.current.setData([]);
+      return;
+    }
     const data = candles.map((c) => ({
       time: Math.floor(c.openTime / 1000) as never,
       open: Number(c.open),
@@ -77,7 +81,9 @@ export function CandleChart({
     }));
     seriesRef.current.setData(data);
     chartRef.current?.timeScale().fitContent();
-  }, [candles]);
+  }, [candles, loading, statusMessage]);
+
+  const showChart = !loading && !statusMessage && candles.length > 0;
 
   return (
     <section className="candle-chart" aria-labelledby="candle-chart-title">
@@ -114,7 +120,7 @@ export function CandleChart({
         ref={containerRef}
         className="candle-chart__canvas"
         data-testid="candle-chart"
-        hidden={candles.length === 0}
+        hidden={!showChart}
       />
     </section>
   );

@@ -281,3 +281,11 @@ Task: "Prefs/favorites tests in frontend/src/__tests__/marketPrefs.test.tsx"
 - No XT credentials, private APIs, WebSockets, trading, sentiment, portfolio math, or SQL prefs
 - Propose Git commits; do not auto-commit (Constitution XXX)
 - Stop at checkpoints to validate each story independently
+
+---
+
+## Phase 9: Convergence
+
+**Purpose**: Close gaps found by `/speckit-converge` between Feature 002 artifacts and the current codebase
+
+- [x] T051 Invalidate/hide candlestick series on pair or interval change and on history fetch failure in `frontend/src/features/market-data/useMarketData.ts` and `frontend/src/features/market-data/CandleChart.tsx` so prior OHLC cannot remain visible under a newer selection or error state per Edge cases (pair/interval race), US3/AC3, FR-008, plan race-safe selection (`partial`)

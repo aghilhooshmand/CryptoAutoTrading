@@ -76,6 +76,8 @@ export function useMarketData(): MarketDataState {
     setStatus("loading");
     setQuoteError(null);
     setHistoryError(null);
+    // Invalidate prior OHLC immediately so a new pair/interval never keeps old candles visible.
+    setCandles(null);
 
     try {
       const [nextQuote, nextCandles] = await Promise.all([
@@ -90,10 +92,11 @@ export function useMarketData(): MarketDataState {
       if (controller.signal.aborted || requestId !== requestIdRef.current) return;
       const err = error as Error & { code?: string; status?: number };
       const code = err.code ?? "error";
+      // Never leave prior candles under a failed/newer selection.
+      setCandles(null);
       if (code === "unsupported" || err.status === 404) {
         setStatus("unsupported");
         setQuote(null);
-        setCandles(null);
         setQuoteError(err.message || "Unsupported trading pair");
         setHistoryError(err.message || "Unsupported trading pair");
       } else {
