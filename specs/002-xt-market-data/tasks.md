@@ -1,7 +1,7 @@
 # Tasks: XT Spot Market Data
 
 **Input**: Design documents from `/specs/002-xt-market-data/`
-
+     
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/, quickstart.md
 
 **Tests**: Included where plan.md requires automated verification (backend market-data contracts + XT adapter unit mapping; frontend prefs/status/race behavior). Chart library may be mocked in frontend tests.
