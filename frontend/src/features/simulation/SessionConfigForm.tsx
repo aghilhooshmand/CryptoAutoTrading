@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 
 import type { CandleInterval, CreateSessionRequest } from "../../services/simulationApi";
 import {
@@ -6,6 +6,7 @@ import {
   rateToPercentLabel,
   validateCapitalNesting,
 } from "../../services/simulationApi";
+import { InfoTooltip } from "./InfoTooltip";
 
 export interface SessionConfigValues {
   symbol: string;
@@ -41,6 +42,27 @@ const DEFAULTS: SessionConfigValues = {
   feeRate: "0.001",
   slippageRate: "0.0005",
 };
+
+function FieldLabel({
+  children,
+  tipLabel,
+  tipText,
+  tipTestId,
+}: {
+  children: ReactNode;
+  tipLabel?: string;
+  tipText?: string;
+  tipTestId?: string;
+}) {
+  return (
+    <span className="field-label-row">
+      <span>{children}</span>
+      {tipLabel && tipText ? (
+        <InfoTooltip label={tipLabel} text={tipText} testId={tipTestId} />
+      ) : null}
+    </span>
+  );
+}
 
 export function SessionConfigForm({
   disabled = false,
@@ -121,7 +143,7 @@ export function SessionConfigForm({
 
       <div className="sim-grid">
         <label>
-          Symbol
+          <FieldLabel>Symbol</FieldLabel>
           <input
             data-testid="sim-symbol"
             value={values.symbol}
@@ -131,7 +153,13 @@ export function SessionConfigForm({
           />
         </label>
         <label>
-          Timeframe
+          <FieldLabel
+            tipLabel="Timeframe"
+            tipText="Chart candle size. The strategy only decides after each candle finishes—not tick by tick."
+            tipTestId="tip-timeframe"
+          >
+            Timeframe
+          </FieldLabel>
           <select
             data-testid="sim-timeframe"
             value={values.timeframe}
@@ -145,7 +173,7 @@ export function SessionConfigForm({
           </select>
         </label>
         <label>
-          Starting capital (USDT)
+          <FieldLabel>Starting capital (USDT)</FieldLabel>
           <input
             data-testid="sim-starting"
             inputMode="decimal"
@@ -156,7 +184,13 @@ export function SessionConfigForm({
           />
         </label>
         <label>
-          Allocated capital (USDT)
+          <FieldLabel
+            tipLabel="Allocated capital"
+            tipText="How much of starting capital this session is allowed to use. Cannot be higher than starting capital."
+            tipTestId="tip-allocated"
+          >
+            Allocated capital (USDT)
+          </FieldLabel>
           <input
             data-testid="sim-allocated"
             inputMode="decimal"
@@ -167,7 +201,13 @@ export function SessionConfigForm({
           />
         </label>
         <label>
-          Max position size (USDT)
+          <FieldLabel
+            tipLabel="Max position size"
+            tipText="Largest single long trade size allowed. Cannot be higher than allocated capital."
+            tipTestId="tip-max-position"
+          >
+            Max position size (USDT)
+          </FieldLabel>
           <input
             data-testid="sim-max-position"
             inputMode="decimal"
@@ -178,7 +218,13 @@ export function SessionConfigForm({
           />
         </label>
         <label>
-          Target net profit rate
+          <FieldLabel
+            tipLabel="Target net profit rate"
+            tipText="Profit goal as a decimal of allocated capital (0.01 means 1%). Session stops when net profit hits the USDT amount shown."
+            tipTestId="tip-profit-rate"
+          >
+            Target net profit rate
+          </FieldLabel>
           <input
             data-testid="sim-profit-rate"
             inputMode="decimal"
@@ -192,7 +238,13 @@ export function SessionConfigForm({
           </span>
         </label>
         <label>
-          Max session loss rate
+          <FieldLabel
+            tipLabel="Max session loss rate"
+            tipText="Loss limit as a decimal of allocated capital (0.007 means 0.7%). Session stops if net loss reaches the USDT amount shown."
+            tipTestId="tip-loss-rate"
+          >
+            Max session loss rate
+          </FieldLabel>
           <input
             data-testid="sim-loss-rate"
             inputMode="decimal"
@@ -206,7 +258,13 @@ export function SessionConfigForm({
           </span>
         </label>
         <label>
-          Max trades (strategy fills)
+          <FieldLabel
+            tipLabel="Max trades"
+            tipText="How many strategy buys/sells are allowed. A safety close when stopping may add one extra trade."
+            tipTestId="tip-max-trades"
+          >
+            Max trades (strategy fills)
+          </FieldLabel>
           <input
             data-testid="sim-max-trades"
             inputMode="numeric"
@@ -217,7 +275,7 @@ export function SessionConfigForm({
           />
         </label>
         <label>
-          Duration (seconds)
+          <FieldLabel>Duration (seconds)</FieldLabel>
           <input
             data-testid="sim-duration"
             inputMode="numeric"
@@ -228,7 +286,13 @@ export function SessionConfigForm({
           />
         </label>
         <label>
-          Fee rate (optional)
+          <FieldLabel
+            tipLabel="Fee rate"
+            tipText="Simulated trading fee each time you buy or sell. Entered as a decimal (0.001 = 0.10%)."
+            tipTestId="tip-fee"
+          >
+            Fee rate (optional)
+          </FieldLabel>
           <input
             data-testid="sim-fee"
             inputMode="decimal"
@@ -238,7 +302,13 @@ export function SessionConfigForm({
           />
         </label>
         <label>
-          Slippage rate (optional)
+          <FieldLabel
+            tipLabel="Slippage rate"
+            tipText="Extra cost that makes fills a bit worse than the quote. Entered as a decimal (0.0005 = 0.05%)."
+            tipTestId="tip-slippage"
+          >
+            Slippage rate (optional)
+          </FieldLabel>
           <input
             data-testid="sim-slippage"
             inputMode="decimal"

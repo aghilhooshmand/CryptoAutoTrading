@@ -613,3 +613,90 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+.field-label-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.info-tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.info-tooltip__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  min-width: 1.5rem;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: help;
+  flex-shrink: 0;
+}
+
+.info-tooltip__trigger:hover,
+.info-tooltip__trigger:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: 1px;
+}
+
+.info-tooltip__icon {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.info-tooltip__bubble {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  top: calc(100% + 0.35rem);
+  width: min(16rem, 70vw);
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  background: #1c2430;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.35;
+  box-shadow: 0 6px 18px rgba(28, 36, 48, 0.18);
+}
+
+.sim-dl .info-tooltip__bubble,
+.sim-grid .info-tooltip__bubble {
+  left: auto;
+  right: 0;
+}
+
+.sim-action-with-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1 1 auto;
+}
+
+.sim-action-with-tip > button {
+  flex: 1 1 auto;
+}
+
+@media (max-width: 480px) {
+  .sim-action-with-tip {
+    width: 100%;
+  }
+
+  .info-tooltip__bubble {
+    width: min(18rem, calc(100vw - 2rem));
+  }
+}

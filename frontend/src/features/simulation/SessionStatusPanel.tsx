@@ -1,6 +1,32 @@
+import type { ReactNode } from "react";
+
 import type { SimulationSession } from "../../services/simulationApi";
 import { rateToPercentLabel } from "../../services/simulationApi";
+import { InfoTooltip } from "./InfoTooltip";
 import { SimulationBadge } from "./SimulationBadge";
+
+function Term({
+  children,
+  tipLabel,
+  tipText,
+  tipTestId,
+}: {
+  children: ReactNode;
+  tipLabel?: string;
+  tipText?: string;
+  tipTestId?: string;
+}) {
+  return (
+    <dt>
+      <span className="field-label-row">
+        <span>{children}</span>
+        {tipLabel && tipText ? (
+          <InfoTooltip label={tipLabel} text={tipText} testId={tipTestId} />
+        ) : null}
+      </span>
+    </dt>
+  );
+}
 
 interface Props {
   session: SimulationSession | null;
@@ -34,40 +60,58 @@ export function SessionStatusPanel({
       </div>
       <dl className="sim-dl">
         <div>
-          <dt>State</dt>
+          <Term>State</Term>
           <dd data-testid="sim-state">{session.state}</dd>
         </div>
         <div>
-          <dt>Symbol</dt>
+          <Term>Symbol</Term>
           <dd>{session.symbol}</dd>
         </div>
         <div>
-          <dt>Timeframe</dt>
+          <Term>Timeframe</Term>
           <dd>{session.timeframe}</dd>
         </div>
         <div>
-          <dt>Strategy</dt>
+          <Term
+            tipLabel="Strategy"
+            tipText="Built-in dual moving-average rule (EMA 9 vs EMA 21) that suggests buy, sell, or hold."
+            tipTestId="tip-strategy"
+          >
+            Strategy
+          </Term>
           <dd>{session.strategyId}</dd>
         </div>
         <div>
-          <dt>Cash</dt>
+          <Term>Cash</Term>
           <dd>{session.cash} USDT</dd>
         </div>
         <div>
-          <dt>Position</dt>
+          <Term
+            tipLabel="Position"
+            tipText="This simulation only holds cash or one full long. A sell always closes the whole position."
+            tipTestId="tip-position"
+          >
+            Position
+          </Term>
           <dd>
             {session.positionSide} / {session.positionQty}
           </dd>
         </div>
         <div>
-          <dt>Fills</dt>
+          <Term
+            tipLabel="Fills"
+            tipText="Strategy fills count toward max trades. Total can include one extra safety close when stopping."
+            tipTestId="tip-fills"
+          >
+            Fills
+          </Term>
           <dd>
             strategy {session.strategyFillCount} / max {session.maxTrades}; total{" "}
             {session.tradeCount}
           </dd>
         </div>
         <div>
-          <dt>Targets</dt>
+          <Term>Targets</Term>
           <dd>
             profit {rateToPercentLabel(session.targetNetProfitRate)} (
             {session.targetNetProfitAmount} USDT); loss{" "}
@@ -77,13 +121,19 @@ export function SessionStatusPanel({
         </div>
         {session.stopReason ? (
           <div>
-            <dt>Stop reason</dt>
+            <Term>Stop reason</Term>
             <dd data-testid="sim-stop-reason">{session.stopReason}</dd>
           </div>
         ) : null}
         {session.positionFlattenStatus && session.positionFlattenStatus !== "n/a" ? (
           <div>
-            <dt>Flatten</dt>
+            <Term
+              tipLabel="Flatten"
+              tipText='Shows if an open long was closed safely when the session stopped. "unsafe_unflattened" means no trustworthy exit price was available.'
+              tipTestId="tip-flatten"
+            >
+              Flatten
+            </Term>
             <dd>{session.positionFlattenStatus}</dd>
           </div>
         ) : null}
