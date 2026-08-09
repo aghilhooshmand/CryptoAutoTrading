@@ -32,6 +32,6 @@
 ## Notes
 
 - Validation iteration 1 (2026-08-09): All items pass.
-- Defaults documented in Assumptions (default pair preference, REST-only, 60s stale threshold, interval catalog deferred to planning).
+- Validation iteration 2 (2026-08-09): Post `/speckit-clarify` — USDT pair scope, STALE display, candle intervals, refresh, local persistence. Checklist items remain passing.
 - Constitution Market Sentiment Dashboard requirement remains future work; explicitly out of scope for Feature 002.
 - Adapter isolation stated as a product boundary (FR-010 / SC-007) without naming frameworks.
