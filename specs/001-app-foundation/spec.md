@@ -1,9 +1,9 @@
 # Feature Specification: Application Foundation
 
 **Feature Branch**: `001-app-foundation`
-
+  
 **Created**: 2026-08-08
-
+   
 **Status**: Draft
 
 **Input**: User description: "Create the initial project foundation for CryptoAutoTrading — minimal runnable application with placeholder Dashboard, Auto Trading, and Portfolio areas, responsive layout, backend health capability, and local developer runnability; no trading or market functionality."
