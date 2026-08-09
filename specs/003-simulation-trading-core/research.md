@@ -1,5 +1,5 @@
 # Research: Simulation Trading Core
-
+     
 **Feature**: `003-simulation-trading-core`  
 **Date**: 2026-08-09
 
