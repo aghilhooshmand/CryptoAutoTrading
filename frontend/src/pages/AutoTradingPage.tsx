@@ -1,15 +1,62 @@
+import { DecisionJournal } from "../features/simulation/DecisionJournal";
+import { EconomicsPanel } from "../features/simulation/EconomicsPanel";
+import { SessionConfigForm } from "../features/simulation/SessionConfigForm";
+import { SessionStatusPanel } from "../features/simulation/SessionStatusPanel";
+import { SimulationBadge } from "../features/simulation/SimulationBadge";
+import { TradeJournal } from "../features/simulation/TradeJournal";
+import { useSimulationSession } from "../features/simulation/useSimulationSession";
+
 export function AutoTradingPage() {
+  const {
+    session,
+    decisions,
+    trades,
+    busy,
+    error,
+    configDisabled,
+    createAndStart,
+    stop,
+    emergencyStop,
+  } = useSimulationSession();
+
   return (
-    <section className="page" aria-labelledby="auto-trading-title">
-      <h1 id="auto-trading-title">Auto Trading</h1>
+    <section className="page auto-trading-page" aria-labelledby="auto-trading-title">
+      <header className="sim-page-header">
+        <h1 id="auto-trading-title">Auto Trading</h1>
+        <SimulationBadge />
+      </header>
       <p>
-        This area is a foundation placeholder. Strategies, trading sessions, and
-        simulated or real orders are not available yet.
+        Configure and supervise one local simulation session. Market data comes
+        from public XT quotes; no exchange trading credentials are used.
       </p>
-      <p className="note">
-        Coming later: auto-trading controls behind the project risk and
-        execution pipeline. No trades are shown or mocked here.
-      </p>
+
+      <SessionConfigForm
+        disabled={configDisabled}
+        onSubmit={(body) => {
+          void createAndStart(body);
+        }}
+        error={error}
+      />
+
+      <SessionStatusPanel
+        session={session}
+        busy={busy}
+        onStop={() => {
+          void stop();
+        }}
+        onEmergencyStop={() => {
+          void emergencyStop();
+        }}
+      />
+
+      <EconomicsPanel
+        economics={session?.economics ?? null}
+        strategyFillCount={session?.strategyFillCount}
+        tradeCount={session?.tradeCount}
+      />
+
+      <DecisionJournal items={decisions} />
+      <TradeJournal items={trades} />
     </section>
   );
 }

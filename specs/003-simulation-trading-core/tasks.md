@@ -31,11 +31,11 @@ closed-candle evaluation.
 
 **Purpose**: Add simulation package layout, SQLAlchemy dependency, DB path, Vite proxy (no trading behavior yet)
 
-- [ ] T001 Create backend package dirs `backend/app/simulation/`, `backend/app/simulation/strategy/`, `backend/app/simulation/control/`, `backend/app/simulation/execution/`, `backend/app/db/`, and ensure `backend/tests/unit/`, `backend/tests/contract/`, `backend/tests/integration/` exist per plan.md
-- [ ] T002 [P] Create frontend dirs `frontend/src/features/simulation/` per plan.md
-- [ ] T003 [P] Add runtime `sqlalchemy` dependency in `backend/pyproject.toml` (keep pytest/httpx dev extras intact)
-- [ ] T004 [P] Ensure `backend/data/` exists for default SQLite file and add `backend/data/` (or `*.db`) to `.gitignore`
-- [ ] T005 Extend Vite proxy in `frontend/vite.config.ts` to forward `/simulation` (keep `/health` and `/market`) to `http://127.0.0.1:8000`
+- [x] T001 Create backend package dirs `backend/app/simulation/`, `backend/app/simulation/strategy/`, `backend/app/simulation/control/`, `backend/app/simulation/execution/`, `backend/app/db/`, and ensure `backend/tests/unit/`, `backend/tests/contract/`, `backend/tests/integration/` exist per plan.md
+- [x] T002 [P] Create frontend dirs `frontend/src/features/simulation/` per plan.md
+- [x] T003 [P] Add runtime `sqlalchemy` dependency in `backend/pyproject.toml` (keep pytest/httpx dev extras intact)
+- [x] T004 [P] Ensure `backend/data/` exists for default SQLite file and add `backend/data/` (or `*.db`) to `.gitignore`
+- [x] T005 Extend Vite proxy in `frontend/vite.config.ts` to forward `/simulation` (keep `/health` and `/market`) to `http://127.0.0.1:8000`
 
 ---
 
@@ -45,22 +45,22 @@ closed-candle evaluation.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T006 [P] Implement `Clock` protocol with `SystemClock` and `FakeClock` in `backend/app/simulation/clock.py`
-- [ ] T007 [P] Implement decimal/rate helpers in `backend/app/simulation/money.py` (fraction rates; fee/slippage defaults `0.001` / `0.0005`)
-- [ ] T008 [P] Implement fill math, mark equity, liquidation equity, and Session NET helpers in `backend/app/simulation/accounting.py` per research (no double-count of hyp. exit costs)
-- [ ] T009 [P] Implement full-BUY sizing `min(current_cash/(1+fee_rate), allocated_capital, max_position_size)` in `backend/app/simulation/position_sizing.py`
-- [ ] T010 [P] Implement session state transitions `CONFIGURED → RUNNING → STOPPING → STOPPED` in `backend/app/simulation/state_machine.py`
-- [ ] T011 [P] Define `ExecutionEngine` protocol in `backend/app/simulation/execution/port.py` and `SimulationExecutionEngine` only in `backend/app/simulation/execution/simulation.py` (reject real_money at API later; no real-money engine module)
-- [ ] T012 Configure SQLite engine/session factory and `SIMULATION_DB_PATH` in `backend/app/db/session.py`
-- [ ] T013 Define SQLAlchemy tables for sessions, decision journal, trade journal in `backend/app/db/models.py` per data-model.md (include `strategy_fill_count`, profit/loss **rates and amounts**, flatten status, `last_processed_candle_open_time`)
-- [ ] T014 Implement startup recovery `RUNNING|STOPPING → STOPPED` with `backend_restart` and `unsafe_unflattened` when long (no auto-flatten) in `backend/app/simulation/recovery.py`
-- [ ] T015 Wire FastAPI lifespan in `backend/app/main.py`: create tables, run recovery, keep `/health` and `/market` working
-- [ ] T016 Implement session create/validation skeleton in `backend/app/simulation/session_service.py` enforcing `allocated_capital ≤ starting_capital`, `max_position_size ≤ allocated_capital`, derive/store profit/loss amounts from rates, reject `mode=real_money`, defaults for fee/slippage
-- [ ] T017 [P] Add package markers `backend/app/simulation/__init__.py`, `strategy/__init__.py`, `control/__init__.py`, `execution/__init__.py`, `backend/app/db/__init__.py`
-- [ ] T018 [P] Create typed frontend client `frontend/src/services/simulationApi.ts` for `/simulation/*` per `specs/003-simulation-trading-core/contracts/simulation-api.md`
-- [ ] T019 [P] Add unit tests for accounting (mark vs liquidation; no double-count) in `backend/tests/unit/test_accounting.py`
-- [ ] T020 [P] Add unit tests for position sizing bounds in `backend/tests/unit/test_position_sizing.py`
-- [ ] T021 [P] Add unit tests for state machine + recovery in `backend/tests/unit/test_state_machine.py` and `backend/tests/unit/test_recovery.py`
+- [x] T006 [P] Implement `Clock` protocol with `SystemClock` and `FakeClock` in `backend/app/simulation/clock.py`
+- [x] T007 [P] Implement decimal/rate helpers in `backend/app/simulation/money.py` (fraction rates; fee/slippage defaults `0.001` / `0.0005`)
+- [x] T008 [P] Implement fill math, mark equity, liquidation equity, and Session NET helpers in `backend/app/simulation/accounting.py` per research (no double-count of hyp. exit costs)
+- [x] T009 [P] Implement full-BUY sizing `min(current_cash/(1+fee_rate), allocated_capital, max_position_size)` in `backend/app/simulation/position_sizing.py`
+- [x] T010 [P] Implement session state transitions `CONFIGURED → RUNNING → STOPPING → STOPPED` in `backend/app/simulation/state_machine.py`
+- [x] T011 [P] Define `ExecutionEngine` protocol in `backend/app/simulation/execution/port.py` and `SimulationExecutionEngine` only in `backend/app/simulation/execution/simulation.py` (reject real_money at API later; no real-money engine module)
+- [x] T012 Configure SQLite engine/session factory and `SIMULATION_DB_PATH` in `backend/app/db/session.py`
+- [x] T013 Define SQLAlchemy tables for sessions, decision journal, trade journal in `backend/app/db/models.py` per data-model.md (include `strategy_fill_count`, profit/loss **rates and amounts**, flatten status, `last_processed_candle_open_time`)
+- [x] T014 Implement startup recovery `RUNNING|STOPPING → STOPPED` with `backend_restart` and `unsafe_unflattened` when long (no auto-flatten) in `backend/app/simulation/recovery.py`
+- [x] T015 Wire FastAPI lifespan in `backend/app/main.py`: create tables, run recovery, keep `/health` and `/market` working
+- [x] T016 Implement session create/validation skeleton in `backend/app/simulation/session_service.py` enforcing `allocated_capital ≤ starting_capital`, `max_position_size ≤ allocated_capital`, derive/store profit/loss amounts from rates, reject `mode=real_money`, defaults for fee/slippage
+- [x] T017 [P] Add package markers `backend/app/simulation/__init__.py`, `strategy/__init__.py`, `control/__init__.py`, `execution/__init__.py`, `backend/app/db/__init__.py`
+- [x] T018 [P] Create typed frontend client `frontend/src/services/simulationApi.ts` for `/simulation/*` per `specs/003-simulation-trading-core/contracts/simulation-api.md`
+- [x] T019 [P] Add unit tests for accounting (mark vs liquidation; no double-count) in `backend/tests/unit/test_accounting.py`
+- [x] T020 [P] Add unit tests for position sizing bounds in `backend/tests/unit/test_position_sizing.py`
+- [x] T021 [P] Add unit tests for state machine + recovery in `backend/tests/unit/test_state_machine.py` and `backend/tests/unit/test_recovery.py`
 
 **Checkpoint**: Foundation ready — DB/recovery/clock/accounting/sizing exist; frontend can call typed client; no XT types in simulation package
 
@@ -76,18 +76,18 @@ closed-candle evaluation.
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T022 [P] [US1] Contract tests for `POST /simulation/sessions`, `POST .../start`, `GET .../active` (validation, `real_money_unavailable`, `session_already_active`, derived amounts) in `backend/tests/contract/test_simulation_api.py`
-- [ ] T023 [P] [US1] Frontend tests for config validation display (allocated ≤ starting, max size ≤ allocated, % + amount) in `frontend/src/__tests__/simulationConfig.test.tsx`
+- [x] T022 [P] [US1] Contract tests for `POST /simulation/sessions`, `POST .../start`, `GET .../active` (validation, `real_money_unavailable`, `session_already_active`, derived amounts) in `backend/tests/contract/test_simulation_api.py`
+- [x] T023 [P] [US1] Frontend tests for config validation display (allocated ≤ starting, max size ≤ allocated, % + amount) in `frontend/src/__tests__/simulationConfig.test.tsx`
 
 ### Implementation for User Story 1
 
-- [ ] T024 [US1] Implement create/start/active/get session HTTP routes in `backend/app/api/simulation.py` per contracts; mount router in `backend/app/main.py`
-- [ ] T025 [US1] Complete `session_service.py` create/start/get/active: one active session, derive `targetNetProfitAmount`/`maxSessionLossAmount`, set `cash=starting_capital`, state transitions
-- [ ] T026 [P] [US1] Implement `SimulationBadge.tsx` (clear SIMULATION labeling) in `frontend/src/features/simulation/SimulationBadge.tsx`
-- [ ] T027 [US1] Implement `SessionConfigForm.tsx` collecting pair, starting/allocated capital, max position size, profit/loss **rates** with live derived USDT amounts, max trades, duration, timeframe, optional fee/slippage overrides
-- [ ] T028 [US1] Implement `SessionStatusPanel.tsx` + `useSimulationSession.ts` for create/start/active polling/status
-- [ ] T029 [US1] Replace Auto Trading placeholder in `frontend/src/pages/AutoTradingPage.tsx` with config/start/status UI; ensure real-money controls unavailable/non-functional
-- [ ] T030 [US1] Run T022–T023 tests and fix until passing; smoke create/start from quickstart scenario 1
+- [x] T024 [US1] Implement create/start/active/get session HTTP routes in `backend/app/api/simulation.py` per contracts; mount router in `backend/app/main.py`
+- [x] T025 [US1] Complete `session_service.py` create/start/get/active: one active session, derive `targetNetProfitAmount`/`maxSessionLossAmount`, set `cash=starting_capital`, state transitions
+- [x] T026 [P] [US1] Implement `SimulationBadge.tsx` (clear SIMULATION labeling) in `frontend/src/features/simulation/SimulationBadge.tsx`
+- [x] T027 [US1] Implement `SessionConfigForm.tsx` collecting pair, starting/allocated capital, max position size, profit/loss **rates** with live derived USDT amounts, max trades, duration, timeframe, optional fee/slippage overrides
+- [x] T028 [US1] Implement `SessionStatusPanel.tsx` + `useSimulationSession.ts` for create/start/active polling/status
+- [x] T029 [US1] Replace Auto Trading placeholder in `frontend/src/pages/AutoTradingPage.tsx` with config/start/status UI; ensure real-money controls unavailable/non-functional
+- [x] T030 [US1] Run T022–T023 tests and fix until passing; smoke create/start from quickstart scenario 1
 
 **Checkpoint**: MVP — one simulation session can be configured and started with clear SIMULATION labeling
 
@@ -101,21 +101,21 @@ closed-candle evaluation.
 
 ### Tests for User Story 2
 
-- [ ] T031 [P] [US2] Unit tests for dual EMA crossover + warm-up HOLD in `backend/tests/unit/test_dual_ema.py`
-- [ ] T032 [P] [US2] Unit tests for duplicate-candle guard in `backend/tests/unit/test_duplicate_candle.py`
-- [ ] T033 [P] [US2] Unit tests for risk/controller rejects (BUY while long, SELL while flat, stale data) in `backend/tests/unit/test_risk_rejects.py`
-- [ ] T034 [P] [US2] Integration test for pipeline with FakeClock + fake market data in `backend/tests/integration/test_simulation_pipeline.py`
+- [x] T031 [P] [US2] Unit tests for dual EMA crossover + warm-up HOLD in `backend/tests/unit/test_dual_ema.py`
+- [x] T032 [P] [US2] Unit tests for duplicate-candle guard in `backend/tests/unit/test_duplicate_candle.py`
+- [x] T033 [P] [US2] Unit tests for risk/controller rejects (BUY while long, SELL while flat, stale data) in `backend/tests/unit/test_risk_rejects.py`
+- [x] T034 [P] [US2] Integration test for pipeline with FakeClock + fake market data in `backend/tests/integration/test_simulation_pipeline.py`
 
 ### Implementation for User Story 2
 
-- [ ] T035 [P] [US2] Implement Strategy protocol in `backend/app/simulation/strategy/base.py` and dual EMA(9)/EMA(21) in `backend/app/simulation/strategy/dual_ema.py` (closed closes only)
-- [ ] T036 [P] [US2] Implement Trading Controller in `backend/app/simulation/control/controller.py`
-- [ ] T037 [P] [US2] Implement Risk Manager in `backend/app/simulation/control/risk.py` (long-only full position, limits, stale/unsafe quote using Feature 002 60s safety)
-- [ ] T038 [US2] Implement `SimulationExecutionEngine` fills (adverse slippage, fees, cash/position updates, trade journal row, strategy_fill_count) in `backend/app/simulation/execution/simulation.py`
-- [ ] T039 [US2] Implement pipeline orchestration (MD via Feature 002 service only → strategy → control → risk → exec; Decision Journal for HOLD/approve/reject) in `backend/app/simulation/pipeline.py`
-- [ ] T040 [US2] Implement RUNNING worker loop (poll closed candles via Clock; process newest closed bar once; persist `last_processed_candle_open_time`) in `backend/app/simulation/worker.py`; start/stop worker from session_service on RUNNING/STOPPED
-- [ ] T041 [US2] Ensure simulation code imports only normalized `market_data` models/service — never XT adapter types — across `pipeline.py` / `worker.py` / `risk.py`
-- [ ] T042 [US2] Run T031–T034 tests and fix until passing
+- [x] T035 [P] [US2] Implement Strategy protocol in `backend/app/simulation/strategy/base.py` and dual EMA(9)/EMA(21) in `backend/app/simulation/strategy/dual_ema.py` (closed closes only)
+- [x] T036 [P] [US2] Implement Trading Controller in `backend/app/simulation/control/controller.py`
+- [x] T037 [P] [US2] Implement Risk Manager in `backend/app/simulation/control/risk.py` (long-only full position, limits, stale/unsafe quote using Feature 002 60s safety)
+- [x] T038 [US2] Implement `SimulationExecutionEngine` fills (adverse slippage, fees, cash/position updates, trade journal row, strategy_fill_count) in `backend/app/simulation/execution/simulation.py`
+- [x] T039 [US2] Implement pipeline orchestration (MD via Feature 002 service only → strategy → control → risk → exec; Decision Journal for HOLD/approve/reject) in `backend/app/simulation/pipeline.py`
+- [x] T040 [US2] Implement RUNNING worker loop (poll closed candles via Clock; process newest closed bar once; persist `last_processed_candle_open_time`) in `backend/app/simulation/worker.py`; start/stop worker from session_service on RUNNING/STOPPED
+- [x] T041 [US2] Ensure simulation code imports only normalized `market_data` models/service — never XT adapter types — across `pipeline.py` / `worker.py` / `risk.py`
+- [x] T042 [US2] Run T031–T034 tests and fix until passing
 
 **Checkpoint**: Closed-candle pipeline executes simulated trades only through controller/risk
 
@@ -129,18 +129,18 @@ closed-candle evaluation.
 
 ### Tests for User Story 3
 
-- [ ] T043 [P] [US3] Extend contract tests for `GET .../decisions`, `GET .../trades`, session economics fields in `backend/tests/contract/test_simulation_api.py`
-- [ ] T044 [P] [US3] Frontend tests that economics distinguish net vs mark fields and journals render in `frontend/src/__tests__/simulationJournals.test.tsx`
+- [x] T043 [P] [US3] Extend contract tests for `GET .../decisions`, `GET .../trades`, session economics fields in `backend/tests/contract/test_simulation_api.py`
+- [x] T044 [P] [US3] Frontend tests that economics distinguish net vs mark fields and journals render in `frontend/src/__tests__/simulationJournals.test.tsx`
 
 ### Implementation for User Story 3
 
-- [ ] T045 [US3] Add decisions/trades/economics query methods in `backend/app/simulation/session_service.py` and routes in `backend/app/api/simulation.py`
-- [ ] T046 [P] [US3] Implement `DecisionJournal.tsx` in `frontend/src/features/simulation/DecisionJournal.tsx`
-- [ ] T047 [P] [US3] Implement `TradeJournal.tsx` in `frontend/src/features/simulation/TradeJournal.tsx`
-- [ ] T048 [US3] Implement `EconomicsPanel.tsx` showing gross, fees, slippage, liquidation `netPnl`, mark equity/unrealized, rates+amounts, trade/strategy fill counts
-- [ ] T049 [US3] Wire journals/economics into `AutoTradingPage.tsx` / `useSimulationSession.ts`
-- [ ] T050 [US3] Optionally expose thin recent-session summary only on `frontend/src/pages/PortfolioPage.tsx` (not a full portfolio product)
-- [ ] T051 [US3] Run T043–T044 tests and fix until passing
+- [x] T045 [US3] Add decisions/trades/economics query methods in `backend/app/simulation/session_service.py` and routes in `backend/app/api/simulation.py`
+- [x] T046 [P] [US3] Implement `DecisionJournal.tsx` in `frontend/src/features/simulation/DecisionJournal.tsx`
+- [x] T047 [P] [US3] Implement `TradeJournal.tsx` in `frontend/src/features/simulation/TradeJournal.tsx`
+- [x] T048 [US3] Implement `EconomicsPanel.tsx` showing gross, fees, slippage, liquidation `netPnl`, mark equity/unrealized, rates+amounts, trade/strategy fill counts
+- [x] T049 [US3] Wire journals/economics into `AutoTradingPage.tsx` / `useSimulationSession.ts`
+- [x] T050 [US3] Optionally expose thin recent-session summary only on `frontend/src/pages/PortfolioPage.tsx` (not a full portfolio product)
+- [x] T051 [US3] Run T043–T044 tests and fix until passing
 
 **Checkpoint**: Journals and economics are inspectable and consistent with accounting rules
 
@@ -154,18 +154,18 @@ closed-candle evaluation.
 
 ### Tests for User Story 4
 
-- [ ] T052 [P] [US4] Unit tests for forced close + unsafe_unflattened + no double-count in `backend/tests/unit/test_forced_close.py`
-- [ ] T053 [P] [US4] Unit tests for max_trades strategy cap with one forced-close overflow in `backend/tests/unit/test_max_trades.py`
-- [ ] T054 [P] [US4] Contract/integration tests for stop, emergency-stop, profit/loss/duration stops in `backend/tests/contract/test_simulation_api.py` and/or `backend/tests/integration/test_simulation_pipeline.py`
+- [x] T052 [P] [US4] Unit tests for forced close + unsafe_unflattened + no double-count in `backend/tests/unit/test_forced_close.py`
+- [x] T053 [P] [US4] Unit tests for max_trades strategy cap with one forced-close overflow in `backend/tests/unit/test_max_trades.py`
+- [x] T054 [P] [US4] Contract/integration tests for stop, emergency-stop, profit/loss/duration stops in `backend/tests/contract/test_simulation_api.py` and/or `backend/tests/integration/test_simulation_pipeline.py`
 
 ### Implementation for User Story 4
 
-- [ ] T055 [US4] Implement limit evaluation (liquidation NET vs stored amounts; duration; max strategy fills) in `backend/app/simulation/session_service.py` / `worker.py` / `risk.py`
-- [ ] T056 [US4] Implement stop / emergency-stop / manual-stop paths: `RUNNING → STOPPING → STOPPED`, shared forced-close helper (safe price → fill+journal `is_forced_close`; else `unsafe_unflattened`) including **manual stop**
-- [ ] T057 [US4] Add `POST .../stop` and `POST .../emergency-stop` routes in `backend/app/api/simulation.py`
-- [ ] T058 [US4] Add Stop and Emergency Stop controls to `SessionStatusPanel.tsx` / `AutoTradingPage.tsx` with clear SIMULATION context
-- [ ] T059 [US4] Enforce no new strategy-driven execution after STOPPING/STOPPED; worker exits cleanly
-- [ ] T060 [US4] Run T052–T054 tests and fix until passing; validate quickstart hard-stop scenarios
+- [x] T055 [US4] Implement limit evaluation (liquidation NET vs stored amounts; duration; max strategy fills) in `backend/app/simulation/session_service.py` / `worker.py` / `risk.py`
+- [x] T056 [US4] Implement stop / emergency-stop / manual-stop paths: `RUNNING → STOPPING → STOPPED`, shared forced-close helper (safe price → fill+journal `is_forced_close`; else `unsafe_unflattened`) including **manual stop**
+- [x] T057 [US4] Add `POST .../stop` and `POST .../emergency-stop` routes in `backend/app/api/simulation.py`
+- [x] T058 [US4] Add Stop and Emergency Stop controls to `SessionStatusPanel.tsx` / `AutoTradingPage.tsx` with clear SIMULATION context
+- [x] T059 [US4] Enforce no new strategy-driven execution after STOPPING/STOPPED; worker exits cleanly
+- [x] T060 [US4] Run T052–T054 tests and fix until passing; validate quickstart hard-stop scenarios
 
 **Checkpoint**: All stop authorities enforceable; forced close rules consistent
 
@@ -179,12 +179,12 @@ closed-candle evaluation.
 
 ### Tests for User Story 5
 
-- [ ] T061 [P] [US5] Frontend responsive/smoke tests for primary Auto Trading controls at narrow viewport in `frontend/src/__tests__/simulationResponsive.test.tsx`
+- [x] T061 [P] [US5] Frontend responsive/smoke tests for primary Auto Trading controls at narrow viewport in `frontend/src/__tests__/simulationResponsive.test.tsx`
 
 ### Implementation for User Story 5
 
-- [ ] T062 [US5] Adjust Auto Trading simulation layout/CSS so config, status, economics entry, journals entry, stop, and emergency-stop remain usable at ~375px in `frontend/src/pages/AutoTradingPage.tsx` and related feature components
-- [ ] T063 [US5] Run T061 and fix until passing; manual check SC-009
+- [x] T062 [US5] Adjust Auto Trading simulation layout/CSS so config, status, economics entry, journals entry, stop, and emergency-stop remain usable at ~375px in `frontend/src/pages/AutoTradingPage.tsx` and related feature components
+- [x] T063 [US5] Run T061 and fix until passing; manual check SC-009
 
 **Checkpoint**: Phone-width supervision usable
 
@@ -194,11 +194,11 @@ closed-candle evaluation.
 
 **Purpose**: Docs, end-to-end quickstart, scope guardrails
 
-- [ ] T064 [P] Update root `README.md` with simulation quickstart pointers (no credentials; SQLite path; `/auto-trading`)
-- [ ] T065 [P] Sync `specs/003-simulation-trading-core/research.md`, `data-model.md`, `contracts/simulation-api.md`, and `quickstart.md` validation notes with latest spec clarifications (capital nesting, manual stop flatten, HOLD journal) if any wording still lags
-- [ ] T066 Run full backend `pytest` and frontend test suite; fix regressions
-- [ ] T067 Walk `specs/003-simulation-trading-core/quickstart.md` scenarios 1–7 locally and record any gaps as fixes
-- [ ] T068 Review deliverable for out-of-scope leaks (real XT trading APIs, WebSockets, multi-session, multi-strategy, sentiment, real-money engine) per FR-022 / SC-007–SC-008
+- [x] T064 [P] Update root `README.md` with simulation quickstart pointers (no credentials; SQLite path; `/auto-trading`)
+- [x] T065 [P] Sync `specs/003-simulation-trading-core/research.md`, `data-model.md`, `contracts/simulation-api.md`, and `quickstart.md` validation notes with latest spec clarifications (capital nesting, manual stop flatten, HOLD journal) if any wording still lags
+- [x] T066 Run full backend `pytest` and frontend test suite; fix regressions
+- [x] T067 Walk `specs/003-simulation-trading-core/quickstart.md` scenarios 1–7 locally and record any gaps as fixes
+- [x] T068 Review deliverable for out-of-scope leaks (real XT trading APIs, WebSockets, multi-session, multi-strategy, sentiment, real-money engine) per FR-022 / SC-007–SC-008
 
 ---
 
@@ -282,4 +282,4 @@ Task: "risk.py"
 - No real-money execution module in Feature 003 — reject at API/session boundary
 - Market data only via Feature 002 normalized boundary
 - Commit after each task or logical group when the user requests commits
-- Format validation: all tasks use `- [ ] Txxx ...` with file paths; story tasks include `[USn]`
+- Format validation: all tasks use `- [x] Txxx ...` with file paths; story tasks include `[USn]`

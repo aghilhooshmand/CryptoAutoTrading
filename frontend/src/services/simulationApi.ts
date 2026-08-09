@@ -1,0 +1,240 @@
+/** Typed client for Feature 003 `/simulation` contracts. */
+
+export type SessionState = "CONFIGURED" | "RUNNING" | "STOPPING" | "STOPPED";
+
+export type CandleInterval = "15m" | "1h" | "4h" | "1d";
+
+export interface SessionEconomics {
+  startEquity: string;
+  cash: string;
+  markEquity: string | null;
+  markNetPnl: string | null;
+  unrealizedGross: string | null;
+  liquidationEquity: string | null;
+  grossPnl: string;
+  fees: string;
+  slippageCost: string;
+  netPnl: string | null;
+  targetNetProfitRate: string;
+  targetNetProfitAmount: string;
+  maxSessionLossRate: string;
+  maxSessionLossAmount: string;
+  markPrice: string | null;
+  markSafe: boolean;
+}
+
+export interface SimulationSession {
+  id: string;
+  mode: string;
+  state: SessionState;
+  symbol: string;
+  timeframe: string;
+  strategyId: string;
+  startingCapital: string;
+  allocatedCapital: string;
+  maxPositionSize: string;
+  targetNetProfitRate: string;
+  maxSessionLossRate: string;
+  targetNetProfitAmount: string;
+  maxSessionLossAmount: string;
+  maxTrades: number;
+  durationSeconds: number;
+  feeRate: string;
+  slippageRate: string;
+  cash: string;
+  positionSide: string;
+  positionQty: string;
+  tradeCount: number;
+  strategyFillCount: number;
+  startedAt: string | null;
+  stoppedAt: string | null;
+  stopReason: string | null;
+  positionFlattenStatus: string;
+  lastProcessedCandleOpenTime: number | null;
+  economics: SessionEconomics;
+  label: "SIMULATION";
+}
+
+export interface CreateSessionRequest {
+  mode?: string;
+  symbol: string;
+  timeframe: CandleInterval;
+  startingCapital: string;
+  allocatedCapital?: string;
+  maxPositionSize: string;
+  targetNetProfitRate: string;
+  maxSessionLossRate: string;
+  maxTrades: number;
+  durationSeconds: number;
+  feeRate?: string;
+  slippageRate?: string;
+}
+
+export interface DecisionItem {
+  id: string;
+  createdAt: string;
+  candleOpenTime: number | null;
+  signal: string;
+  outcome: string;
+  reasonCode: string | null;
+  reasonMessage: string | null;
+  fastEma: string | null;
+  slowEma: string | null;
+}
+
+export interface TradeItem {
+  id: string;
+  createdAt: string;
+  symbol: string;
+  side: string;
+  qty: string;
+  referencePrice: string;
+  fillPrice: string;
+  fee: string;
+  slippageCost: string;
+  notional: string;
+  cashDelta: string;
+  isForcedClose: boolean;
+  candleOpenTime: number | null;
+}
+
+export interface SimulationApiError {
+  code: string;
+  message: string;
+}
+
+async function parseJson<T>(response: Response): Promise<T> {
+  const body = await response.json();
+  if (!response.ok) {
+    const nested =
+      (body as { detail?: { error?: SimulationApiError } })?.detail?.error ??
+      (body as { error?: SimulationApiError })?.error;
+    const error = new Error(nested?.message ?? `Request failed (${response.status})`);
+    (error as Error & { code?: string; status?: number }).code =
+      nested?.code ?? "simulation_error";
+    (error as Error & { code?: string; status?: number }).status = response.status;
+    throw error;
+  }
+  return body as T;
+}
+
+export async function createSession(
+  body: CreateSessionRequest,
+  signal?: AbortSignal,
+): Promise<SimulationSession> {
+  const response = await fetch("/simulation/sessions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mode: "simulation", ...body }),
+    signal,
+  });
+  return parseJson<SimulationSession>(response);
+}
+
+export async function startSession(
+  id: string,
+  signal?: AbortSignal,
+): Promise<SimulationSession> {
+  const response = await fetch(`/simulation/sessions/${id}/start`, {
+    method: "POST",
+    signal,
+  });
+  return parseJson<SimulationSession>(response);
+}
+
+export async function stopSession(
+  id: string,
+  signal?: AbortSignal,
+): Promise<SimulationSession> {
+  const response = await fetch(`/simulation/sessions/${id}/stop`, {
+    method: "POST",
+    signal,
+  });
+  return parseJson<SimulationSession>(response);
+}
+
+export async function emergencyStopSession(
+  id: string,
+  signal?: AbortSignal,
+): Promise<SimulationSession> {
+  const response = await fetch(`/simulation/sessions/${id}/emergency-stop`, {
+    method: "POST",
+    signal,
+  });
+  return parseJson<SimulationSession>(response);
+}
+
+export async function fetchActiveSession(
+  signal?: AbortSignal,
+): Promise<SimulationSession | null> {
+  const response = await fetch("/simulation/sessions/active", { signal });
+  const data = await parseJson<{ session: SimulationSession | null }>(response);
+  return data.session;
+}
+
+export async function fetchSession(
+  id: string,
+  signal?: AbortSignal,
+): Promise<SimulationSession> {
+  const response = await fetch(`/simulation/sessions/${id}`, { signal });
+  return parseJson<SimulationSession>(response);
+}
+
+export async function fetchDecisions(
+  id: string,
+  limit = 100,
+  signal?: AbortSignal,
+): Promise<DecisionItem[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  const response = await fetch(`/simulation/sessions/${id}/decisions?${params}`, {
+    signal,
+  });
+  const data = await parseJson<{ items: DecisionItem[] }>(response);
+  return data.items;
+}
+
+export async function fetchTrades(
+  id: string,
+  limit = 100,
+  signal?: AbortSignal,
+): Promise<TradeItem[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  const response = await fetch(`/simulation/sessions/${id}/trades?${params}`, {
+    signal,
+  });
+  const data = await parseJson<{ items: TradeItem[] }>(response);
+  return data.items;
+}
+
+/** Derive absolute USDT amount from allocated capital and fraction rate. */
+export function deriveAmount(allocated: string, rate: string): string | null {
+  const a = Number(allocated);
+  const r = Number(rate);
+  if (!Number.isFinite(a) || !Number.isFinite(r) || a <= 0 || r < 0) return null;
+  const amount = a * r;
+  if (!Number.isFinite(amount)) return null;
+  return amount.toFixed(8).replace(/\.?0+$/, "") || "0";
+}
+
+export function rateToPercentLabel(rate: string): string {
+  const r = Number(rate);
+  if (!Number.isFinite(r)) return "—";
+  return `${(r * 100).toFixed(2)}%`;
+}
+
+export function validateCapitalNesting(
+  starting: string,
+  allocated: string,
+  maxPosition: string,
+): string | null {
+  const s = Number(starting);
+  const a = Number(allocated);
+  const m = Number(maxPosition);
+  if (![s, a, m].every((n) => Number.isFinite(n))) {
+    return "Capital fields must be valid numbers.";
+  }
+  if (!(m > 0 && m <= a && a <= s)) {
+    return "Require 0 < max position size ≤ allocated capital ≤ starting capital.";
+  }
+  return null;
+}

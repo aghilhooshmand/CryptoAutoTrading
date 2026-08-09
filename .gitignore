@@ -33,3 +33,7 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
+
+# Feature 003 simulation SQLite
+backend/data/
+*.db

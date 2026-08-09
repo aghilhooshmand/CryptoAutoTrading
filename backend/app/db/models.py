@@ -1,0 +1,89 @@
+"""SQLAlchemy tables for simulation sessions and journals."""
+
+from __future__ import annotations
+
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, Integer, String, Text
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class SimulationSessionRow(Base):
+    __tablename__ = "simulation_sessions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    mode: Mapped[str] = mapped_column(String(32), default="simulation")
+    state: Mapped[str] = mapped_column(String(32), default="CONFIGURED")
+    symbol: Mapped[str] = mapped_column(String(64))
+    timeframe: Mapped[str] = mapped_column(String(8))
+    starting_capital: Mapped[str] = mapped_column(String(64))
+    allocated_capital: Mapped[str] = mapped_column(String(64))
+    max_position_size: Mapped[str] = mapped_column(String(64))
+    target_net_profit_rate: Mapped[str] = mapped_column(String(64))
+    max_session_loss_rate: Mapped[str] = mapped_column(String(64))
+    target_net_profit_amount: Mapped[str] = mapped_column(String(64))
+    max_session_loss_amount: Mapped[str] = mapped_column(String(64))
+    max_trades: Mapped[int] = mapped_column(Integer)
+    duration_seconds: Mapped[int] = mapped_column(Integer)
+    fee_rate: Mapped[str] = mapped_column(String(64))
+    slippage_rate: Mapped[str] = mapped_column(String(64))
+    strategy_id: Mapped[str] = mapped_column(String(64), default="dual_ema_9_21")
+    cash: Mapped[str] = mapped_column(String(64))
+    position_side: Mapped[str] = mapped_column(String(16), default="flat")
+    position_qty: Mapped[str] = mapped_column(String(64), default="0")
+    entry_ref_price: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    entry_fill_price: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    entry_fee: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    entry_slippage_cost: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    cost_basis: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    trade_count: Mapped[int] = mapped_column(Integer, default=0)
+    strategy_fill_count: Mapped[int] = mapped_column(Integer, default=0)
+    cumulative_fees: Mapped[str] = mapped_column(String(64), default="0")
+    cumulative_slippage_cost: Mapped[str] = mapped_column(String(64), default="0")
+    cumulative_gross_realized: Mapped[str] = mapped_column(String(64), default="0")
+    last_processed_candle_open_time: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    stopped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    stop_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    position_flatten_status: Mapped[str] = mapped_column(String(32), default="n/a")
+    unsafe_quote_streak: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class DecisionJournalRow(Base):
+    __tablename__ = "decision_journal"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(36), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    candle_open_time: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    signal: Mapped[str] = mapped_column(String(8))
+    outcome: Mapped[str] = mapped_column(String(16))
+    reason_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    reason_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fast_ema: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    slow_ema: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class TradeJournalRow(Base):
+    __tablename__ = "trade_journal"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(36), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    symbol: Mapped[str] = mapped_column(String(64))
+    side: Mapped[str] = mapped_column(String(8))
+    qty: Mapped[str] = mapped_column(String(64))
+    reference_price: Mapped[str] = mapped_column(String(64))
+    fill_price: Mapped[str] = mapped_column(String(64))
+    fee: Mapped[str] = mapped_column(String(64))
+    slippage_cost: Mapped[str] = mapped_column(String(64))
+    notional: Mapped[str] = mapped_column(String(64))
+    cash_delta: Mapped[str] = mapped_column(String(64))
+    is_forced_close: Mapped[bool] = mapped_column(Boolean, default=False)
+    candle_open_time: Mapped[int | None] = mapped_column(Integer, nullable=True)

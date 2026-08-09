@@ -4,8 +4,9 @@ Responsive cryptocurrency auto-trading platform.
 
 Feature `001-app-foundation` provides the local shell (three primary areas +
 health). Feature `002-xt-market-data` adds public XT Spot market data on the
-Dashboard (USDT pairs, quote, history). Trading, sentiment, portfolio math,
-and authentication remain out of scope.
+Dashboard (USDT pairs, quote, history). Feature `003-simulation-trading-core`
+adds simulation-only Auto Trading (dual EMA, journals, hard stops). Real-money
+trading, sentiment, and auth remain out of scope.
 
 ## Prerequisites
 
@@ -53,12 +54,27 @@ npm run dev
 
 Frontend URL: `http://127.0.0.1:5173`
 
-Vite proxies `/health` and `/market` to the backend. Open the frontend URL and
-use Dashboard **Refresh** to load XT public market data (manual refresh is
-required; auto-refresh is optional polish and not required).
+Vite proxies `/health`, `/market`, and `/simulation` to the backend. Open the
+frontend URL and use Dashboard **Refresh** to load XT public market data
+(manual refresh is required; auto-refresh is optional polish and not required).
 
 Feature 002 validation guide:
 [`specs/002-xt-market-data/quickstart.md`](specs/002-xt-market-data/quickstart.md)
+
+## Simulation trading (Feature 003)
+
+Local **simulation-only** sessions live under **Auto Trading** (`/auto-trading`).
+No XT trading credentials are required. Session state is stored in SQLite
+(default `backend/data/simulation.db`, override with `SIMULATION_DB_PATH`).
+
+```bash
+# With backend + frontend running:
+# open http://127.0.0.1:5173/auto-trading
+curl -sS http://127.0.0.1:8000/simulation/sessions/active
+```
+
+Feature 003 validation guide:
+[`specs/003-simulation-trading-core/quickstart.md`](specs/003-simulation-trading-core/quickstart.md)
 
 ## Backend health
 
@@ -95,7 +111,7 @@ npm test
 
 ## Out of scope
 
-Do not expect trading/simulation, Risk Manager / Trading Controller, portfolio
-calculations, news, market sentiment / Fear & Greed, WebSocket streaming,
-private XT APIs/credentials, futures/margin/leverage, auth, or SQL preference
-store for Dashboard favorites (local browser storage only).
+Do not expect real-money XT order placement, private XT trading APIs, WebSocket
+streaming, multi-session concurrency, multi-strategy selection, news / Fear &
+Greed sentiment, futures/margin/leverage, authentication, or a full portfolio
+product (Portfolio shows only a thin active-simulation summary).
