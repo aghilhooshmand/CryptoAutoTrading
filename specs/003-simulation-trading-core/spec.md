@@ -1,0 +1,174 @@
+# Feature Specification: Simulation Trading Core
+
+**Feature Branch**: `003-simulation-trading-core`
+
+**Created**: 2026-08-09
+
+**Status**: Draft
+
+**Input**: User description: "Create Feature 003: Simulation Trading Core for CryptoAutoTrading — first end-to-end automated trading machine using simulated money only; consume Feature 002 normalized market data; strategy proposes, Trading Controller and Risk Manager decide; one active simulation session; journals; NET P&L; hard session stops; emergency stop; no real XT orders or credentials."
+
+## User Scenarios & Testing *(mandatory)*
+
+### User Story 1 - Configure and start one simulation session (Priority: P1)
+
+A developer or operator opens Auto Trading, configures a single simulated trading session (pair, capital, strategy, timeframe, duration, profit target, max loss, max trades, max position size), starts it, and clearly sees that the session is simulation-only (not real money).
+
+**Why this priority**: Without a bounded, startable simulation session, there is no controlled trading machine to run.
+
+**Independent Test**: Configure required session bounds for a supported pair, start the session, confirm it is active and unmistakably labeled as simulation, with real-money mode unavailable.
+
+**Acceptance Scenarios**:
+
+1. **Given** the application is running locally without exchange trading credentials, **When** the user configures a simulation session with all required bounds and starts it, **Then** exactly one active simulation session runs and is visually unmistakable from real-money mode.
+2. **Given** a simulation session is already active, **When** the user attempts to start another, **Then** the system refuses a second concurrent session and keeps the existing session as the only active one.
+3. **Given** required configuration is incomplete or invalid, **When** the user attempts to start, **Then** the system blocks start with a clear reason and does not begin trading activity.
+4. **Given** the product UI, **When** the user looks for real-money trading controls, **Then** real-money mode remains unavailable/non-functional for this feature.
+
+---
+
+### User Story 2 - Run the controlled pipeline from market data to simulated execution (Priority: P1)
+
+While a session is active, the system consumes public market data for the session pair, runs one baseline strategy that emits BUY, SELL, or HOLD, and routes every non-HOLD signal through the Trading Controller and Risk Manager before any simulated execution. Approved signals become simulated trades; rejected signals do not change balances or positions.
+
+**Why this priority**: This is the constitutional trading machine: strategy proposes; control and risk decide.
+
+**Independent Test**: With an active session and safe market data, observe at least one non-HOLD path that is either approved into a simulated trade or rejected with an explicit reason—never a direct strategy-to-balance update.
+
+**Acceptance Scenarios**:
+
+1. **Given** an active simulation session and safe market data, **When** the strategy emits HOLD, **Then** no simulated trade executes and no balance/position change occurs from that signal.
+2. **Given** an active session and a non-HOLD signal, **When** control and risk approve it, **Then** a simulated trade executes using market prices from the existing normalized market-data layer (no private exchange trading APIs).
+3. **Given** a non-HOLD signal, **When** control or risk rejects it (e.g., max trades, insufficient balance, stale data, emergency stop), **Then** balances and positions remain unchanged by that signal and the rejection reason is recorded.
+4. **Given** any strategy output, **When** processing completes, **Then** the strategy never bypasses the Trading Controller and Risk Manager to modify simulated funds or positions.
+
+---
+
+### User Story 3 - Observe journals, balances, and NET session P&L (Priority: P1)
+
+The user can inspect simulated balance and position, gross and net P&L (with costs distinguished), trade count, Decision Journal (including rejections), and Trade Journal for executed simulated trades.
+
+**Why this priority**: Traceability and NET P&L are required for trust, audit, and correct hard-limit evaluation.
+
+**Independent Test**: After activity that includes at least one approval and one rejection (or forced rejection), open journals and P&L views and confirm records and NET accounting are present and consistent.
+
+**Acceptance Scenarios**:
+
+1. **Given** strategy decisions have occurred, **When** the user opens the Decision Journal, **Then** each material decision is listed, including rejected non-HOLD signals with reasons.
+2. **Given** at least one simulated trade has executed, **When** the user opens the Trade Journal, **Then** each executed simulated trade is listed with enough detail to understand pair, side, size, prices/costs context, and timing.
+3. **Given** an active or recently active session, **When** the user views session economics, **Then** they can see gross P&L, fees, slippage/execution costs, and net P&L as distinct concepts, plus trade count and current simulated balance/position.
+4. **Given** Portfolio is not yet a full portfolio product, **When** the user views Portfolio (if anything is shown), **Then** only simulation state needed to understand the active/recent session may appear—not a full portfolio-management experience.
+
+---
+
+### User Story 4 - Hard stops, manual stop, and emergency stop (Priority: P1)
+
+The session stops automatically when a hard limit is hit (profit target, max loss, max trades, duration, emergency stop, or unrecoverable unsafe market data). The user can also stop manually or activate emergency stop. After a hard control stop, new signals do not execute in that session.
+
+**Why this priority**: Capital protection and session bounds are non-negotiable; stop authority must be enforceable.
+
+**Independent Test**: Configure a tight, testable hard limit (or trigger emergency stop), run until it fires, confirm session stops and further signals do not execute.
+
+**Acceptance Scenarios**:
+
+1. **Given** an active session whose NET session P&L reaches the configured target net profit, **When** the system evaluates bounds, **Then** the session stops automatically and further new signals do not execute in that session.
+2. **Given** NET session P&L reaches the configured maximum session loss, **When** the system evaluates bounds, **Then** the session stops automatically and further new signals do not execute.
+3. **Given** maximum trades or session duration is reached, **When** the bound is hit, **Then** the session stops automatically under the same no-new-execution rule.
+4. **Given** an active session, **When** the user activates emergency stop, **Then** new trading activity for that session halts immediately under operator control.
+5. **Given** an active session, **When** the user stops the session manually, **Then** the session ends without requiring emergency stop, and new signals do not execute afterward.
+6. **Given** market data required for decisions is stale, malformed, missing, or otherwise unsafe, **When** a trading decision would otherwise proceed, **Then** the system rejects/suspends execution rather than guessing; if the state is unrecoverable per session rules, the session stops.
+
+---
+
+### User Story 5 - Monitor simulation from Auto Trading on phone and desktop (Priority: P2)
+
+On Auto Trading (and any minimal session summary allowed elsewhere), the user can configure/monitor the simulation session on phone-width and desktop-width viewports without desktop-only gestures for primary session controls and status.
+
+**Why this priority**: Operators must be able to supervise the machine on a phone; secondary to core pipeline correctness.
+
+**Independent Test**: At ~375px width, start or view session status, stop or emergency stop affordances, and key status/P&L/journal entry points remain usable.
+
+**Acceptance Scenarios**:
+
+1. **Given** a phone-width viewport, **When** the user works with Auto Trading simulation controls/status, **Then** configure/start/inspect/stop/emergency-stop and core status remain readable and usable.
+
+---
+
+### Edge Cases
+
+- Strategy emits BUY while a long position already exists (or SELL with no position) → reject or no-op per explicit conflicting-position rules; journal the decision; do not invent an illegal state.
+- Insufficient simulated balance for the proposed size → reject; no partial silent oversize.
+- Position-size limit would be exceeded → reject.
+- Market data becomes stale mid-session → reject/suspend new execution; do not trade on guessed prices.
+- Hard limit and a new signal arrive near the same time → hard stop wins; no new execution after stop.
+- User spams start/stop/emergency stop → system remains consistent; at most one active session; emergency stop remains decisive.
+- Fees/slippage configuration missing → use documented feature defaults; never pretend costs are zero unless defaults explicitly say zero (defaults should include non-zero cost assumptions unless planning documents otherwise).
+- Session ends with an open simulated position → unrealized P&L remains visible in session economics per the NET P&L rule; no real exchange close order is sent.
+- Feature 002 market-data failure while session active → fail safe; do not fabricate prices to keep trading.
+
+## Requirements *(mandatory)*
+
+### Functional Requirements
+
+- **FR-001**: The system MUST provide a simulation trading mode that never places real exchange orders and never requires exchange trading credentials.
+- **FR-002**: The system MUST consume the existing normalized public market-data layer (Feature 002) for session pricing and strategy inputs; it MUST NOT call private/authenticated exchange trading APIs.
+- **FR-003**: The system MUST enforce the pipeline: Market Data → Strategy Engine → Trading Signal → Trading Controller → Risk Manager → Simulation Execution → Simulated Position/Balance → Session P&L → Continue or Stop. Strategies MUST NOT modify balances or positions directly.
+- **FR-004**: The system MUST allow at most one active simulated trading session at a time.
+- **FR-005**: A simulation session MUST be configurable with: trading pair, starting simulated capital, capital allocated to the session, one baseline strategy, strategy signal timeframe, session duration, target net profit, maximum session loss, maximum number of trades, and maximum position size. Sessions MUST NOT start without these bounds defined.
+- **FR-006**: The feature MUST use exactly one understandable baseline strategy that is conventional, deterministic, explainable, and testable. The specific strategy identity MAY be finalized during planning, but MUST meet those qualities.
+- **FR-007**: The strategy MUST be able to emit BUY, SELL, and HOLD signals only for this feature’s signal vocabulary.
+- **FR-008**: Every non-HOLD signal MUST pass through the Trading Controller and Risk Manager before simulated execution. HOLD MUST NOT execute a trade.
+- **FR-009**: The Trading Controller and Risk Manager MUST be able to reject signals for explicit reasons including at least: session not active; profit target already reached; maximum loss already reached; maximum trades reached; insufficient simulated balance; position-size limit exceeded; invalid or stale market data; conflicting position state; emergency stop active; and other explicit control/risk rules introduced by this feature.
+- **FR-010**: Every material strategy decision MUST create a Decision Journal record, including rejected non-HOLD signals and their rejection reasons.
+- **FR-011**: Every executed simulated trade MUST create a Trade Journal record.
+- **FR-012**: Simulated execution MUST use market prices from the normalized market-data layer, apply configurable or documented simulated trading fees, apply a simple documented slippage assumption, update simulated balances and positions deterministically, and compute realized and unrealized P&L.
+- **FR-013**: The system MUST distinguish gross P&L, fees, slippage/execution costs, and net P&L in session economics.
+- **FR-014**: Session profit-target and maximum-loss thresholds MUST be evaluated using **Session NET P&L** under one precise rule: Session NET P&L equals the change in simulated session equity versus session start equity, where equity is simulated cash plus the mark-to-market value of any open simulated position using the latest **safe** market price from the normalized market-data layer, and where all simulated fills incorporate the feature’s documented fee and slippage cost assumptions. Gross price movement alone MUST NOT be used as the hard-limit metric.
+- **FR-015**: The session MUST automatically stop when any hard termination condition occurs: target net profit reached; maximum session loss reached; maximum trades reached; session duration expires; emergency stop activated; or unrecoverable unsafe market-data state per session rules.
+- **FR-016**: When a session is stopped by a hard control condition (or manual/emergency stop), new strategy signals MUST NOT execute within that session.
+- **FR-017**: Users MUST be able to create/configure a simulation session, start it, inspect current state, stop it manually, activate an emergency stop, and inspect simulated balance/position, gross/net P&L, trade count, Decision Journal, and Trade Journal.
+- **FR-018**: Auto Trading MUST be extended enough to configure and monitor the simulated session for this feature.
+- **FR-019**: Portfolio MUST NOT become a full portfolio-management feature in this scope; only simulation state required to understand the active/recent session MAY be exposed there.
+- **FR-020**: Simulation mode MUST be visually unmistakable from real-money mode. Real-money mode MUST remain unavailable/non-functional in this feature.
+- **FR-021**: When required market data is stale, malformed, missing, or otherwise unsafe for a trading decision, the system MUST reject or suspend execution rather than guess or fabricate prices.
+- **FR-022**: Completing this feature MUST NOT introduce: authenticated/private exchange trading APIs; real order placement; real-money trading; futures; margin; leverage; multiple simultaneous sessions; multiple strategies; strategy optimization; machine learning; AI prediction; sentiment-driven trading; news-driven trading; backtesting; production deployment; Google authentication; or multi-user functionality.
+
+### Key Entities
+
+- **Simulation Session**: One bounded simulated trading run with pair, capital, strategy, timeframe, duration, and hard limits; at most one active at a time.
+- **Strategy Signal**: BUY, SELL, or HOLD proposal produced by the baseline strategy; advisory only.
+- **Control/Risk Decision**: Approve or reject outcome for a non-HOLD signal, with explicit reason when rejected.
+- **Simulated Trade**: Deterministic simulated fill using public market prices plus documented fee and slippage assumptions; never a real exchange order.
+- **Simulated Balance / Position**: Session cash and open position state updated only by approved simulated execution (and mark-to-market for unrealized P&L).
+- **Session Economics**: Gross P&L, fees, slippage/execution costs, net P&L, trade count, and Session NET P&L used for hard limits.
+- **Decision Journal Entry**: Trace record of a material strategy decision, including rejections.
+- **Trade Journal Entry**: Trace record of an executed simulated trade.
+- **Emergency Stop**: Operator control that immediately halts new trading activity for the session.
+
+## Success Criteria *(mandatory)*
+
+### Measurable Outcomes
+
+- **SC-001**: A developer following project docs can start the app locally and create/start a simulation session for a supported pair in under 20 minutes (tools already installed), with no exchange trading credentials.
+- **SC-002**: In a successful demo path, at least one non-HOLD signal is processed through control/risk such that the outcome is either an approved simulated trade or an explicit rejection—never a silent strategy-to-balance write—observable within one local session run.
+- **SC-003**: After a run that includes at least one rejection, 100% of observed rejected non-HOLD signals appear in the Decision Journal with a reason.
+- **SC-004**: After a run that includes at least one simulated fill, 100% of those fills appear in the Trade Journal, and session economics show gross P&L, fees, slippage/execution costs, and net P&L as distinguishable values.
+- **SC-005**: When a configured hard limit is reached under the Session NET P&L / trades / duration / emergency / unsafe-data rules, the session stops and 0 further new simulated executions occur in that session afterward in the observed test window.
+- **SC-006**: In forced unsafe market-data conditions, 100% of observed trading-decision attempts fail safe (reject/suspend) with 0 fabricated prices used for execution.
+- **SC-007**: Review confirms no private exchange trading API usage and no real order placement path in this feature’s deliverable; real-money mode remains non-functional; simulation labeling is visible wherever session trading status is shown.
+- **SC-008**: 100% of out-of-scope capabilities listed in this specification remain unimplemented in this feature’s deliverable.
+- **SC-009**: On ~375px width, primary Auto Trading simulation configure/start/status/stop/emergency-stop affordances remain completable/readable without desktop-only controls.
+
+## Assumptions
+
+- Feature 002 normalized public Spot market data (USDT pairs, quotes, history, freshness/STALE rules) remains the market-data source for simulation decisions.
+- Feature 001 shell (three primary areas, routing, health) remains the host application; Auto Trading is the primary surface for simulation control; Dashboard market viewing may continue to exist independently.
+- Exactly one baseline strategy will be chosen during planning from conventional, deterministic candidates (for example moving-average crossover or similar); the spec requires qualities, not a specific named algorithm yet.
+- Simulated fees and slippage use simple, documented assumptions finalized at planning (defaults MUST be explicit; zero-cost simulation is discouraged unless deliberately justified).
+- “Safe” market data for trading decisions means data that passes this feature’s freshness and validity rules aligned with Feature 002 stale/fail-safe principles (exact thresholds may be set at planning but MUST be explicit).
+- Starting simulated capital and allocated session capital may be equal in the first version if the UI collects a single capital figure, provided both concepts remain represented in session configuration semantics.
+- Mark-to-market for unrealized P&L uses the latest safe market price; if no safe price exists, unrealized valuation and new execution both fail safe rather than invent a price.
+- Journals are inspectable in-product for local single-operator use; multi-user auth is out of scope.
+- Persistence for sessions/journals may use the project’s SQL direction when first needed; planning will choose the minimal store. Local-only durability for a single operator is acceptable for Feature 003 acceptance.
+- Constitution Market Sentiment Dashboard capability remains out of scope here (no sentiment-driven trading, no Fear & Greed trading inputs).
+- Real-money mode exists only as an unavailable/non-functional distinction to keep simulation unmistakable; no real-money session can be started in this feature.
