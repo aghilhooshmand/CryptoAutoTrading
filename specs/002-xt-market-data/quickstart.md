@@ -55,8 +55,11 @@ contract/unit and Dashboard preference/status tests pass.
    latest price, source labeled **XT**, and a last-update time after load/refresh.
 4. Confirm an explicit **Refresh** control updates quote and/or history or shows
    a clear failure/STALE state — never invented numbers.
+5. **SC-002 timing (manual unless automated):** after a completed successful refresh,
+   confirm the Dashboard shows pair, genuine price, XT source, and last-update
+   (when available) within **5 seconds** for local use.
 
-**Pass**: SC-001 / SC-002 path without credentials.
+**Pass**: SC-001 / SC-002 path without credentials (including manual 5s bound unless covered by an automated test).
 
 ### 2. Searchable USDT pairs + favorites (P1)
 

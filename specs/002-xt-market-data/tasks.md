@@ -73,7 +73,7 @@
 - [ ] T018 [US1] Implement status badge component in `frontend/src/features/market-data/MarketStatusBadge.tsx` (at least loading/fresh/error/unavailable for MVP; STALE refined in US4)
 - [ ] T019 [US1] Implement `useMarketData` fetch + **manual refresh** + request-generation race guard in `frontend/src/features/market-data/useMarketData.ts` (auto-refresh NOT required)
 - [ ] T020 [US1] Compose market quote + refresh into `frontend/src/pages/DashboardPage.tsx`, replacing Feature 001 placeholder-only market messaging for this scope
-- [ ] T021 [US1] Run backend tests for T015–T016 and fix until passing; smoke `curl` quote path from quickstart.md
+- [ ] T021 [US1] Run backend tests for T015–T016 and fix until passing; smoke `curl` quote path from quickstart.md; verify SC-002’s **5-second** Dashboard update bound after a completed refresh during the **manual** acceptance check unless already covered automatically
 
 **Checkpoint**: MVP — Dashboard shows genuine XT quote with manual refresh
 

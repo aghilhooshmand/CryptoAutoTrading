@@ -19,6 +19,11 @@
 - Q: After the user selects a trading pair, should that selection still be selected if they reload the Dashboard page? → A: Persist last selected pair and interval on the local device across reloads
 - Q: Can users favorite pairs for quicker Dashboard selection? → A: Users can locally favorite supported XT USDT Spot pairs; favorites appear before the full searchable pair list; favorites persist on the local device; favoriting affects Dashboard market viewing only and MUST NOT imply portfolio ownership or Auto Trading configuration
 
+### Session 2026-08-09 (plan sync)
+
+- Q: How is Dashboard fresh vs STALE determined for Feature 002? → A: From the active market **quote** only: prefer quote `observedAt`, otherwise quote `retrievedAt`; threshold is 60 seconds. Candlestick `openTime` and candle-series age MUST NOT determine Dashboard fresh/STALE status.
+- Q: How are financial values and percent change represented in Feature 002 application contracts? → A: Financial values are normalized without fabricated precision (decimal strings in contracts). `changePercent` value `"2.35"` means **+2.35%**, not ratio `0.0235`. Missing XT values are omitted or shown as unavailable—never invented.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - View genuine XT Spot market data on the Dashboard (Priority: P1)
@@ -85,7 +90,7 @@ When XT is unreachable, returns malformed data, omits fields, or data is stale, 
 
 1. **Given** XT market data cannot be retrieved, **When** the user views Dashboard, **Then** they see a clear failure/unavailable status and no fabricated market values.
 2. **Given** a response is malformed or missing critical fields, **When** the system processes it, **Then** it rejects unsafe use of that payload and surfaces a clear error/unavailable state rather than guessing.
-3. **Given** previously shown data becomes stale under the feature’s freshness rules, **When** the user views Dashboard, **Then** last known price/statistics MAY remain visible but MUST be accompanied by a clear STALE status and MUST NOT be presented as fresh/current.
+3. **Given** previously shown quote data becomes stale under the feature’s freshness rules (quote `observedAt` else `retrievedAt` older than 60 seconds; not candle age), **When** the user views Dashboard, **Then** last known price/statistics MAY remain visible but MUST be accompanied by a clear STALE status and MUST NOT be presented as fresh/current.
 4. **Given** a market-data failure state, **When** the user navigates to Auto Trading or Portfolio, **Then** primary navigation still works.
 
 ---
@@ -125,11 +130,11 @@ On an approximately 375px-wide viewport, the user can still select/view a pair, 
 - **FR-001**: The system MUST retrieve public XT Spot trading pairs quoted in USDT without requiring user credentials or API keys. Non-USDT quote markets are out of selection scope for Feature 002.
 - **FR-002**: Users MUST be able to select a supported XT Spot USDT-quoted trading pair for Dashboard market viewing.
 - **FR-003**: The system MUST retrieve the latest public market price for the selected pair from XT.
-- **FR-004**: The system MUST retrieve basic 24-hour public market statistics for the selected pair when XT provides them, including available fields among latest price, price change and/or percentage change, high, low, and volume.
+- **FR-004**: The system MUST retrieve basic 24-hour public market statistics for the selected pair when XT provides them, including available fields among latest price, price change and/or percentage change, high, low, and volume. Fields XT does not provide MUST be omitted or represented as unavailable—never invented. When percentage change is exposed via application contracts, `changePercent` MUST use percent points such that `"2.35"` means **+2.35%** (not a unit ratio such as `0.0235`).
 - **FR-005**: The system MUST retrieve public historical candlestick/K-line data for the selected pair from XT for the active interval. The Dashboard MUST let the user switch historical interval among exactly 15 minutes, 1 hour, 4 hours, and 1 day. The default interval MUST be 1 hour.
 - **FR-006**: The Dashboard MUST present, for this feature’s scope: selected trading pair, latest price, basic available 24h statistics, a simple historical price/candlestick presentation with the allowed interval control, market-data source/status, and last update time when available.
 - **FR-007**: The Dashboard MUST clearly identify XT as the current market-data source when XT is the active source.
-- **FR-008**: The system MUST NOT fabricate market values (prices, stats, candles, or pairs) when data is missing, stale, malformed, unsupported, or unavailable. When market data is stale, the Dashboard MUST show a clear STALE status; last known values MAY remain visible for context but MUST NOT be labeled or implied as fresh/current.
+- **FR-008**: The system MUST NOT fabricate market values (prices, stats, candles, or pairs) when data is missing, stale, malformed, unsupported, or unavailable. Missing XT values MUST be omitted or shown as unavailable rather than invented. When market data is stale, the Dashboard MUST show a clear STALE status; last known values MAY remain visible for context but MUST NOT be labeled or implied as fresh/current. Dashboard fresh vs STALE MUST be determined from the active market **quote** timing only: prefer quote `observedAt`, otherwise quote `retrievedAt`, with a **60-second** threshold. Candlestick `openTime` and candle-series age MUST NOT determine Dashboard fresh/STALE status.
 - **FR-009**: On XT API failure, unavailable data, malformed responses, unsupported symbols, or stale data, the system MUST fail safely and expose a clear user-visible status while keeping the application navigable.
 - **FR-010**: Exchange-specific XT market-data access MUST be isolated behind an exchange/market-data adapter boundary so Dashboard presentation and non-exchange application logic do not depend directly on XT-specific APIs or types.
 - **FR-011**: Where practical, the system MUST preserve traceability of market-data source identity and retrieval/observation timestamp for displayed market data.
@@ -141,13 +146,14 @@ On an approximately 375px-wide viewport, the user can still select/view a pair, 
 - **FR-017**: The Dashboard MUST provide an explicit user-triggered refresh of market data for the selected pair (and active history interval). Manual refresh is required for Feature 002 acceptance. Light automatic refresh (approximately every 30–60 seconds) MAY be included but is not required for acceptance.
 - **FR-018**: The system MUST persist the user’s last selected supported trading pair and last selected historical interval on the local device so a Dashboard reload restores those choices when still valid. If the persisted pair is no longer supported, the system MUST fall back to the default pair selection rules and MUST NOT fabricate market data for the invalid symbol.
 - **FR-019**: Users MUST be able to favorite and unfavorite supported XT USDT Spot pairs using local-device storage only (no accounts and no database/server preference store for favorites). Favorited pairs MUST appear before the full searchable pair list. Favoriting MUST affect Dashboard market-pair selection only and MUST NOT imply portfolio ownership, balances, positions, or Auto Trading configuration.
+- **FR-020**: Financial numeric values exposed by Feature 002 application contracts (prices, absolute/percent changes, highs, lows, volumes, and OHLC fields) MUST be normalized without fabricated precision (decimal strings at the contract boundary). The system MUST NOT invent extra precision beyond what is derived from the source payload.
 
 ### Key Entities
 
 - **Trading Pair**: A public XT Spot instrument quoted in USDT that the user can select (identity/symbol presentation suitable for humans).
-- **Market Quote**: Latest price and available 24h statistics for a pair, with source and timing metadata.
-- **Candlestick Series**: Ordered historical OHLC (or equivalent) points for a pair over one of the allowed public intervals (15m, 1h, 4h, 1d), with source and timing metadata. Default interval is 1h.
-- **Market Data Status**: User-visible readiness of market data (e.g., fresh, loading, stale, unavailable, unsupported, error) without inventing values. For `stale`, last known values may still be shown alongside the status.
+- **Market Quote**: Latest price and available 24h statistics for a pair, with source and timing metadata (`observedAt`, `retrievedAt`). Financial fields use normalized decimal-string form at the application contract boundary; `changePercent` is percent points (`"2.35"` = +2.35%).
+- **Candlestick Series**: Ordered historical OHLC (or equivalent) points for a pair over one of the allowed public intervals (15m, 1h, 4h, 1d), with source and timing metadata. Default interval is 1h. Bar `openTime` is historical context only and MUST NOT drive Dashboard fresh/STALE.
+- **Market Data Status**: User-visible readiness of market **quote** data (e.g., fresh, loading, stale, unavailable, unsupported, error) without inventing values. Fresh/STALE uses quote `observedAt` (else `retrievedAt`) with a 60-second threshold. For `stale`, last known values may still be shown alongside the status.
 - **Exchange Market Data Adapter**: Logical boundary isolating XT-specific retrieval from the rest of the product.
 - **Pair Favorite**: A locally stored mark on a supported XT USDT Spot pair used only to prioritize that pair in Dashboard selection. It is not ownership, a portfolio holding, or an Auto Trading setting.
 
@@ -156,7 +162,7 @@ On an approximately 375px-wide viewport, the user can still select/view a pair, 
 ### Measurable Outcomes
 
 - **SC-001**: A developer following project docs can run the app locally and open Dashboard market data with no XT credentials in under 15 minutes (tools already installed).
-- **SC-002**: On a successful XT response path, Dashboard shows the selected pair, a genuine latest price, XT as source, and last-update time when available within 5 seconds of a completed refresh for local use. An explicit refresh control is available.
+- **SC-002**: On a successful XT response path, Dashboard shows the selected pair, a genuine latest price, XT as source, and last-update time when available within 5 seconds of a completed refresh for local use. An explicit refresh control is available. The 5-second bound is verified during the **manual** acceptance check unless already covered by an automated test.
 - **SC-003**: When XT provides 24h statistics, at least 90% of visible stat fields on Dashboard map to values present in the XT payload (no invented fillers).
 - **SC-004**: For a supported pair with available history, a simple historical presentation is visible after one user navigation/refresh action without leaving Dashboard, and the user can switch among 15m, 1h, 4h, and 1d intervals with the default starting at 1h.
 - **SC-005**: In forced failure/unsupported/malformed cases, 100% of observed outcomes show a clear non-success status and 0 fabricated prices/candles.
@@ -173,8 +179,10 @@ On an approximately 375px-wide viewport, the user can still select/view a pair, 
 - Pair favorites are stored on the local device only (FR-019). Favorites are a Dashboard selection aid; they do not use accounts, database persistence, portfolio behavior, or trading behavior.
 - Pair selection for Feature 002 offers USDT-quoted Spot pairs only; expanding to other quote currencies is out of scope.
 - Historical presentation supports exactly four user-selectable intervals: 15 minutes, 1 hour, 4 hours, and 1 day. Default active interval is 1 hour.
-- “Stale” means market data older than a documented freshness threshold suitable for REST polling (default: 60 seconds since last successful observation unless planning sets another value). Stale data MUST be labeled STALE; last known values MAY remain visible but MUST NOT be silently treated as fresh.
-- Users MUST be able to refresh market data explicitly (FR-017). Light automatic refresh (about every 30–60 seconds) MAY be implemented but is not required for acceptance.
+- Dashboard “stale” / “fresh” is determined from the active market **quote** only: prefer quote `observedAt`, otherwise quote `retrievedAt`; threshold is **60 seconds**. Candlestick `openTime` and candle-series age MUST NOT determine Dashboard fresh/STALE. Stale data MUST be labeled STALE; last known quote values MAY remain visible but MUST NOT be silently treated as fresh.
+- Financial values in Feature 002 application contracts are normalized without fabricated precision (decimal strings). `changePercent` `"2.35"` means **+2.35%**, not ratio `0.0235`. Missing XT fields are omitted or unavailable—never invented (FR-004, FR-008, FR-020).
+- Users MUST be able to refresh market data explicitly (FR-017). Light automatic refresh (about every 30–60 seconds) MAY be implemented but is not required for acceptance and MUST NOT block Feature 002 completion.
+- SC-002’s 5-second Dashboard update bound after a completed refresh is a **manual** acceptance check unless an automated test already covers it.
 - Feature 001 shell (three primary areas, health, routing) remains the host application; this feature extends Dashboard content only.
 - No user accounts or authentication are introduced.
 - Constitution stack and adapter isolation apply at planning/implementation; functional requirements stay outcome-focused.
