@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/005-strategy-framework/`
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/, quickstart.md
-
+    
 **Tests**: Included — plan Technical Context and constitution XXVIII require registry/validation/continuity, contract, and UI tests. Spec SC-002–SC-007 are test-backed.
 
 **Organization**: Tasks grouped by user story for independent implementation and testing.
@@ -13,9 +13,10 @@
 - Canonical id `dual_ema`; alias `dual_ema_9_21` → Dual EMA; new creates persist `dual_ema`
 - Omit `strategyId` → reject (UI may pre-fill)
 - Warm-up until `S+1`; backtest `insufficient_history` if count `< S`
-- Legacy/unknown id: **READ** ok; **START/RESUME** forbidden for unknown; **NEW create** forbidden for unknown
+- Legacy/unknown id: **READ** ok; **START/RESUME** forbidden for unknown; **NEW create** forbidden for unknown (FR-010)
 - Cross-field validation: strategy-level message “Fast period must be less than slow period.” (no rule engine)
 - Same Dual EMA implementation for Simulation and Backtest
+- Local UI: Vite MUST proxy `/strategies` (T040)
 - Propose commits only; do not auto-commit unless asked
 
 ## Format: `[ID] [P?] [Story] Description`
@@ -39,6 +40,7 @@
 - [ ] T001 Create backend package dir `backend/app/strategy/` and frontend dir `frontend/src/features/strategy/` per plan.md
 - [ ] T002 [P] Add package marker `backend/app/strategy/__init__.py`
 - [ ] T003 [P] Ensure `backend/tests/unit/`, `backend/tests/contract/`, `backend/tests/integration/` exist for new strategy tests
+- [ ] T040 [P] Proxy `/strategies` to the backend in `frontend/vite.config.ts` (same pattern as `/simulation` and `/backtest`) so local UI can call `GET /strategies`
 
 ---
 
@@ -169,9 +171,9 @@
 
 ### Parallel Opportunities
 
-- Phase 1: T002 ∥ T003
+- Phase 1: T002 ∥ T003 ∥ T040
 - Phase 2: T005 ∥ T010 ∥ T011 after base exists; T004→T006→T007 sequential on shared package
-- US1: T013 ∥ T014; T019 ∥ T020 after `GET /strategies`
+- US1: T013 ∥ T014; T019 ∥ T020 after `GET /strategies` (T040 before local UI smoke)
 - US2: T024 ∥ T025
 - Polish: T035 ∥ T036
 

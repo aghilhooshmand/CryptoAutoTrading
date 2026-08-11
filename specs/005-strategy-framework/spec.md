@@ -77,6 +77,7 @@ After a simulation session or backtest run exists, the operator can see which st
 ### Edge Cases
 
 - Unknown or **omitted** `strategy_id` on create → reject; do not default to Dual EMA. (Legacy alias `dual_ema_9_21`, when explicitly supplied, still resolves to Dual EMA.)
+- Existing session/run with a stored `strategy_id` unknown to the current registry → **READ/inspect** allowed; **START/RESUME** forbidden with a clear reason (new create with that id also forbidden).
 - Legacy id `dual_ema_9_21` → resolve as Dual EMA (`dual_ema`); missing parameters → defaults 9/21; present parameters → validate and use.
 - Missing required strategy parameter keys that have no defaults → reject with a clear validation reason; parameters with declared defaults MAY be omitted and filled from the registry.
 - Parameter outside declared bounds or wrong type → reject.
@@ -105,7 +106,7 @@ After a simulation session or backtest run exists, the operator can see which st
 - **FR-007**: Backtest run creation MUST require an explicit registered `strategy_id` (canonical or documented alias). Omitted `strategy_id` MUST be rejected—MUST NOT default to Dual EMA. Parameters MAY be omitted only to apply registry defaults for that resolved strategy; the canonical id and **effective** parameters MUST be persisted with the run.
 - **FR-008**: Simulation and Backtest MUST resolve and execute the **same** registered strategy implementation for a given `strategy_id` (no separate Dual EMA fork for backtest).
 - **FR-009**: After migration, Dual EMA with **default** parameters (9/21) MUST produce the same signal semantics on identical closed-candle inputs as before this feature (behavioral continuity).
-- **FR-010**: Unknown `strategy_id` or invalid parameters MUST fail safely: refuse create/start of the session or backtest with a clear operator-facing reason; MUST NOT start trading or invent results.
+- **FR-010**: Unknown `strategy_id` or invalid parameters MUST fail safely: refuse **create** of a new session or backtest, and refuse **START/RESUME** of an existing simulation session, with a clear operator-facing reason; MUST NOT start trading or invent results. Existing rows whose stored `strategy_id` is unknown to the current registry MAY still be **READ/inspected** (GET/detail); START/RESUME of those sessions MUST remain forbidden until the id is resolvable.
 - **FR-011**: Auto Trading Simulation and Backtest UIs MUST allow selecting a registered strategy and editing that strategy’s declared parameters (for Dual EMA: fast and slow periods, defaulting to 9 and 21), without adding a fourth primary navigation area.
 - **FR-012**: Operators MUST be able to inspect the strategy id and parameters associated with an existing simulation session and with a completed or failed backtest run (as retained by existing product rules).
 - **FR-013**: The system MUST expose enough registry information for the UI to render selection and parameter fields (strategy id, display name, parameter definitions including defaults and constraints).

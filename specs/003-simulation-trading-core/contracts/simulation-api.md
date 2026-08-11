@@ -19,8 +19,14 @@ When omitted on create:
 |-------|---------|
 | `feeRate` | `"0.001"` (0.10%) |
 | `slippageRate` | `"0.0005"` (0.05%) |
-| `strategyId` | `"dual_ema_9_21"` |
 | `mode` | `"simulation"` |
+
+> **Superseded by Feature 005** (`specs/005-strategy-framework/`): Feature 003
+> documented an implicit default `strategyId` of `"dual_ema_9_21"` when omitted.
+> That default is **withdrawn**. `strategyId` is now **required** on create
+> (omit → reject). New creates MUST persist the canonical id `dual_ema`
+> (legacy alias `dual_ema_9_21`, when explicitly supplied, still resolves to
+> Dual EMA). See `specs/005-strategy-framework/contracts/strategy-api.md`.
 
 `mode: "real_money"` MUST be rejected at create/start with
 `real_money_unavailable`. Feature 003 does not implement real XT execution.
@@ -76,6 +82,7 @@ Create a session in `CONFIGURED`.
   "mode": "simulation",
   "symbol": "btc_usdt",
   "timeframe": "1h",
+  "strategyId": "dual_ema",
   "startingCapital": "500",
   "allocatedCapital": "500",
   "maxPositionSize": "500",
@@ -87,6 +94,10 @@ Create a session in `CONFIGURED`.
   "slippageRate": "0.0005"
 }
 ```
+
+`strategyId` is **required** as of Feature 005 (canonical `dual_ema`; see
+supersession note under Defaults). Optional `strategyParams` may be omitted to
+apply registry defaults for that strategy.
 
 `allocatedCapital` is required for enforceable sizing (MUST NOT deploy above it).
 If omitted, server MAY default it to `startingCapital`, but the field remains
@@ -188,7 +199,7 @@ Full session resource + embedded economics snapshot when computable.
   "state": "RUNNING",
   "symbol": "btc_usdt",
   "timeframe": "1h",
-  "strategyId": "dual_ema_9_21",
+  "strategyId": "dual_ema",
   "startingCapital": "500",
   "allocatedCapital": "500",
   "maxPositionSize": "500",
