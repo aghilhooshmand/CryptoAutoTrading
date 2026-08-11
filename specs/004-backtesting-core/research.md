@@ -64,11 +64,18 @@ adapter without changing strategy/controller/risk semantics.
 
 ## Decision 3: Historical candle fetch via Feature 002 boundary
 
-**Decision**: Extend the normalized market-data API (service + adapter) to
+**Decision**: Extend the normalized market-data **service and adapter** APIs to
 support optional `start_time` / `end_time` (UTC ms) plus pagination until the
 window is covered or empty. XT Spot kline `startTime`/`endTime` (and paging)
 live **only** in `xt_spot` adapter. Backtest domain requests normalized
 `Candle` lists only — never XT interval strings or raw XT payloads.
+
+**Public HTTP surface (locked)**: Feature 004 MUST consume ranged candles via
+`MarketDataService` (and adapters) **internally**. Extending the public
+HTTP `/market/candles` query with start/end is **out of scope** for Feature
+004 unless a later change explicitly expands the Feature 002 HTTP contract
+(see tasks T056). Operators run backtests through `/backtest/*`, not by
+calling ranged candle HTTP themselves.
 
 Pre-run validation:
 1. Estimate bar count from `(end - start) / interval_ms`.
@@ -89,6 +96,9 @@ windows.
   historical windows reliably).
 - Third-party candle CDN — rejected (extra dependency; out of constitution
   adapter model).
+- Expose start/end on public `/market/candles` in Feature 004 — deferred;
+  service-only is enough for backtest; avoids expanding Feature 002 HTTP
+  contract without need.
 
 ---
 
@@ -289,7 +299,7 @@ said yes but history had no next open.”
 | Item | Resolution |
 |------|------------|
 | Exact max candle / span caps | Decision 4 — 5000 bars + estimate reject |
-| Range fetch approach | Decision 3 — Feature 002 + XT adapter paging |
+| Range fetch approach | Decision 3 — Feature 002 service/adapter paging only (no public HTTP start/end in 004) |
 | Sync vs async run | Decision 5 — sync under 5000, one in-flight (confirmed) |
 | DB layout / retention | Decision 6 — FIFO 20 completed + FIFO 5 failed; no row on pre-accept validation/oversize; durable failed after accept |
 | Metric formulas / B&H | Decision 7 — B&H independent of EMA warm-up |

@@ -355,12 +355,14 @@ Feature 003 simulation API).
 ## Market-data dependency (not under `/backtest`)
 
 Feature 002 candle retrieval MUST gain range support used only via the
-normalized service/adapter:
+normalized **service/adapter** (Feature 004 scope):
 
 - Inputs: `symbol`, `interval`, `startTime`, `endTime` (UTC ms)
 - Output: normalized closed candles only
 - Adapter may page XT `startTime`/`endTime`; XT types MUST NOT leak into
   `/backtest` responses
+- Public HTTP `/market/candles` start/end query params are **out of scope**
+  for Feature 004; backtest uses `MarketDataService` internally
 
-Document the Feature 002 extension in implementation tasks; backtest clients
-do **not** call XT directly.
+Backtest clients do **not** call XT directly and do **not** require a new
+public candle range HTTP API.

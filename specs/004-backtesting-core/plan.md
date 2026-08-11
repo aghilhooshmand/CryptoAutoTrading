@@ -62,7 +62,9 @@ stored journals.
 - Post-accept fetch/execution failures persist `failed`; pre-accept validation does not
 - Max one in-flight backtest at a time; **synchronous** execution under cap (v1)
 - Approved-but-unexecutable (`no_next_candle`) distinct from risk `rejected`
-- Market data only via Feature 002 normalized boundary (extend range fetch)
+- Market data only via Feature 002 normalized **service/adapter** boundary
+  (ranged fetch is **service-only** in Feature 004; public `/market/candles`
+  HTTP start/end is out of scope unless Feature 002 contract is later expanded)
 - No WebSockets, shorts, leverage, optimization, ML, sentiment, real money
 
 **Scale/Scope**: Single local operator; Auto Trading hosts UI; SQLite local
@@ -127,7 +129,7 @@ backend/
 │   ├── api/
 │   │   └── backtest.py              # /backtest/* routes
 │   ├── market_data/
-│   │   ├── service.py               # extend get_candles range/pagination
+│   │   ├── service.py               # extend get_candles range (service-only; not public HTTP)
 │   │   ├── adapters/base.py         # optional start/end params
 │   │   └── adapters/xt_spot.py      # XT startTime/endTime + page loop
 │   ├── simulation/                  # Feature 003 — reuse, do not fork Dual EMA
@@ -151,6 +153,7 @@ backend/
 └── tests/
     ├── unit/
     │   ├── test_backtest_fills.py
+    │   ├── test_backtest_warmup.py
     │   ├── test_backtest_metrics.py
     │   ├── test_backtest_limits.py
     │   └── test_backtest_determinism.py

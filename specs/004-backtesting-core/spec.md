@@ -148,7 +148,7 @@ The operator reaches backtesting from the existing Auto Trading primary area (or
 - **FR-008b**: If the fetched backtest window contains **fewer than 21** closed candles, the system MUST fail the run with `insufficient_history` and MUST NOT invent candles or prices. When the window has ≥21 closed candles, candles processed before Dual EMA warm-up readiness MUST produce HOLD (no fills from an unready strategy) until the strategy is ready.
 - **FR-009**: Feature 004 MUST use the long-only single full-position model: BUY only from flat opens the entire allowed long in one fill (subject to Feature 003 sizing); SELL only while long closes the entire long in one fill. Partial adds/reduces, pyramiding, and short selling MUST NOT be supported.
 - **FR-010**: Full-position BUY sizing MUST use the same rules as Feature 003: `affordable_notional = current_cash / (1 + fee_rate)` and `intended_notional = min(affordable_notional, allocated_capital, max_position_size)`.
-- **FR-011**: Every non-HOLD signal MUST pass through Trading Controller and Risk Manager before simulated execution. HOLD MUST NOT execute a trade.
+- **FR-011**: Every non-HOLD signal MUST pass through Trading Controller and Risk Manager before **HistoricalExecutionAdapter** (historical execution). HOLD MUST NOT execute a trade.
 - **FR-012**: Simulated execution in backtests MUST use a **HistoricalExecutionAdapter** (backtest-specific) that applies the same fee and adverse-slippage model as Feature 003 (defaults 0.10% fee and 0.05% adverse slippage per side unless overridden) and MUST update balances/positions deterministically with precise money arithmetic consistent with Feature 003 (no imprecise floating-point money math). Live simulation execution MUST NOT be reused for historical fill timing.
 - **FR-013**: Strategy, controller, risk, accounting, and sizing MUST reuse shared Feature 003 domain logic where clean reuse is possible rather than forking incompatible copies. Historical fill timing remains isolated in the backtest execution adapter.
 - **FR-014**: Identical backtest configuration inputs and identical historical candle series MUST produce identical results (summary metrics and trade list).
@@ -194,7 +194,7 @@ The operator reaches backtesting from the existing Auto Trading primary area (or
 
 ## Assumptions
 
-- Feature 002 normalized public Spot market data remains the sole market-data source for historical candles; Feature 004 may require date-range retrieval through that boundary but does not invent a second exchange integration.
+- Feature 002 normalized public Spot market data remains the sole market-data source for historical candles; Feature 004 adds date-range retrieval through the **service/adapter** boundary and does not invent a second exchange integration. Public HTTP `/market/candles` start/end is out of scope for Feature 004.
 - Feature 003 Dual EMA strategy, long-only full-position model, sizing formula, fee/slippage defaults, controller/risk authority, and Decimal money semantics are the semantic baseline for backtest trading behavior.
 - Default fee and slippage when omitted match Feature 003: **0.10% fee** and **0.05% adverse slippage per fill side**.
 - Profit-target and max-loss rates are **optional** for backtests under constitution V historical-backtest exception; when set, they act as early-exit bounds using Feature 003 liquidation NET semantics; when unset, those early exits MUST NOT apply. Feature 003/live simulation still requires full session bounds.

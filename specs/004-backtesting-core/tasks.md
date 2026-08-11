@@ -17,6 +17,8 @@
 - Fewer than **21** closed candles → `insufficient_history`; ≥21 → HOLD through warm-up
 - Pre-run validation / oversized → **no** run row; post-accept fetch/execution failure → durable `failed` row
 - T020 = engine/orchestration skeleton only; T032 owns shared Dual EMA + Controller + Risk wiring
+- Ranged candles = **service/adapter only** (no public `/market/candles` start/end in Feature 004)
+- Runnable Dual EMA MVP = **US1 + US2** (not US1 alone); warm-up HOLD covered by T061
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -50,9 +52,9 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T006 [P] Extend adapter protocol with optional `start_time`/`end_time` (UTC ms) in `backend/app/market_data/adapters/base.py`
+- [ ] T006 [P] Extend adapter protocol with optional `start_time`/`end_time` (UTC ms) in `backend/app/market_data/adapters/base.py` (**service/adapter only** — do not change public HTTP `/market/candles` contract in Feature 004)
 - [ ] T007 Extend XT Spot adapter ranged kline fetch + pagination (XT `startTime`/`endTime` only inside adapter) in `backend/app/market_data/adapters/xt_spot.py`
-- [ ] T008 Extend `MarketDataService.get_candles` to accept optional start/end and return normalized closed candles only in `backend/app/market_data/service.py`
+- [ ] T008 Extend `MarketDataService.get_candles` to accept optional start/end and return normalized closed candles only in `backend/app/market_data/service.py` (internal callers such as backtest; **no** public HTTP query-param expansion in this feature)
 - [ ] T009 [P] Implement `MAX_BACKTEST_CANDLES = 5000` estimate/reject helpers in `backend/app/backtest/limits.py`
 - [ ] T010 [P] Add SQLAlchemy tables `backtest_runs`, `backtest_trades`, `backtest_decisions` in `backend/app/db/models.py` per `specs/004-backtesting-core/data-model.md`
 - [ ] T011 Wire table create for backtest models in FastAPI lifespan / `backend/app/db/session.py` (reuse existing engine pattern; optional `BACKTEST_DB_PATH`)
@@ -67,11 +69,13 @@
 
 ---
 
-## Phase 3: User Story 1 - Configure and run one historical backtest (Priority: P1) 🎯 MVP
+## Phase 3: User Story 1 - Configure and run one historical backtest (Priority: P1) 🎯 MVP (with US2)
 
 **Goal**: Operator configures a bounded Dual EMA backtest (pair, timeframe, window, capital nesting, fee/slippage; optional max trades / profit / loss), runs it synchronously without credentials/real orders, and receives starting/ending capital, net P&L, and return %.
 
 **Independent Test**: Valid config → completed summary with consistent capital/P&L/return %; invalid nesting, bad window, unsupported TF, or oversized history blocked with clear reason; no real-money controls on the path.
+
+**Note**: Full Dual EMA/Controller/Risk behavior lands in US2 (T032). US1 delivers API/UI and engine skeleton; **demo-ready Dual EMA MVP = US1+US2**.
 
 ### Tests for User Story 1
 
@@ -91,7 +95,7 @@
 - [ ] T026 [US1] Add Backtest section (distinct from Simulation) on `frontend/src/pages/AutoTradingPage.tsx` with configure → run → summary; ensure real-money remains unavailable
 - [ ] T027 [US1] Run T018–T019 tests and fix until passing; smoke quickstart scenario 1 against `specs/004-backtesting-core/quickstart.md`
 
-**Checkpoint**: MVP — one historical backtest can be configured and completed with capital summary under Auto Trading
+**Checkpoint**: US1 configure/run/summary UI + API orchestration exist; Dual EMA/Controller/Risk path is still stubbed until T032 — treat **runnable Dual EMA MVP** as US1+US2 (see Implementation Strategy)
 
 ---
 
@@ -105,6 +109,7 @@
 
 - [ ] T028 [P] [US2] Unit tests for next-open fills, end-close flatten, and missing N+1 → `approved_unexecutable`/`no_next_candle` (not `rejected`) in `backend/tests/unit/test_backtest_fills.py`
 - [ ] T029 [P] [US2] Unit tests for duplicate-candle skip and chronological single-pass in `backend/tests/unit/test_backtest_duplicate_candle.py`
+- [ ] T061 [P] [US2] Unit tests for Dual EMA warm-up HOLD on ≥21 closed-candle windows (early HOLDs, zero strategy fills until ready; FR-008b) in `backend/tests/unit/test_backtest_warmup.py`
 - [ ] T030 [P] [US2] Integration test: fixture candles through shared Dual EMA + control + risk + HistoricalExecutionAdapter in `backend/tests/integration/test_backtest_pipeline.py`
 - [ ] T031 [P] [US2] Unit test determinism: identical config + fixture candles → identical decimal strings and trade lists in `backend/tests/unit/test_backtest_determinism.py`
 
@@ -117,9 +122,9 @@
 - [ ] T036 [US2] Enforce optional profit/loss early exits using liquidation Session NET (Feature 003 semantics) then flatten and stop further strategy entries in `backend/app/backtest/engine.py`
 - [ ] T037 [US2] Ensure `backtest/` imports only normalized `market_data` models/service — never XT adapter types — across engine/service
 - [ ] T038 [US2] Ensure backtest run uses ephemeral in-memory state and does not read/write Feature 003 simulation session tables/worker in `backend/app/backtest/service.py`
-- [ ] T039 [US2] Run T028–T031 tests under `backend/tests/unit/` and `backend/tests/integration/` and fix until passing
+- [ ] T039 [US2] Run T028–T031 and T061 tests under `backend/tests/unit/` and `backend/tests/integration/` and fix until passing
 
-**Checkpoint**: Historical pipeline matches Feature 003 authority with next-open historical fills and correct decision outcomes
+**Checkpoint**: Historical pipeline matches Feature 003 authority with next-open historical fills and correct decision outcomes — **runnable Dual EMA MVP** (US1+US2)
 
 ---
 
@@ -175,7 +180,7 @@
 **Purpose**: Docs, isolation proof, out-of-scope guardrails, quickstart validation
 
 - [ ] T055 [P] Update root `README.md` with backtest overview, `/backtest` proxy, `MAX_BACKTEST_CANDLES=5000`, and link to `specs/004-backtesting-core/quickstart.md`
-- [ ] T056 [P] Confirm Feature 002 candle contract/docs note optional start/end if public market API surface changes (update `specs/002-*/contracts/` or market API docs only if endpoints were extended publicly)
+- [ ] T056 [P] Do **not** expand public Feature 002 HTTP `/market/candles` for start/end in Feature 004 (service-only ranged fetch). Only update `specs/002-*/contracts/` if a future change explicitly adds public query params; otherwise leave 002 HTTP docs unchanged
 - [ ] T057 Add integration assertion that running backtest does not mutate an active simulation session in `backend/tests/integration/test_backtest_isolation.py`
 - [ ] T058 [P] Grep/guard: no XT types or private trading APIs under `backend/app/backtest/`; no WebSocket progress channels for backtest
 - [ ] T059 Run full validation scenarios in `specs/004-backtesting-core/quickstart.md` (manual or scripted smoke); fix gaps in `backend/app/backtest/` / `frontend/src/features/backtest/`
@@ -189,18 +194,18 @@
 
 - **Setup (Phase 1)**: No dependencies — start immediately
 - **Foundational (Phase 2)**: Depends on Setup — **BLOCKS** all user stories
-- **US1 (Phase 3)**: Depends on Foundational — MVP
-- **US2 (Phase 4)**: Depends on Foundational; builds on US1 engine/API (deepens pipeline correctness)
-- **US3 (Phase 5)**: Depends on US1 run persistence; metrics/list/delete after engine produces journals (US2 decisions/trades recommended first)
-- **US4 (Phase 6)**: Depends on US1 UI presence; polish after US3 inspect surfaces preferred
+- **US1 (Phase 3)**: Depends on Foundational — configure/run API + UI; engine stubs OK
+- **US2 (Phase 4)**: Depends on Foundational; completes Dual EMA/Controller/Risk wiring (T032) — **required for runnable Dual EMA MVP**
+- **US3 (Phase 5)**: Depends on US1 persistence path; preferably after US2 journals exist
+- **US4 (Phase 6)**: Depends on US1 Auto Trading section exists; preferably after US3 list/inspect UI
 - **Polish (Phase 7)**: After desired stories complete
 
 ### User Story Dependencies
 
-- **US1 (P1)**: After Foundational — no dependency on US2–US4
-- **US2 (P1)**: After Foundational; extends US1 engine (same feature area)
-- **US3 (P1)**: After US1 persistence path; preferably after US2 journals exist
-- **US4 (P2)**: After US1 Auto Trading section exists; preferably after US3 list/inspect UI
+- **US1 (Phase 3)**: Depends on Foundational — configure/run API + UI; engine stubs OK
+- **US2 (Phase 4)**: Completes Dual EMA/Controller/Risk wiring — **required for runnable Dual EMA MVP**
+- **US3 (Phase 5)**: Depends on US1 persistence; preferably after US2 journals
+- **US4 (Phase 6)**: Depends on US1 Auto Trading section; preferably after US3 inspect UI
 
 ### Within Each User Story
 
@@ -213,7 +218,7 @@
 - Phase 1: T002, T003, T005 in parallel after T001
 - Phase 2: T006∥T009∥T013; T016∥T017 after limits/repository exist
 - US1: T018∥T019; T023∥T024 after API client
-- US2: T028∥T029∥T030∥T031 test authors in parallel
+- US2: T028∥T029∥T061∥T030∥T031 test authors in parallel
 - US3: T040∥T041∥T042; T046∥T047
 - US4: T050 can draft while T051–T053 proceed carefully on shared page
 - Polish: T055∥T056∥T058
@@ -246,19 +251,24 @@ Task: "Frontend results tests in frontend/src/__tests__/backtestResults.test.tsx
 
 ## Implementation Strategy
 
-### MVP First (User Story 1 Only)
+### MVP First (User Stories 1+2 — runnable Dual EMA)
+
+US1 alone delivers configure/run/summary surfaces with an engine **skeleton**.
+Shared Dual EMA + Controller + Risk wiring completes in US2 (T032). Treat the
+**first demo-ready MVP** as Phases 1–4 through the US2 checkpoint (T039).
 
 1. Complete Phase 1: Setup
 2. Complete Phase 2: Foundational (CRITICAL)
-3. Complete Phase 3: User Story 1
-4. **STOP and VALIDATE**: Configure → run → capital summary under Auto Trading
-5. Demo if ready
+3. Complete Phase 3: User Story 1 (API/UI + skeleton)
+4. Complete Phase 4: User Story 2 (pipeline wiring + fills + warm-up HOLD tests)
+5. **STOP and VALIDATE**: Configure → run Dual EMA backtest → capital summary + decisions/fills under Auto Trading
+6. Demo if ready
 
 ### Incremental Delivery
 
 1. Setup + Foundational → foundation ready
-2. US1 → MVP runnable backtest
-3. US2 → pipeline/fill/decision correctness + determinism
+2. US1 → configure/run API + UI (skeleton engine)
+3. US2 → **runnable Dual EMA MVP** (pipeline/fill/decision correctness + determinism + warm-up HOLD)
 4. US3 → full metrics, journals, retention, inspect/delete
 5. US4 → phone-width UX polish
 6. Polish → docs + isolation + quickstart
@@ -267,9 +277,9 @@ Task: "Frontend results tests in frontend/src/__tests__/backtestResults.test.tsx
 
 1. Team completes Setup + Foundational together
 2. After Foundational:
-   - Dev A: US1 API + engine stub
+   - Dev A: US1 API + engine skeleton, then US2 T032 wiring
    - Dev B: US1 frontend form/results (against contract mocks)
-   - Then US2 backend pipeline; US3 metrics/UI; US4 polish
+   - Then US2 tests (incl. T061 warm-up); US3 metrics/UI; US4 polish
 
 ---
 
@@ -278,6 +288,8 @@ Task: "Frontend results tests in frontend/src/__tests__/backtestResults.test.tsx
 - [P] tasks = different files, no dependencies on incomplete sibling work
 - [Story] label maps task to US1–US4 for traceability
 - Do not fork Dual EMA; do not reuse live simulation execution for historical timing
-- Exact caps: 5000 candles; 20 completed; 5 failed
+- Exact caps: 5000 candles; 20 completed; 5 failed; min 21 closed candles
+- Ranged candles: **service/adapter only** in Feature 004 (no public `/market/candles` start/end)
+- Runnable Dual EMA MVP = US1 + US2 (not US1 alone)
 - Propose commits only; do not auto-commit unless asked
 - Avoid: vague tasks, XT leakage into `backtest/`, fourth primary nav, WebSockets, optimization/grid search

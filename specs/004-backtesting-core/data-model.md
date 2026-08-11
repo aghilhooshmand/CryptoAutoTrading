@@ -259,4 +259,4 @@ session state.
 
 - Backtest engine uses ephemeral in-run cash/position state.
 - MUST NOT mutate simulation session tables, worker, or live balances.
-- Market data via Feature 002 only; no XT types in this model.
+- Market data via Feature 002 **service/adapter** only (ranged fetch); no XT types in this model; public `/market/candles` start/end out of scope for Feature 004.
