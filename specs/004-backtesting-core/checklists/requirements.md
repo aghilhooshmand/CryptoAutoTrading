@@ -31,7 +31,7 @@
 
 ## Notes
 
-- Validation passed on 2026-08-11 after initial draft.
+- Validation passed on 2026-08-11 after initial draft; re-validated after Clarifications Session 2026-08-11 (5 answers integrated).
 - Informed defaults documented in Assumptions: optional profit/loss early exits, end-of-run flatten, cost-aware buy-and-hold, Auto Trading home (no fourth primary area), shared Dual EMA with Feature 003.
 - Mentions of “normalized market-data boundary” and “Decimal” describe required product/accounting semantics already locked by prior features/constitution, not a new stack choice.
-- Ready for `/speckit-clarify` (optional) or `/speckit-plan`.
+- Ready for `/speckit-plan`.
