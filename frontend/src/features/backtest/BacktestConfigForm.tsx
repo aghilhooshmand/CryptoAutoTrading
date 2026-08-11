@@ -84,89 +84,172 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
     onSubmit(body);
   }
 
+  const locked = disabled || busy;
+
   return (
-    <form className="backtest-config" onSubmit={handleSubmit} aria-labelledby="backtest-config-title">
-      <h3 id="backtest-config-title">Configure historical backtest</h3>
-      <label>
-        Symbol
-        <input value={symbol} onChange={(e) => setSymbol(e.target.value)} disabled={disabled || busy} />
-      </label>
-      <label>
-        Timeframe
-        <select
-          value={timeframe}
-          onChange={(e) => setTimeframe(e.target.value as CandleInterval)}
-          disabled={disabled || busy}
-        >
-          {INTERVALS.map((i) => (
-            <option key={i} value={i}>
-              {i}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        Start
-        <input
-          type="datetime-local"
-          value={startLocal}
-          onChange={(e) => setStartLocal(e.target.value)}
-          disabled={disabled || busy}
-          required
-        />
-      </label>
-      <label>
-        End
-        <input
-          type="datetime-local"
-          value={endLocal}
-          onChange={(e) => setEndLocal(e.target.value)}
-          disabled={disabled || busy}
-          required
-        />
-      </label>
-      <label>
-        Starting capital
-        <input value={startingCapital} onChange={(e) => setStartingCapital(e.target.value)} disabled={disabled || busy} />
-      </label>
-      <label>
-        Allocated capital
-        <input value={allocatedCapital} onChange={(e) => setAllocatedCapital(e.target.value)} disabled={disabled || busy} />
-      </label>
-      <label>
-        Max position size
-        <input value={maxPositionSize} onChange={(e) => setMaxPositionSize(e.target.value)} disabled={disabled || busy} />
-      </label>
-      <label>
-        Target net profit rate (optional)
-        <input value={profitRate} onChange={(e) => setProfitRate(e.target.value)} disabled={disabled || busy} placeholder="e.g. 0.01" />
-        {derivedProfit != null && <span className="hint">≈ {derivedProfit} USDT</span>}
-      </label>
-      <label>
-        Max session loss rate (optional)
-        <input value={lossRate} onChange={(e) => setLossRate(e.target.value)} disabled={disabled || busy} placeholder="e.g. 0.007" />
-        {derivedLoss != null && <span className="hint">≈ {derivedLoss} USDT</span>}
-      </label>
-      <label>
-        Max trades (optional)
-        <input value={maxTrades} onChange={(e) => setMaxTrades(e.target.value)} disabled={disabled || busy} />
-      </label>
-      <label>
-        Fee rate (optional, default 0.001)
-        <input value={feeRate} onChange={(e) => setFeeRate(e.target.value)} disabled={disabled || busy} />
-      </label>
-      <label>
-        Slippage rate (optional, default 0.0005)
-        <input value={slippageRate} onChange={(e) => setSlippageRate(e.target.value)} disabled={disabled || busy} />
-      </label>
+    <form
+      className="backtest-config"
+      onSubmit={handleSubmit}
+      aria-labelledby="backtest-config-title"
+    >
+      <h3 id="backtest-config-title" className="visually-hidden">
+        Configure backtest
+      </h3>
+
+      <fieldset className="backtest-fieldset" disabled={locked}>
+        <legend>Market</legend>
+        <div className="backtest-field-row">
+          <label>
+            Pair
+            <input
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value)}
+              placeholder="btc_usdt"
+              autoComplete="off"
+            />
+          </label>
+          <label>
+            Timeframe
+            <select
+              value={timeframe}
+              onChange={(e) => setTimeframe(e.target.value as CandleInterval)}
+            >
+              {INTERVALS.map((i) => (
+                <option key={i} value={i}>
+                  {i}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset className="backtest-fieldset" disabled={locked}>
+        <legend>Period</legend>
+        <div className="backtest-field-row">
+          <label>
+            Start
+            <input
+              type="datetime-local"
+              value={startLocal}
+              onChange={(e) => setStartLocal(e.target.value)}
+              required
+            />
+          </label>
+          <label>
+            End
+            <input
+              type="datetime-local"
+              value={endLocal}
+              onChange={(e) => setEndLocal(e.target.value)}
+              required
+            />
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset className="backtest-fieldset" disabled={locked}>
+        <legend>Capital</legend>
+        <div className="backtest-field-row">
+          <label>
+            Starting
+            <input
+              value={startingCapital}
+              onChange={(e) => setStartingCapital(e.target.value)}
+              inputMode="decimal"
+            />
+          </label>
+          <label>
+            Allocated
+            <input
+              value={allocatedCapital}
+              onChange={(e) => setAllocatedCapital(e.target.value)}
+              inputMode="decimal"
+            />
+          </label>
+        </div>
+        <label className="backtest-field-full">
+          Max position
+          <input
+            value={maxPositionSize}
+            onChange={(e) => setMaxPositionSize(e.target.value)}
+            inputMode="decimal"
+          />
+        </label>
+      </fieldset>
+
+      <details className="backtest-advanced">
+        <summary>Advanced settings</summary>
+        <div className="backtest-advanced-body">
+          <label>
+            Target net profit rate
+            <input
+              value={profitRate}
+              onChange={(e) => setProfitRate(e.target.value)}
+              disabled={locked}
+              placeholder="e.g. 0.01"
+              inputMode="decimal"
+            />
+            {derivedProfit != null && (
+              <span className="hint">≈ {derivedProfit} USDT</span>
+            )}
+          </label>
+          <label>
+            Max session loss rate
+            <input
+              value={lossRate}
+              onChange={(e) => setLossRate(e.target.value)}
+              disabled={locked}
+              placeholder="e.g. 0.007"
+              inputMode="decimal"
+            />
+            {derivedLoss != null && (
+              <span className="hint">≈ {derivedLoss} USDT</span>
+            )}
+          </label>
+          <label>
+            Max trades
+            <input
+              value={maxTrades}
+              onChange={(e) => setMaxTrades(e.target.value)}
+              disabled={locked}
+              inputMode="numeric"
+            />
+          </label>
+          <label>
+            Fee rate
+            <input
+              value={feeRate}
+              onChange={(e) => setFeeRate(e.target.value)}
+              disabled={locked}
+              placeholder="default 0.001"
+              inputMode="decimal"
+            />
+          </label>
+          <label>
+            Slippage rate
+            <input
+              value={slippageRate}
+              onChange={(e) => setSlippageRate(e.target.value)}
+              disabled={locked}
+              placeholder="default 0.0005"
+              inputMode="decimal"
+            />
+          </label>
+        </div>
+      </details>
+
       {(localError || error) && (
         <p className="form-error" role="alert">
           {localError || error}
         </p>
       )}
-      <button type="submit" disabled={disabled || busy}>
-        {busy ? "Running…" : "Run backtest"}
-      </button>
+
+      <div className="backtest-actions">
+        <button type="submit" disabled={locked}>
+          {busy ? "Running…" : "Run Backtest"}
+        </button>
+      </div>
     </form>
   );
 }

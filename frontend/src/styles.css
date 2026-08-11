@@ -600,10 +600,244 @@ a {
   background: #fff;
 }
 
-.backtest-section {
-  margin-top: 2rem;
-  padding-top: 1.25rem;
+/* Auto Trading — Simulation / Backtest tabs */
+.auto-trading-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.75rem 0 1rem;
+  padding: 0.25rem;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--panel) 70%, #fff);
+}
+
+.auto-trading-tabs [role="tab"] {
+  flex: 1 1 8rem;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auto-trading-tabs [role="tab"].is-active,
+.auto-trading-tabs [role="tab"][aria-selected="true"] {
+  background: #fff;
+  border-color: var(--line);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+}
+
+.auto-trading-panel-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.25rem;
+  color: var(--ink);
+}
+
+.auto-trading-lede {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.backtest-config,
+.backtest-results,
+.backtest-run-list {
+  margin-top: 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  padding: 0.85rem;
+  background: #fff;
+}
+
+.backtest-fieldset {
+  margin: 0 0 1rem;
+  padding: 0;
+  border: none;
+}
+
+.backtest-fieldset legend {
+  margin: 0 0 0.45rem;
+  padding: 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.backtest-field-row {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .backtest-field-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.backtest-config label,
+.backtest-advanced-body label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.backtest-field-full {
+  margin-top: 0.75rem;
+}
+
+.backtest-config input,
+.backtest-config select,
+.backtest-advanced-body input {
+  min-height: 2.5rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  font: inherit;
+  font-weight: 500;
+}
+
+.backtest-advanced {
+  margin: 0.25rem 0 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--panel) 55%, #fff);
+}
+
+.backtest-advanced > summary {
+  cursor: pointer;
+  list-style: none;
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
+  padding: 0.45rem 0.75rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.backtest-advanced > summary::-webkit-details-marker {
+  display: none;
+}
+
+.backtest-advanced > summary::after {
+  content: "▾";
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.backtest-advanced[open] > summary::after {
+  content: "▴";
+}
+
+.backtest-advanced-body {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0 0.75rem 0.85rem;
   border-top: 1px solid var(--line);
+  padding-top: 0.85rem;
+}
+
+@media (min-width: 640px) {
+  .backtest-advanced-body {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.backtest-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.35rem;
+}
+
+.backtest-actions button,
+.backtest-run-delete {
+  min-height: 2.75rem;
+  padding: 0.45rem 1rem;
+  border-radius: 0.45rem;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.backtest-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.backtest-run-items {
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.backtest-run-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--panel) 40%, #fff);
+  overflow: hidden;
+}
+
+.backtest-run-item.is-selected {
+  border-color: var(--accent);
+}
+
+.backtest-run-select {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.75rem;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.backtest-run-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.backtest-run-meta {
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.backtest-run-delete.danger {
+  flex: 0 0 auto;
+  align-self: stretch;
+  border-radius: 0;
+  border: none;
+  border-left: 1px solid var(--line);
+  background: transparent;
+  color: #991b1b;
+  font-weight: 700;
+  padding: 0 0.85rem;
 }
 
 .backtest-summary-grid {
@@ -613,10 +847,16 @@ a {
   margin: 0.75rem 0 0;
 }
 
-.backtest-config button,
-.backtest-run-list button,
-.backtest-section button {
-  min-height: 2.75rem;
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 @media (max-width: 480px) {
@@ -632,15 +872,23 @@ a {
     grid-template-columns: 1fr;
   }
 
-  .backtest-config form,
-  .backtest-section form {
-    display: grid;
-    gap: 0.75rem;
+  .backtest-actions {
+    justify-content: stretch;
   }
 
-  .backtest-config button,
-  .backtest-section button {
+  .backtest-actions button {
     width: 100%;
+  }
+
+  .backtest-run-item {
+    flex-direction: column;
+  }
+
+  .backtest-run-delete.danger {
+    border-left: none;
+    border-top: 1px solid var(--line);
+    width: 100%;
+    min-height: 2.75rem;
   }
 }
 

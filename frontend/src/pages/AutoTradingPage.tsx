@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { DecisionJournal } from "../features/simulation/DecisionJournal";
 import { EconomicsPanel } from "../features/simulation/EconomicsPanel";
 import { SessionConfigForm } from "../features/simulation/SessionConfigForm";
@@ -12,7 +13,11 @@ import { BacktestRunList } from "../features/backtest/BacktestRunList";
 import { BacktestTrades } from "../features/backtest/BacktestTrades";
 import { useBacktest } from "../features/backtest/useBacktest";
 
+type AutoTradingTab = "simulation" | "backtest";
+
 export function AutoTradingPage() {
+  const [tab, setTab] = useState<AutoTradingTab>("simulation");
+
   const {
     session,
     decisions,
@@ -31,12 +36,47 @@ export function AutoTradingPage() {
     <section className="page auto-trading-page" aria-labelledby="auto-trading-title">
       <header className="sim-page-header">
         <h1 id="auto-trading-title">Auto Trading</h1>
-        <SimulationBadge />
+        {tab === "simulation" ? <SimulationBadge /> : null}
       </header>
 
-      <section className="simulation-section" aria-labelledby="simulation-heading">
-        <h2 id="simulation-heading">Live simulation</h2>
-        <p>
+      <div
+        className="auto-trading-tabs"
+        role="tablist"
+        aria-label="Auto Trading workflows"
+      >
+        <button
+          type="button"
+          role="tab"
+          id="tab-simulation"
+          aria-selected={tab === "simulation"}
+          aria-controls="panel-simulation"
+          className={tab === "simulation" ? "is-active" : undefined}
+          onClick={() => setTab("simulation")}
+        >
+          Simulation
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="tab-backtest"
+          aria-selected={tab === "backtest"}
+          aria-controls="panel-backtest"
+          className={tab === "backtest" ? "is-active" : undefined}
+          onClick={() => setTab("backtest")}
+        >
+          Backtest
+        </button>
+      </div>
+
+      <div
+        id="panel-simulation"
+        role="tabpanel"
+        aria-labelledby="tab-simulation"
+        hidden={tab !== "simulation"}
+        className="auto-trading-panel"
+      >
+        <h2 className="auto-trading-panel-title">Simulation</h2>
+        <p className="auto-trading-lede">
           Configure and supervise one local simulation session. Market data comes
           from public XT quotes; no exchange trading credentials are used.
         </p>
@@ -68,13 +108,20 @@ export function AutoTradingPage() {
 
         <DecisionJournal items={decisions} />
         <TradeJournal items={trades} />
-      </section>
+      </div>
 
-      <section className="backtest-section" aria-labelledby="backtest-heading">
-        <h2 id="backtest-heading">Historical backtest</h2>
-        <p>
-          Offline Dual EMA evaluation on historical candles. Does not place real
-          orders and does not change a live simulation session.
+      <div
+        id="panel-backtest"
+        role="tabpanel"
+        aria-labelledby="tab-backtest"
+        hidden={tab !== "backtest"}
+        className="auto-trading-panel"
+      >
+        <h2 className="auto-trading-panel-title">Backtest</h2>
+        <p className="auto-trading-lede">
+          Test your strategy using historical market data.
+          <br />
+          No real orders are placed.
         </p>
 
         <BacktestConfigForm
@@ -98,7 +145,7 @@ export function AutoTradingPage() {
         />
         <BacktestTrades trades={backtest.trades} />
         <BacktestDecisions decisions={backtest.decisions} />
-      </section>
+      </div>
     </section>
   );
 }
