@@ -74,7 +74,7 @@ contract/unit and Dashboard preference/status tests pass.
 ### 3. Intervals and history (P2)
 
 1. With a liquid pair selected, view candlestick/history.
-2. Switch among `15m`, `1h`, `4h`, `1d`.
+2. Switch among `1m`, `5m`, `15m`, `1h`, `4h`, `1d`.
 3. Confirm default interval is `1h` on first visit (no prefs).
 4. Confirm reload restores last pair + interval when still valid.
 

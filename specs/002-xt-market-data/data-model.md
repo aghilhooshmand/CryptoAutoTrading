@@ -83,14 +83,14 @@ One OHLC bar.
 | Field | Type | Required | Notes |
 |-------|------|----------|--------|
 | `symbol` | string | yes | |
-| `interval` | enum | yes | `15m` \| `1h` \| `4h` \| `1d` |
+| `interval` | enum | yes | `1m` \| `5m` \| `15m` \| `1h` \| `4h` \| `1d` |
 | `candles` | Candlestick[] | yes | Ordered; may be shorter than requested; never pad with fakes |
 | `source` | string | yes | `"XT"` |
 | `retrievedAt` | ISO-8601 datetime | yes | Retrieval metadata only; **not** the Dashboard STALE clock |
 
 ### Validation
 
-- Interval MUST be one of the four allowed values; default UI interval is `1h`.
+- Interval MUST be one of the six allowed values; default UI interval is `1h`.
 - Empty series on success is allowed (show empty state); failures use status/error path.
 - Do **not** derive Dashboard market freshness/STALE from candle `openTime` or
   series `retrievedAt`.
@@ -139,7 +139,7 @@ Local-only Dashboard selection aid.
 | Field | Type | Required | Notes |
 |-------|------|----------|--------|
 | `lastSymbol` | string | no | Restored when still supported |
-| `lastInterval` | enum | no | One of `15m`/`1h`/`4h`/`1d`; default `1h` |
+| `lastInterval` | enum | no | One of `1m`/`5m`/`15m`/`1h`/`4h`/`1d`; default `1h` |
 | `favorites` | string[] | no | Symbols |
 
 ### State transitions (selection)

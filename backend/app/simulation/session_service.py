@@ -9,7 +9,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.db.models import DecisionJournalRow, SimulationSessionRow, TradeJournalRow
-from app.market_data.models import MarketStatus
+from app.market_data.models import ALLOWED_INTERVALS, MarketStatus
 from app.market_data.service import get_market_data_service
 from app.simulation.accounting import (
     liquidation_equity,
@@ -73,8 +73,11 @@ def create_session(db: Session, body: dict, clock: Clock | None = None) -> Simul
 
     symbol = str(body["symbol"])
     timeframe = str(body["timeframe"])
-    if timeframe not in {"15m", "1h", "4h", "1d"}:
-        raise SessionError("invalid_config", "timeframe must be 15m|1h|4h|1d")
+    if timeframe not in ALLOWED_INTERVALS:
+        raise SessionError(
+            "invalid_config",
+            "timeframe must be one of: 1m, 5m, 15m, 1h, 4h, 1d",
+        )
 
     now = _now(clock)
     target_amt = allocated * target_rate

@@ -7,7 +7,7 @@ const INTERVAL_KEY = "cat.dashboard.lastInterval";
 const FAVORITES_KEY = "cat.dashboard.favorites";
 
 export const DEFAULT_INTERVAL: CandleInterval = "1h";
-export const ALLOWED_INTERVALS: CandleInterval[] = ["15m", "1h", "4h", "1d"];
+export const ALLOWED_INTERVALS: CandleInterval[] = ["1m", "5m", "15m", "1h", "4h", "1d"];
 
 function safeStorage(): Storage | null {
   try {

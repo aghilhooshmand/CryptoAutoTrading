@@ -20,7 +20,7 @@ One bounded simulated trading run. At most one session may be in `RUNNING` or
 | `mode` | enum | Always `simulation` for creatable rows |
 | `state` | enum | `CONFIGURED` \| `RUNNING` \| `STOPPING` \| `STOPPED` |
 | `symbol` | string | e.g. `btc_usdt` (Feature 002 symbol) |
-| `timeframe` | enum | `15m` \| `1h` \| `4h` \| `1d` (session strategy candle TF) |
+| `timeframe` | enum | `1m` \| `5m` \| `15m` \| `1h` \| `4h` \| `1d` (session strategy candle TF) |
 | `starting_capital` | decimal string | Initial cash; start equity |
 | `allocated_capital` | decimal string | Enforceable notional bound for full BUY sizing |
 | `max_position_size` | decimal string | Additional USDT notional cap |

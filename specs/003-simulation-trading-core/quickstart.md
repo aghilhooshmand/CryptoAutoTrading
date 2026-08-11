@@ -61,8 +61,8 @@ Confirm:
 3. Configure: symbol (e.g. `btc_usdt`), starting capital, **allocated capital**
    (enforceable deploy cap), max position size, **target net profit %** and
    **max loss %** of allocated capital (UI shows both % and derived USDT
-   amounts), max trades, duration, timeframe (`1h` recommended for demos —
-   or `15m` for faster closes).
+   amounts), max trades, duration, timeframe (`1m`/`5m` for faster demos;
+   `1h` still fine for slower closed-candle checks).
 4. Leave fee/slippage blank → defaults **0.10%** / **0.05%** apply.
 5. Start session → state `RUNNING`; only one active session allowed.
 

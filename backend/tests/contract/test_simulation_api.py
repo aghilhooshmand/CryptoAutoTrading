@@ -67,6 +67,18 @@ def test_stop_manual(client):
     assert stopped.json()["stopReason"] == "manual"
 
 
+def test_create_accepts_1m_and_5m_timeframes(client):
+    for tf in ("1m", "5m"):
+        r = client.post("/simulation/sessions", json=_body(timeframe=tf))
+        assert r.status_code == 201, r.text
+        assert r.json()["timeframe"] == tf
+
+
+def test_create_rejects_unsupported_timeframe(client):
+    r = client.post("/simulation/sessions", json=_body(timeframe="3m"))
+    assert r.status_code == 400
+
+
 def _body(**over):
     base = {
         "mode": "simulation",

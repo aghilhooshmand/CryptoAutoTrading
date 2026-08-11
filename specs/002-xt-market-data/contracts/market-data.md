@@ -156,7 +156,7 @@ Returns historical OHLC series for one symbol and allowed interval.
 | Query | Required | Notes |
 |-------|----------|--------|
 | `symbol` | yes | e.g. `btc_usdt` |
-| `interval` | yes | Exactly one of `15m`, `1h`, `4h`, `1d` |
+| `interval` | yes | Exactly one of `1m`, `5m`, `15m`, `1h`, `4h`, `1d` |
 | `limit` | no | Server default modest (e.g. 100–200); clamp to safe max ≤ 1000 |
 
 ### Successful response

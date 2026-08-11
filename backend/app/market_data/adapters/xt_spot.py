@@ -22,6 +22,23 @@ from app.market_data.models import (
 XT_SPOT_BASE = "https://sapi.xt.com"
 DEFAULT_TIMEOUT = 10.0
 
+# XT Spot kline `interval` query values — keep exchange-specific strings here only.
+XT_KLINE_INTERVAL: dict[CandleInterval, str] = {
+    CandleInterval.M1: "1m",
+    CandleInterval.M5: "5m",
+    CandleInterval.M15: "15m",
+    CandleInterval.H1: "1h",
+    CandleInterval.H4: "4h",
+    CandleInterval.D1: "1d",
+}
+
+
+def to_xt_kline_interval(interval: CandleInterval) -> str:
+    try:
+        return XT_KLINE_INTERVAL[interval]
+    except KeyError as exc:
+        raise MarketDataAdapterError(f"Unsupported candle interval for XT: {interval}") from exc
+
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -261,7 +278,7 @@ class XtSpotAdapter:
             "/v4/public/kline",
             params={
                 "symbol": normalized,
-                "interval": interval.value,
+                "interval": to_xt_kline_interval(interval),
                 "limit": safe_limit,
             },
         )

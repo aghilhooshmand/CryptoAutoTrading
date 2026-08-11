@@ -20,6 +20,10 @@ describe("market prefs", () => {
     expect(loadLastInterval()).toBe("1h");
     saveLastInterval("4h");
     expect(loadLastInterval()).toBe("4h");
+    saveLastInterval("1m");
+    expect(loadLastInterval()).toBe("1m");
+    saveLastInterval("5m");
+    expect(loadLastInterval()).toBe("5m");
     saveLastSymbol("eth_usdt");
     expect(loadLastSymbol()).toBe("eth_usdt");
   });

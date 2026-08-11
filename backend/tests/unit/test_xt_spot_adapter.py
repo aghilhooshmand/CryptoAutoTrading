@@ -12,6 +12,7 @@ from app.market_data.adapters.xt_spot import (
     map_symbol_row,
     map_ticker_row,
     ratio_to_percent_points,
+    to_xt_kline_interval,
 )
 from app.market_data.models import CandleInterval
 
@@ -96,3 +97,41 @@ def test_map_kline_rows_skips_incomplete_bars() -> None:
     assert len(series.candles) == 1
     assert series.candles[0].open == "1"
     assert series.interval == CandleInterval.H1
+
+
+@pytest.mark.parametrize(
+    ("interval", "xt_value"),
+    [
+        (CandleInterval.M1, "1m"),
+        (CandleInterval.M5, "5m"),
+        (CandleInterval.M15, "15m"),
+        (CandleInterval.H1, "1h"),
+        (CandleInterval.H4, "4h"),
+        (CandleInterval.D1, "1d"),
+    ],
+)
+def test_xt_kline_interval_mapping(interval: CandleInterval, xt_value: str) -> None:
+    assert to_xt_kline_interval(interval) == xt_value
+
+
+def test_map_kline_rows_accepts_1m_and_5m() -> None:
+    retrieved = datetime(2026, 8, 9, 16, 0, 1, tzinfo=timezone.utc)
+    for interval in (CandleInterval.M1, CandleInterval.M5):
+        series = map_kline_rows(
+            [
+                {
+                    "t": 1_720_000_000_000,
+                    "o": "100",
+                    "h": "101",
+                    "l": "99",
+                    "c": "100.5",
+                    "q": "1",
+                    "v": "100",
+                }
+            ],
+            symbol="btc_usdt",
+            interval=interval,
+            retrieved_at=retrieved,
+        )
+        assert series.interval == interval
+        assert series.candles[0].close == "100.5"

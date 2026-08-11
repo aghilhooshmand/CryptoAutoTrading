@@ -166,6 +166,8 @@ export function SessionConfigForm({
             disabled={disabled}
             onChange={(e) => setField("timeframe", e.target.value as CandleInterval)}
           >
+            <option value="1m">1m</option>
+            <option value="5m">5m</option>
             <option value="15m">15m</option>
             <option value="1h">1h</option>
             <option value="4h">4h</option>

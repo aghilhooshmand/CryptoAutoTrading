@@ -24,6 +24,8 @@ class MarketStatus(str, Enum):
 
 
 class CandleInterval(str, Enum):
+    M1 = "1m"
+    M5 = "5m"
     M15 = "15m"
     H1 = "1h"
     H4 = "4h"

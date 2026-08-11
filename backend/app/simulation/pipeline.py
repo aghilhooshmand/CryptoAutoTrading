@@ -24,7 +24,15 @@ from app.simulation.state_machine import SessionState
 from app.simulation.strategy.base import CandleClose, SignalSide
 from app.simulation.strategy.dual_ema import DualEmaCrossoverStrategy
 
-INTERVAL_SECONDS = {"15m": 900, "1h": 3600, "4h": 14400, "1d": 86400}
+INTERVAL_SECONDS = {
+    "1m": 60,
+    "5m": 300,
+    "15m": 900,
+    "1h": 3600,
+    "4h": 14400,
+    "1d": 86400,
+}
+
 
 
 async def _closed_candles(symbol: str, timeframe: str, clock: Clock) -> list[CandleClose]:

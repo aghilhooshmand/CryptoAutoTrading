@@ -152,10 +152,22 @@ def test_candles_allowed_interval_decimal_ohlc() -> None:
     assert isinstance(candle["openTime"], int)
 
 
+@pytest.mark.parametrize("interval", ["1m", "5m"])
+def test_candles_accepts_short_intervals(interval: str) -> None:
+    response = client.get(
+        "/market/candles",
+        params={"symbol": "btc_usdt", "interval": interval, "limit": 3},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["interval"] == interval
+    assert len(body["candles"]) >= 1
+
+
 def test_candles_invalid_interval() -> None:
     response = client.get(
         "/market/candles",
-        params={"symbol": "btc_usdt", "interval": "5m"},
+        params={"symbol": "btc_usdt", "interval": "3m"},
     )
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "invalid_interval"

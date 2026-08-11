@@ -59,7 +59,7 @@ async def get_candles(
         return _error(
             400,
             "invalid_interval",
-            "interval must be one of: 15m, 1h, 4h, 1d",
+            "interval must be one of: 1m, 5m, 15m, 1h, 4h, 1d",
         )
     try:
         series = await service.get_candles(symbol, interval, limit)
