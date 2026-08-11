@@ -91,9 +91,35 @@ def _body(**over):
         "maxSessionLossRate": "0.007",
         "maxTrades": 20,
         "durationSeconds": 3600,
+        "strategyId": "dual_ema",
     }
     base.update(over)
     return base
+
+
+def test_create_requires_strategy_id(client):
+    body = _body()
+    del body["strategyId"]
+    r = client.post("/simulation/sessions", json=body)
+    assert r.status_code == 400
+    assert r.json()["detail"]["error"]["code"] in ("missing_strategy", "invalid_config")
+
+
+def test_alias_persists_canonical(client):
+    r = client.post("/simulation/sessions", json=_body(strategyId="dual_ema_9_21"))
+    assert r.status_code == 201
+    data = r.json()
+    assert data["strategyId"] == "dual_ema"
+    assert data["strategyParams"] == {"fastPeriod": 9, "slowPeriod": 21}
+
+
+def test_invalid_strategy_params_message(client):
+    r = client.post(
+        "/simulation/sessions",
+        json=_body(strategyParams={"fastPeriod": 30, "slowPeriod": 21}),
+    )
+    assert r.status_code == 400
+    assert "Fast period must be less than slow period." in r.json()["detail"]["error"]["message"]
 
 
 def test_create_derives_amounts(client):

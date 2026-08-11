@@ -7,6 +7,11 @@ import {
   validateCapitalNesting,
 } from "../../services/simulationApi";
 import { COST_DEFAULTS, CostRateFields } from "../shared/CostRateFields";
+import {
+  StrategyConfigFields,
+  defaultStrategyConfig,
+  type StrategyConfigValue,
+} from "../strategy/StrategyConfigFields";
 import { InfoTooltip } from "./InfoTooltip";
 
 export interface SessionConfigValues {
@@ -75,6 +80,8 @@ export function SessionConfigForm({
     ...DEFAULTS,
     symbol: defaultSymbol,
   });
+  const [strategy, setStrategy] = useState<StrategyConfigValue>(defaultStrategyConfig());
+  const [strategyError, setStrategyError] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const profitAmount = useMemo(
@@ -111,6 +118,10 @@ export function SessionConfigForm({
       setLocalError("Duration must be an integer ≥ 1 second.");
       return;
     }
+    if (strategyError) {
+      setLocalError(strategyError);
+      return;
+    }
     setLocalError(null);
     onSubmit({
       symbol: values.symbol.trim(),
@@ -124,6 +135,8 @@ export function SessionConfigForm({
       durationSeconds: duration,
       feeRate: values.feeRate || undefined,
       slippageRate: values.slippageRate || undefined,
+      strategyId: strategy.strategyId,
+      strategyParams: strategy.strategyParams,
     });
   }
 
@@ -141,6 +154,13 @@ export function SessionConfigForm({
         Simulation only — real-money trading is unavailable. Profit and loss are
         rates of allocated capital; amounts update live.
       </p>
+
+      <StrategyConfigFields
+        disabled={disabled}
+        value={strategy}
+        onChange={setStrategy}
+        onValidationError={setStrategyError}
+      />
 
       <div className="sim-grid">
         <label>

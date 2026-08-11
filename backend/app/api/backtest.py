@@ -27,6 +27,7 @@ class CreateBacktestBody(BaseModel):
     feeRate: Optional[str] = None
     slippageRate: Optional[str] = None
     strategyId: Optional[str] = None
+    strategyParams: Optional[dict[str, Any]] = None
 
 
 def _raise(err: svc.BacktestError) -> None:

@@ -44,6 +44,7 @@ def test_pipeline_hold_journals_without_fill(db):
             "maxSessionLossRate": "0.007",
             "maxTrades": 20,
             "durationSeconds": 86400,
+            "strategyId": "dual_ema",
         },
     )
     now = datetime(2026, 8, 9, 12, 0, 0, tzinfo=timezone.utc)

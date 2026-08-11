@@ -10,6 +10,11 @@ import {
 } from "../../services/backtestApi";
 import { COST_DEFAULTS } from "../shared/CostRateFields";
 import { CostRateFields } from "../shared/CostRateFields";
+import {
+  StrategyConfigFields,
+  defaultStrategyConfig,
+  type StrategyConfigValue,
+} from "../strategy/StrategyConfigFields";
 
 const INTERVALS: CandleInterval[] = ["1m", "5m", "15m", "1h", "4h", "1d"];
 
@@ -39,6 +44,8 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
   const [maxTrades, setMaxTrades] = useState("");
   const [feeRate, setFeeRate] = useState(COST_DEFAULTS.feeRate);
   const [slippageRate, setSlippageRate] = useState(COST_DEFAULTS.slippageRate);
+  const [strategy, setStrategy] = useState<StrategyConfigValue>(defaultStrategyConfig());
+  const [strategyError, setStrategyError] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const derivedProfit = useMemo(() => {
@@ -85,6 +92,10 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
       setLocalError(oversizedHistoryMessage(estimated, timeframe));
       return;
     }
+    if (strategyError) {
+      setLocalError(strategyError);
+      return;
+    }
     const body: CreateBacktestRequest = {
       symbol: symbol.trim(),
       timeframe,
@@ -93,6 +104,8 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
       startingCapital,
       allocatedCapital,
       maxPositionSize,
+      strategyId: strategy.strategyId,
+      strategyParams: strategy.strategyParams,
     };
     if (profitRate) body.targetNetProfitRate = profitRate;
     if (lossRate) body.maxSessionLossRate = lossRate;
@@ -115,6 +128,13 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
       <h3 id="backtest-config-title" className="visually-hidden">
         Configure backtest
       </h3>
+
+      <StrategyConfigFields
+        disabled={locked}
+        value={strategy}
+        onChange={setStrategy}
+        onValidationError={setStrategyError}
+      />
 
       <fieldset className="backtest-fieldset" disabled={locked}>
         <legend>Market</legend>

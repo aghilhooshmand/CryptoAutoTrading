@@ -59,9 +59,56 @@ def _body(**over):
         "startingCapital": "1000",
         "allocatedCapital": "1000",
         "maxPositionSize": "1000",
+        "strategyId": "dual_ema",
     }
     base.update(over)
     return base
+
+
+def test_omit_strategy_id_rejected(client):
+    c, _Session = client
+    body = _body()
+    del body["strategyId"]
+    r = c.post("/backtest/runs", json=body)
+    assert r.status_code == 400
+    assert r.json()["detail"]["error"]["code"] in ("missing_strategy", "invalid_config")
+
+
+def test_alias_persists_canonical(client):
+    c, _Session = client
+    from unittest.mock import AsyncMock, patch
+
+    from app.market_data.models import CandleInterval, CandlestickSeries
+
+    mock = AsyncMock()
+    mock.get_candles = AsyncMock(return_value=_mock_series(30))
+    with patch("app.backtest.service.get_market_data_service", return_value=mock):
+        r = c.post("/backtest/runs", json=_body(strategyId="dual_ema_9_21"))
+    assert r.status_code == 201
+    data = r.json()
+    assert data["strategyId"] == "dual_ema"
+    assert data["strategyParams"]["fastPeriod"] == 9
+    assert data["strategyParams"]["slowPeriod"] == 21
+
+
+def test_insufficient_history_uses_slow_period(client):
+    c, _Session = client
+    from unittest.mock import AsyncMock, patch
+
+    mock = AsyncMock()
+    mock.get_candles = AsyncMock(return_value=_mock_series(40))
+    # slow=50 → need ≥50 candles; 40 → insufficient
+    with patch("app.backtest.service.get_market_data_service", return_value=mock):
+        r = c.post(
+            "/backtest/runs",
+            json=_body(
+                strategyParams={"fastPeriod": 9, "slowPeriod": 50},
+                endTime=1_700_000_000_000 + 60 * 3_600_000,
+            ),
+        )
+    assert r.status_code == 201
+    assert r.json()["status"] == "failed"
+    assert r.json()["errorCode"] == "insufficient_history"
 
 
 def _mock_series(n: int):

@@ -67,6 +67,14 @@ export function BacktestResultsPanel({ run }: Props) {
         Status: <strong>{run.status}</strong>
         {run.errorCode ? ` (${run.errorCode}: ${run.errorMessage})` : null}
       </p>
+      <p data-testid="backtest-strategy">
+        Strategy: <strong>{run.strategyId}</strong>
+        {run.strategyParams
+          ? ` (${Object.entries(run.strategyParams)
+              .map(([k, v]) => `${k}=${v}`)
+              .join(", ")})`
+          : null}
+      </p>
 
       {s && (
         <>

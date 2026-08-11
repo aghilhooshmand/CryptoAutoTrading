@@ -74,12 +74,19 @@ export function SessionStatusPanel({
         <div>
           <Term
             tipLabel="Strategy"
-            tipText="Built-in dual moving-average rule (EMA 9 vs EMA 21) that suggests buy, sell, or hold."
+            tipText="Registered strategy used for this session (id and effective parameters)."
             tipTestId="tip-strategy"
           >
             Strategy
           </Term>
-          <dd>{session.strategyId}</dd>
+          <dd data-testid="session-strategy">
+            {session.strategyId}
+            {session.strategyParams
+              ? ` · ${Object.entries(session.strategyParams)
+                  .map(([k, v]) => `${k}=${v}`)
+                  .join(", ")}`
+              : null}
+          </dd>
         </div>
         <div>
           <Term>Cash</Term>

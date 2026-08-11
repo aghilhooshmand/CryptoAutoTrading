@@ -38,7 +38,25 @@ def get_db() -> Session:
 
 
 def init_db() -> None:
+    from sqlalchemy import inspect, text
+
     from app.db import models  # noqa: F401
     from app.db.models import Base
 
     Base.metadata.create_all(bind=engine)
+    # SQLite create_all does not add columns to existing tables.
+    _ensure_column(engine, "simulation_sessions", "strategy_params", "TEXT")
+    _ensure_column(engine, "backtest_runs", "strategy_params", "TEXT")
+
+
+def _ensure_column(eng, table: str, column: str, coltype: str) -> None:
+    from sqlalchemy import inspect, text
+
+    insp = inspect(eng)
+    if table not in insp.get_table_names():
+        return
+    existing = {c["name"] for c in insp.get_columns(table)}
+    if column in existing:
+        return
+    with eng.begin() as conn:
+        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}"))

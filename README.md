@@ -7,8 +7,10 @@ health). Feature `002-xt-market-data` adds public XT Spot market data on the
 Dashboard (USDT pairs, quote, history). Feature `003-simulation-trading-core`
 adds simulation-only Auto Trading (dual EMA, journals, hard stops). Feature
 `004-backtesting-core` adds historical Dual EMA backtests under the same Auto
-Trading page (offline evaluation, no real orders). Real-money trading,
-sentiment, and auth remain out of scope.
+Trading page (offline evaluation, no real orders). Feature
+`005-strategy-framework` makes strategies selectable (registry + Dual EMA
+canonical id `dual_ema`, editable periods defaulting to 9/21) for Simulation
+and Backtest. Real-money trading, sentiment, and auth remain out of scope.
 
 ## Prerequisites
 
@@ -56,7 +58,8 @@ npm run dev
 
 Frontend URL: `http://127.0.0.1:5173`
 
-Vite proxies `/health`, `/market`, `/simulation`, and `/backtest` to the backend.
+Vite proxies `/health`, `/market`, `/simulation`, `/backtest`, and `/strategies`
+to the backend.
 Open the frontend URL and use Dashboard **Refresh** to load XT public market data
 (manual refresh is required; auto-refresh is optional polish and not required).
 
@@ -98,6 +101,13 @@ curl -sS http://127.0.0.1:8000/backtest/runs
 
 Feature 004 validation guide:
 [`specs/004-backtesting-core/quickstart.md`](specs/004-backtesting-core/quickstart.md)
+
+## Strategy selection (Feature 005)
+
+Simulation and Backtest share a strategy registry. Operators select Dual EMA
+(`dual_ema`, defaults fast 9 / slow 21) under Auto Trading; `strategyId` is
+required on create. See
+[`specs/005-strategy-framework/quickstart.md`](specs/005-strategy-framework/quickstart.md).
 
 ## Backend health
 

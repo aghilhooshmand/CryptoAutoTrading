@@ -67,11 +67,14 @@ export function BacktestRunList({ runs, selectedId, onSelect, onDelete }: Props)
                     {formatShortDate(r.startTime)}–{formatShortDate(r.endTime)}
                   </span>
                   <span className="backtest-run-meta">
+                    {r.strategyId}
                     {r.status === "completed" && meta
-                      ? meta
+                      ? ` · ${meta}`
                       : r.status === "failed"
-                        ? r.errorCode ?? "failed"
-                        : r.status}
+                        ? ` · ${r.errorCode ?? "failed"}`
+                        : r.status !== "completed"
+                          ? ` · ${r.status}`
+                          : null}
                   </span>
                 </button>
                 <button

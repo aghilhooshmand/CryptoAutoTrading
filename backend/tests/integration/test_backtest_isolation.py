@@ -73,6 +73,7 @@ def test_backtest_does_not_change_simulation_cash(client):
             "maxSessionLossRate": "0.007",
             "maxTrades": 20,
             "durationSeconds": 3600,
+            "strategyId": "dual_ema",
         },
     )
     assert created.status_code == 201
@@ -89,6 +90,7 @@ def test_backtest_does_not_change_simulation_cash(client):
             "startingCapital": "1000",
             "allocatedCapital": "1000",
             "maxPositionSize": "1000",
+            "strategyId": "dual_ema",
         },
     )
     assert bt.status_code == 201

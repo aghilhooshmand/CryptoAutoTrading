@@ -65,6 +65,7 @@ def test_pipeline_produces_decisions(client):
                 "startingCapital": "1000",
                 "allocatedCapital": "1000",
                 "maxPositionSize": "1000",
+                "strategyId": "dual_ema",
             },
         )
     assert r.status_code == 201

@@ -20,6 +20,13 @@ from app.db.models import BacktestRunRow
 from app.market_data.adapters.base import MarketDataAdapterError, UnsupportedSymbolError
 from app.market_data.service import get_market_data_service
 from app.simulation.money import DEFAULT_FEE_RATE, DEFAULT_SLIPPAGE_RATE, as_str, d
+from app.strategy.params import StrategyParamError
+from app.strategy.registry import UnknownStrategyError, validate_and_materialize
+from app.strategy.serialize import (
+    display_strategy_id,
+    dumps_params,
+    effective_params_for_row,
+)
 
 
 class BacktestError(Exception):
@@ -115,9 +122,17 @@ def validate_config(body: dict[str, Any]) -> dict[str, Any]:
             "Requested window exceeds maximum of 5000 candles",
         )
 
-    strategy_id = body.get("strategyId") or "dual_ema_9_21"
-    if strategy_id != "dual_ema_9_21":
-        raise BacktestError("invalid_config", "Only dual_ema_9_21 is supported")
+    try:
+        canonical_id, effective_params, instance = validate_and_materialize(
+            body.get("strategyId"),
+            body.get("strategyParams"),
+        )
+    except UnknownStrategyError as exc:
+        raise BacktestError(exc.code, exc.message, 400) from exc
+    except StrategyParamError as exc:
+        raise BacktestError(exc.code, exc.message, 400) from exc
+
+    min_history = instance.min_history_candles()
 
     return {
         "symbol": symbol,
@@ -134,7 +149,10 @@ def validate_config(body: dict[str, Any]) -> dict[str, Any]:
         "max_trades": max_trades,
         "fee_rate": as_str(fee_rate),
         "slippage_rate": as_str(slip_rate),
-        "strategy_id": strategy_id,
+        "strategy_id": canonical_id,
+        "strategy_params": dumps_params(effective_params),
+        "min_history_candles": min_history,
+        "strategy_params_obj": effective_params,
     }
 
 
@@ -143,6 +161,8 @@ async def create_and_run(db: Session, body: dict[str, Any], *, wire_shared: bool
         raise BacktestError("backtest_already_running", "Another backtest is running", 409)
 
     fields = validate_config(body)
+    min_history = int(fields.pop("min_history_candles"))
+    strategy_params_obj = fields.pop("strategy_params_obj")
     # Pre-accept oversized already checked. Create running row, then fetch.
     run = repo.create_running_run(db, fields)
 
@@ -176,12 +196,15 @@ async def create_and_run(db: Session, body: dict[str, Any], *, wire_shared: bool
         )
         return run_to_dict(db, run)
 
-    if is_insufficient_count(len(candles)):
+    if is_insufficient_count(len(candles), min_history):
         repo.mark_failed(
             db,
             run,
             code="insufficient_history",
-            message="Need at least 21 closed candles in the window (empty or too short)",
+            message=(
+                f"Need at least {min_history} closed candles in the window "
+                "(empty or too short)"
+            ),
         )
         return run_to_dict(db, run)
 
@@ -206,6 +229,8 @@ async def create_and_run(db: Session, body: dict[str, Any], *, wire_shared: bool
             else None
         ),
         wire_shared=wire_shared,
+        strategy_id=fields["strategy_id"],
+        strategy_params=strategy_params_obj,
     )
     repo.mark_completed(db, run, summary=summary, candle_count=len(candles))
     return run_to_dict(db, run)
@@ -234,7 +259,8 @@ def run_to_dict(db: Session, run: BacktestRunRow, *, include_summary: bool = Tru
         "maxTrades": run.max_trades,
         "feeRate": run.fee_rate,
         "slippageRate": run.slippage_rate,
-        "strategyId": run.strategy_id,
+        "strategyId": display_strategy_id(run.strategy_id),
+        "strategyParams": effective_params_for_row(run.strategy_id, run.strategy_params),
         "candleCount": run.candle_count,
         "createdAt": run.created_at.isoformat().replace("+00:00", "Z") if run.created_at else None,
         "startedAt": run.started_at.isoformat().replace("+00:00", "Z") if run.started_at else None,

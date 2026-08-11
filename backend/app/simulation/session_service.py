@@ -21,6 +21,13 @@ from app.simulation.clock import Clock, SystemClock
 from app.simulation.execution.port import ExecutionIntent, SimulationExecutionEngine
 from app.simulation.money import DEFAULT_FEE_RATE, DEFAULT_SLIPPAGE_RATE, as_str, d
 from app.simulation.state_machine import SessionState, transition
+from app.strategy.params import StrategyParamError
+from app.strategy.registry import UnknownStrategyError, is_known_strategy_id, validate_and_materialize
+from app.strategy.serialize import (
+    display_strategy_id,
+    dumps_params,
+    effective_params_for_row,
+)
 
 
 class SessionError(Exception):
@@ -79,6 +86,16 @@ def create_session(db: Session, body: dict, clock: Clock | None = None) -> Simul
             "timeframe must be one of: 1m, 5m, 15m, 1h, 4h, 1d",
         )
 
+    try:
+        canonical_id, effective_params, _instance = validate_and_materialize(
+            body.get("strategyId"),
+            body.get("strategyParams"),
+        )
+    except UnknownStrategyError as exc:
+        raise SessionError(exc.code, exc.message, 400) from exc
+    except StrategyParamError as exc:
+        raise SessionError(exc.code, exc.message, 400) from exc
+
     now = _now(clock)
     target_amt = allocated * target_rate
     loss_amt = allocated * loss_rate
@@ -99,7 +116,8 @@ def create_session(db: Session, body: dict, clock: Clock | None = None) -> Simul
         duration_seconds=duration,
         fee_rate=as_str(fee_rate),
         slippage_rate=as_str(slip_rate),
-        strategy_id="dual_ema_9_21",
+        strategy_id=canonical_id,
+        strategy_params=dumps_params(effective_params),
         cash=as_str(starting),
         position_side="flat",
         position_qty="0",
@@ -150,6 +168,12 @@ async def start_session_async(
         raise SessionError("invalid_state", "Session must be CONFIGURED to start", 409)
     if get_active_session(db) is not None:
         raise SessionError("session_already_active", "Another session is already active", 409)
+    if not is_known_strategy_id(row.strategy_id):
+        raise SessionError(
+            "unknown_strategy",
+            f"Cannot start session with unknown strategy: {row.strategy_id}",
+            400,
+        )
 
     try:
         await get_market_data_service().get_quote(row.symbol)
@@ -415,7 +439,8 @@ async def session_to_dict(row: SimulationSessionRow) -> dict:
         "state": row.state,
         "symbol": row.symbol,
         "timeframe": row.timeframe,
-        "strategyId": row.strategy_id,
+        "strategyId": display_strategy_id(row.strategy_id),
+        "strategyParams": effective_params_for_row(row.strategy_id, row.strategy_params),
         "startingCapital": row.starting_capital,
         "allocatedCapital": row.allocated_capital,
         "maxPositionSize": row.max_position_size,

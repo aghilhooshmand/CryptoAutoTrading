@@ -191,10 +191,11 @@ def test_missing_next_candle_is_approved_unexecutable(db):
             slow_ema=Decimal("1"),
         )
 
-    with patch("app.backtest.engine.DualEmaCrossoverStrategy") as Strat:
+    with patch("app.backtest.engine.build_from_stored") as build:
         instance = MagicMock()
         instance.evaluate.side_effect = fake_evaluate
-        Strat.return_value = instance
+        instance.min_history_candles.return_value = 21
+        build.return_value = instance
         run_engine(
             db,
             run.id,

@@ -21,8 +21,9 @@ from app.simulation.session_service import (
     stop_session_async,
 )
 from app.simulation.state_machine import SessionState
-from app.simulation.strategy.base import CandleClose, SignalSide
-from app.simulation.strategy.dual_ema import DualEmaCrossoverStrategy
+from app.strategy.base import CandleClose, SignalSide
+from app.strategy.registry import UnknownStrategyError, build_from_stored
+from app.strategy.serialize import loads_params
 
 INTERVAL_SECONDS = {
     "1m": 60,
@@ -116,7 +117,18 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
         db.commit()
         return
 
-    strategy = DualEmaCrossoverStrategy()
+    try:
+        params = loads_params(row.strategy_params)
+        strategy = build_from_stored(row.strategy_id, params)
+    except UnknownStrategyError:
+        await stop_session_async(
+            db,
+            row.id,
+            "unknown_strategy",
+            clock=clock,
+        )
+        return
+
     signal = strategy.evaluate(closes)
     controller = TradingController()
     risk = RiskManager()

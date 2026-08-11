@@ -17,8 +17,8 @@ from app.simulation.control.controller import TradingController
 from app.simulation.control.risk import RiskContext, RiskManager
 from app.simulation.money import DEFAULT_FEE_RATE, DEFAULT_SLIPPAGE_RATE, as_str, d, quantize_money
 from app.simulation.state_machine import SessionState
-from app.simulation.strategy.base import CandleClose, SignalSide
-from app.simulation.strategy.dual_ema import DualEmaCrossoverStrategy
+from app.strategy.base import CandleClose, SignalSide
+from app.strategy.registry import build_from_stored
 
 # Sentinels when optional early-exit / max_trades omitted
 _HUGE = Decimal("1000000000000")
@@ -57,6 +57,8 @@ def run_engine(
     target_net_profit_amount: Decimal | None,
     max_session_loss_amount: Decimal | None,
     wire_shared: bool = True,
+    strategy_id: str = "dual_ema",
+    strategy_params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
     Process candles. When wire_shared is False (T020 skeleton), only walks candles
@@ -64,7 +66,9 @@ def run_engine(
     """
     state = EngineState(cash=starting_capital)
     adapter = HistoricalExecutionAdapter()
-    strategy = DualEmaCrossoverStrategy() if wire_shared else None
+    strategy = (
+        build_from_stored(strategy_id, strategy_params) if wire_shared else None
+    )
     controller = TradingController() if wire_shared else None
     risk = RiskManager() if wire_shared else None
     closes: list[CandleClose] = []

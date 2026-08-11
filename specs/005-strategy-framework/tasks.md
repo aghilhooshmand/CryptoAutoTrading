@@ -37,10 +37,10 @@
 
 **Purpose**: Package/layout markers — no trading behavior yet
 
-- [ ] T001 Create backend package dir `backend/app/strategy/` and frontend dir `frontend/src/features/strategy/` per plan.md
-- [ ] T002 [P] Add package marker `backend/app/strategy/__init__.py`
-- [ ] T003 [P] Ensure `backend/tests/unit/`, `backend/tests/contract/`, `backend/tests/integration/` exist for new strategy tests
-- [ ] T040 [P] Proxy `/strategies` to the backend in `frontend/vite.config.ts` (same pattern as `/simulation` and `/backtest`) so local UI can call `GET /strategies`
+- [X] T001 Create backend package dir `backend/app/strategy/` and frontend dir `frontend/src/features/strategy/` per plan.md
+- [X] T002 [P] Add package marker `backend/app/strategy/__init__.py`
+- [X] T003 [P] Ensure `backend/tests/unit/`, `backend/tests/contract/`, `backend/tests/integration/` exist for new strategy tests
+- [X] T040 [P] Proxy `/strategies` to the backend in `frontend/vite.config.ts` (same pattern as `/simulation` and `/backtest`) so local UI can call `GET /strategies`
 
 ---
 
@@ -50,15 +50,15 @@
 
 **⚠️ CRITICAL**: No user story work until this phase completes
 
-- [ ] T004 Move/adapt strategy protocol (`CandleClose`, `SignalSide`, `StrategySignal`, `Strategy`) into `backend/app/strategy/base.py` from `backend/app/simulation/strategy/base.py`
-- [ ] T005 [P] Implement ParamDef + validate helpers (defaults merge, min/max, strategy-level constraints message) in `backend/app/strategy/params.py`
-- [ ] T006 Implement registry (register, list, resolve alias→canonical, `validate_and_materialize`, unknown reject) in `backend/app/strategy/registry.py`
-- [ ] T007 Migrate Dual EMA into `backend/app/strategy/dual_ema.py` with configurable `fast`/`slow` (defaults 9/21), warm-up HOLD while count `< S+1`, `min_history_candles() -> S`, and register as `dual_ema` with alias `dual_ema_9_21`
-- [ ] T008 Add thin re-exports or update imports so existing `backend/app/simulation/strategy/` consumers do not break during migration
-- [ ] T009 Add `strategy_params` JSON text column (and ensure `strategy_id` semantics) on simulation session + backtest run models in `backend/app/db/models.py` per data-model.md
-- [ ] T010 [P] Unit tests for registry resolve/alias/defaults/omit/unknown and Dual EMA param validation (incl. message “Fast period must be less than slow period.”) in `backend/tests/unit/test_strategy_registry.py`
-- [ ] T011 [P] Unit tests for Dual EMA continuity (defaults 9/21 match pre-migration signals) and non-default periods in `backend/tests/unit/test_dual_ema_continuity.py` and `backend/tests/unit/test_dual_ema_params.py`
-- [ ] T012 Wire Dual EMA auto-registration on app import/startup (registry populated before routes serve) from `backend/app/strategy/` / `backend/app/main.py` as needed
+- [X] T004 Move/adapt strategy protocol (`CandleClose`, `SignalSide`, `StrategySignal`, `Strategy`) into `backend/app/strategy/base.py` from `backend/app/simulation/strategy/base.py`
+- [X] T005 [P] Implement ParamDef + validate helpers (defaults merge, min/max, strategy-level constraints message) in `backend/app/strategy/params.py`
+- [X] T006 Implement registry (register, list, resolve alias→canonical, `validate_and_materialize`, unknown reject) in `backend/app/strategy/registry.py`
+- [X] T007 Migrate Dual EMA into `backend/app/strategy/dual_ema.py` with configurable `fast`/`slow` (defaults 9/21), warm-up HOLD while count `< S+1`, `min_history_candles() -> S`, and register as `dual_ema` with alias `dual_ema_9_21`
+- [X] T008 Add thin re-exports or update imports so existing `backend/app/simulation/strategy/` consumers do not break during migration
+- [X] T009 Add `strategy_params` JSON text column (and ensure `strategy_id` semantics) on simulation session + backtest run models in `backend/app/db/models.py` per data-model.md
+- [X] T010 [P] Unit tests for registry resolve/alias/defaults/omit/unknown and Dual EMA param validation (incl. message “Fast period must be less than slow period.”) in `backend/tests/unit/test_strategy_registry.py`
+- [X] T011 [P] Unit tests for Dual EMA continuity (defaults 9/21 match pre-migration signals) and non-default periods in `backend/tests/unit/test_dual_ema_continuity.py` and `backend/tests/unit/test_dual_ema_params.py`
+- [X] T012 Wire Dual EMA auto-registration on app import/startup (registry populated before routes serve) from `backend/app/strategy/` / `backend/app/main.py` as needed
 
 **Checkpoint**: Shared registry + Dual EMA + DB columns ready; no story UI/API complete yet
 
@@ -72,20 +72,20 @@
 
 ### Tests for User Story 1
 
-- [ ] T013 [P] [US1] Contract tests: `GET /strategies` schema; `POST /simulation/sessions` requires `strategyId`; alias→persist `dual_ema`; invalid params message in `backend/tests/contract/test_strategies_api.py` and extend `backend/tests/contract/test_simulation_api.py`
-- [ ] T014 [P] [US1] Frontend tests for strategy selector + period defaults/cross-field message in `frontend/src/__tests__/strategyConfig.test.tsx`
+- [X] T013 [P] [US1] Contract tests: `GET /strategies` schema; `POST /simulation/sessions` requires `strategyId`; alias→persist `dual_ema`; invalid params message in `backend/tests/contract/test_strategies_api.py` and extend `backend/tests/contract/test_simulation_api.py`
+- [X] T014 [P] [US1] Frontend tests for strategy selector + period defaults/cross-field message in `frontend/src/__tests__/strategyConfig.test.tsx`
 
 ### Implementation for User Story 1
 
-- [ ] T015 [US1] Implement `GET /strategies` in `backend/app/api/strategies.py` and mount in `backend/app/main.py` per `contracts/strategy-api.md`
-- [ ] T016 [US1] Require `strategyId` + optional `strategyParams` on create; resolve/validate/persist canonical id + effective params in `backend/app/simulation/session_service.py` and `backend/app/api/simulation.py`
-- [ ] T017 [US1] Construct strategy from session effective params in `backend/app/simulation/pipeline.py` (no hard-coded Dual EMA-only import path that bypasses registry)
-- [ ] T018 [US1] Enforce START/RESUME fail-safe for unknown stored `strategy_id` in `backend/app/simulation/session_service.py` / pipeline (READ still allowed)
-- [ ] T019 [P] [US1] Add typed client `frontend/src/services/strategiesApi.ts` for `GET /strategies`
-- [ ] T020 [P] [US1] Implement `StrategyConfigFields.tsx` (selector, dynamic params, min/max, strategy-level constraint message) in `frontend/src/features/strategy/StrategyConfigFields.tsx`
-- [ ] T021 [US1] Wire strategy fields into `frontend/src/features/simulation/SessionConfigForm.tsx` (pre-fill `dual_ema`, send `strategyId` + `strategyParams`)
-- [ ] T022 [US1] Show strategy id + params on session status/detail in `frontend/src/features/simulation/SessionStatusPanel.tsx` (or related panel)
-- [ ] T023 [US1] Run T013–T014 and fix until passing
+- [X] T015 [US1] Implement `GET /strategies` in `backend/app/api/strategies.py` and mount in `backend/app/main.py` per `contracts/strategy-api.md`
+- [X] T016 [US1] Require `strategyId` + optional `strategyParams` on create; resolve/validate/persist canonical id + effective params in `backend/app/simulation/session_service.py` and `backend/app/api/simulation.py`
+- [X] T017 [US1] Construct strategy from session effective params in `backend/app/simulation/pipeline.py` (no hard-coded Dual EMA-only import path that bypasses registry)
+- [X] T018 [US1] Enforce START/RESUME fail-safe for unknown stored `strategy_id` in `backend/app/simulation/session_service.py` / pipeline (READ still allowed)
+- [X] T019 [P] [US1] Add typed client `frontend/src/services/strategiesApi.ts` for `GET /strategies`
+- [X] T020 [P] [US1] Implement `StrategyConfigFields.tsx` (selector, dynamic params, min/max, strategy-level constraint message) in `frontend/src/features/strategy/StrategyConfigFields.tsx`
+- [X] T021 [US1] Wire strategy fields into `frontend/src/features/simulation/SessionConfigForm.tsx` (pre-fill `dual_ema`, send `strategyId` + `strategyParams`)
+- [X] T022 [US1] Show strategy id + params on session status/detail in `frontend/src/features/simulation/SessionStatusPanel.tsx` (or related panel)
+- [X] T023 [US1] Run T013–T014 and fix until passing
 
 **Checkpoint**: Simulation create/select Dual EMA works end-to-end with fail-safe rules
 
@@ -99,16 +99,16 @@
 
 ### Tests for User Story 2
 
-- [ ] T024 [P] [US2] Contract/extend tests for backtest create strategy fields, alias, omit reject, insufficient `< S` in `backend/tests/contract/test_backtest_api.py`
-- [ ] T025 [P] [US2] Integration test: same Dual EMA registry path for sim + backtest on fixture in `backend/tests/integration/test_strategy_shared_sim_backtest.py`
+- [X] T024 [P] [US2] Contract/extend tests for backtest create strategy fields, alias, omit reject, insufficient `< S` in `backend/tests/contract/test_backtest_api.py`
+- [X] T025 [P] [US2] Integration test: same Dual EMA registry path for sim + backtest on fixture in `backend/tests/integration/test_strategy_shared_sim_backtest.py`
 
 ### Implementation for User Story 2
 
-- [ ] T026 [US2] Require `strategyId` + optional `strategyParams` on backtest create; resolve/validate/persist in `backend/app/backtest/service.py` and `backend/app/api/backtest.py`
-- [ ] T027 [US2] Resolve strategy via registry in `backend/app/backtest/engine.py` using run’s effective params (remove hard Dual EMA-only construction that bypasses registry)
-- [ ] T028 [US2] Drive `insufficient_history` from Dual EMA `min_history_candles` / slow period `S` in `backend/app/backtest/limits.py` and `backend/app/backtest/service.py` (default S=21 preserves prior gate)
-- [ ] T029 [US2] Wire `StrategyConfigFields` into `frontend/src/features/backtest/BacktestConfigForm.tsx` (pre-fill `dual_ema`, send params)
-- [ ] T030 [US2] Run T024–T025 and T011 continuity checks; fix until passing
+- [X] T026 [US2] Require `strategyId` + optional `strategyParams` on backtest create; resolve/validate/persist in `backend/app/backtest/service.py` and `backend/app/api/backtest.py`
+- [X] T027 [US2] Resolve strategy via registry in `backend/app/backtest/engine.py` using run’s effective params (remove hard Dual EMA-only construction that bypasses registry)
+- [X] T028 [US2] Drive `insufficient_history` from Dual EMA `min_history_candles` / slow period `S` in `backend/app/backtest/limits.py` and `backend/app/backtest/service.py` (default S=21 preserves prior gate)
+- [X] T029 [US2] Wire `StrategyConfigFields` into `frontend/src/features/backtest/BacktestConfigForm.tsx` (pre-fill `dual_ema`, send params)
+- [X] T030 [US2] Run T024–T025 and T011 continuity checks; fix until passing
 
 **Checkpoint**: Simulation and Backtest share Dual EMA via registry; history gate scales with `S`
 
@@ -122,13 +122,13 @@
 
 ### Tests for User Story 3
 
-- [ ] T031 [P] [US3] Contract assertions that GET simulation session and GET backtest run return `strategyId` + `strategyParams` (and alias normalize on read) in existing contract test files under `backend/tests/contract/`
+- [X] T031 [P] [US3] Contract assertions that GET simulation session and GET backtest run return `strategyId` + `strategyParams` (and alias normalize on read) in existing contract test files under `backend/tests/contract/`
 
 ### Implementation for User Story 3
 
-- [ ] T032 [US3] Normalize legacy `dual_ema_9_21` on serialize/read; keep unknown ids as-stored for GET only in `backend/app/simulation/session_service.py` and `backend/app/backtest/service.py` (or shared serializer helper)
-- [ ] T033 [US3] Show strategy id + params on backtest results/list surfaces in `frontend/src/features/backtest/BacktestResultsPanel.tsx` and/or `BacktestRunList.tsx`
-- [ ] T034 [US3] Run T031 and quickstart inspect scenarios; fix until passing
+- [X] T032 [US3] Normalize legacy `dual_ema_9_21` on serialize/read; keep unknown ids as-stored for GET only in `backend/app/simulation/session_service.py` and `backend/app/backtest/service.py` (or shared serializer helper)
+- [X] T033 [US3] Show strategy id + params on backtest results/list surfaces in `frontend/src/features/backtest/BacktestResultsPanel.tsx` and/or `BacktestRunList.tsx`
+- [X] T034 [US3] Run T031 and quickstart inspect scenarios; fix until passing
 
 **Checkpoint**: Operators can see what strategy/params ran without re-opening the create form
 
@@ -138,11 +138,11 @@
 
 **Purpose**: Docs, guards, quickstart validation
 
-- [ ] T035 [P] Update root `README.md` briefly that Auto Trading strategies are selectable (Dual EMA defaults 9/21) and link `specs/005-strategy-framework/quickstart.md` if appropriate
-- [ ] T036 [P] Grep/guard: no second Dual EMA implementation under `backend/app/backtest/`; simulation/backtest import shared `app.strategy`
-- [ ] T037 Confirm START/RESUME refuses unknown stored strategy ids (add/adjust unit or contract coverage under `backend/tests/`)
-- [ ] T038 Run full validation scenarios in `specs/005-strategy-framework/quickstart.md`; fix gaps in `backend/app/strategy/` / UI
-- [ ] T039 Propose git commit message for Feature 005 implementation in chat (do not auto-commit unless asked)
+- [X] T035 [P] Update root `README.md` briefly that Auto Trading strategies are selectable (Dual EMA defaults 9/21) and link `specs/005-strategy-framework/quickstart.md` if appropriate
+- [X] T036 [P] Grep/guard: no second Dual EMA implementation under `backend/app/backtest/`; simulation/backtest import shared `app.strategy`
+- [X] T037 Confirm START/RESUME refuses unknown stored strategy ids (add/adjust unit or contract coverage under `backend/tests/`)
+- [X] T038 Run full validation scenarios in `specs/005-strategy-framework/quickstart.md`; fix gaps in `backend/app/strategy/` / UI
+- [X] T039 Propose git commit message for Feature 005 implementation in chat (do not auto-commit unless asked)
 
 ---
 

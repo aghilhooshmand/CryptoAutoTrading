@@ -38,8 +38,8 @@ def is_oversized_count(count: int) -> bool:
     return count > MAX_BACKTEST_CANDLES
 
 
-def is_insufficient_count(count: int) -> bool:
-    return count < MIN_BACKTEST_CANDLES
+def is_insufficient_count(count: int, min_candles: int = MIN_BACKTEST_CANDLES) -> bool:
+    return count < min_candles
 
 
 def assert_supported_interval(interval: str) -> None:
