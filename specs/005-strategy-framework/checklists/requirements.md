@@ -32,5 +32,5 @@
 ## Notes
 
 - Validation passed on first review (2026-08-11).
-- Informed defaults: Dual EMA params editable with 9/21 defaults; selection fixed at create; same registry for Simulation and Backtest.
-- Ready for `/speckit-clarify` (optional) or `/speckit-plan`.
+- Clarifications session 2026-08-11: editable Dual EMA periods; canonical id `dual_ema` + alias `dual_ema_9_21`; omit id → reject; warm-up `S+1` / insufficient history `&lt; S`.
+- Ready for `/speckit-plan`.
