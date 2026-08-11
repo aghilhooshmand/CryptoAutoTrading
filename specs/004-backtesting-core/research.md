@@ -10,45 +10,56 @@ deferred or open at plan time.
 
 ---
 
-## Decision 1: Shared Dual EMA — no fork
+## Decision 1: Shared strategy / controller / risk / accounting — backtest execution adapter
 
-**Decision**: Import and call the existing Feature 003 Dual EMA(9)/EMA(21)
-module (`backend/app/simulation/strategy/dual_ema.py` or equivalent). Backtest
-must not ship a second EMA implementation.
+**Decision**: Reuse Feature 003 **Dual EMA**, **Trading Controller**, **Risk
+Manager**, **accounting**, **position sizing**, and **money** modules without
+forks. Do **not** reuse the live simulation execution path for fills. Feature
+004 owns a **HistoricalExecutionAdapter** that applies next-open / end-close
+fill timing, fee/slippage, and balance updates for approved orders only.
 
-**Rationale**: Spec FR and constitution XI require conventional Dual EMA only;
-duplicate code would drift and break “same strategy as simulation.”
+Pipeline:
+
+```text
+Historical candles → Dual EMA → Controller → Risk → HistoricalExecutionAdapter → Accounting
+```
+
+**Rationale**: Semantic parity on authority and money; fill timing differs from
+live quotes, so a dedicated historical adapter avoids contaminating simulation
+execution and makes “approved but unexecutable” explicit (Decision 11).
 
 **Alternatives considered**:
-- Copy Dual EMA into `backtest/` — rejected (drift risk).
-- Parameterize periods in v1 — rejected (out of scope; fixed 9/21).
+- Copy Dual EMA / risk into `backtest/` — rejected (drift).
+- Reuse live `execution.simulation` with patched prices — rejected (couples
+  live session semantics to historical timing).
+- Parameterize EMA periods in v1 — rejected (fixed 9/21).
 
 ---
 
 ## Decision 2: Fill engine — next-open / end-close
 
-**Decision**: Implement a dedicated backtest engine chronologically:
+**Decision**: Chronological engine + HistoricalExecutionAdapter:
 
 1. Process only **closed** candles in ascending time order; each candle once.
 2. On closed Candle **N**, evaluate Dual EMA → Controller → Risk (Feature 003
    semantics: long-only, full position, capital nesting, optional
    `max_trades`, optional profit/loss early exits).
-3. If a strategy order is **approved**, queue fill at Candle **N+1 open** with
-   fee + adverse slippage (same Decimal money helpers as Feature 003).
-4. If N+1 does not exist → **no** normal strategy fill.
+3. If Risk **approves**, HistoricalExecutionAdapter attempts fill at Candle
+   **N+1 open** with fee + adverse slippage (shared money helpers).
+4. If N+1 does not exist → **no** fill; journal `approved_unexecutable` /
+   `no_next_candle` (Decision 11) — **not** a risk rejection.
 5. At run end, if a long remains open → flatten at **final processed closed
-   candle close** + fee + adverse slippage.
+   candle close** + fee + adverse slippage via the same adapter.
 6. Early-exit liquidation uses the same liquidation-consistent mark rules as
    Feature 003 (aligned with equity used for drawdown).
 
-**Rationale**: Matches locked clarification; isolates timing differences from
-live simulation (which fills on live quotes) without changing strategy/
-controller semantics.
+**Rationale**: Matches locked clarification; isolates timing in the historical
+adapter without changing strategy/controller/risk semantics.
 
 **Alternatives considered**:
 - Fill at Candle N close — rejected (clarification locked next-open).
 - Assume infinite next candle — rejected (invents data; violates fail-safe).
-
+- Treat missing N+1 as `rejected` — rejected (Decision 11).
 ---
 
 ## Decision 3: Historical candle fetch via Feature 002 boundary
@@ -113,50 +124,60 @@ simple (constitution X).
 
 ## Decision 5: One in-flight run; synchronous execution under cap
 
-**Decision**: At most **one** backtest in `running` state. `POST /backtest/runs`
-validates, marks running, executes the engine **synchronously** in the request
-(≤5000 candles is CPU-light for Dual EMA), then persists as `completed` or
-`failed` and returns the run summary. Concurrent start while one is running →
-**409 Conflict**.
+**Decision**: **Confirmed for v1.** At most **one** backtest in `running`
+state. `POST /backtest/runs` validates, marks running, executes the engine
+**synchronously** in the request under the 5000-candle cap, then persists as
+`completed` or `failed` and returns the run. Concurrent start while one is
+running → **409 Conflict**. No async worker / progress WebSocket in v1.
 
-**Rationale**: Local single-operator; avoids WebSocket progress channels
-(forbidden); keeps determinism tests simple. 5000 bars of EMA + fills is well
-within tens of seconds on a laptop.
+**Rationale**: Local single-operator; avoids forbidden WebSockets; keeps
+determinism tests simple. 5000 bars of EMA + fills is well within tens of
+seconds on a laptop.
 
 **Alternatives considered**:
-- Always-async worker + poll — more moving parts; defer unless sync proves too
-  slow in practice.
+- Always-async worker + poll — deferred past v1 unless sync proves too slow.
 - Parallel runs — rejected (spec: one in-flight).
 
 ---
 
-## Decision 6: Persistence — SQLite, FIFO 20 completed runs
+## Decision 6: Persistence — SQLite, FIFO 20 completed + FIFO 5 failed
 
-**Decision**: Store completed (and failed) runs in SQLite under `backend/data/`
-(same settings pattern as Feature 003; may share engine or use
-`BACKTEST_DB_PATH` defaulting beside simulation DB). Tables:
+**Decision**: Store runs in SQLite under `backend/data/` (same settings pattern
+as Feature 003; may share engine or use `BACKTEST_DB_PATH`). Tables:
 
-- `backtest_runs` — id, status, config JSON, summary JSON, timestamps, error
-- `backtest_trades` — FK run_id, trade journal rows
-- `backtest_decisions` — FK run_id, decision journal rows
+- `backtest_runs` — id, status, config, summary, timestamps, error
+- `backtest_trades` — FK run_id
+- `backtest_decisions` — FK run_id
 
-Retention: when saving a new **completed** run would exceed **20** completed
-runs, delete the **oldest** completed run(s) and cascaded children until ≤20.
-Failed runs: keep latest failed for inspect, but only **completed** count
-toward the 20; optionally prune old failed beyond a small bound (e.g. keep
-last 5 failed) — implementers may keep failed outside the 20 if documented;
-**preferred**: only completed count toward 20; delete oldest completed on
-overflow; failed runs older than 7 days may be deleted opportunistically.
+**Completed retention** (deterministic):
 
-Survive backend restart via SQLite file. List / get / delete endpoints.
+- Only `status = completed` counts toward the limit.
+- Max **20** completed runs.
+- On new completion that would exceed 20: delete the **oldest** completed
+  run(s) by `completed_at` ascending (then `id` ascending as tie-break) and
+  cascade children until ≤20.
 
-**Rationale**: Matches clarification; Feature 003 already uses SQLAlchemy +
-SQLite; no new DB product.
+**Failed retention** (deterministic — locked):
+
+- Only `status = failed` counts toward this limit (separate from completed).
+- Max **5** failed runs (`MAX_FAILED_BACKTEST_RUNS = 5`).
+- On new failure that would exceed 5: delete the **oldest** failed run(s) by
+  `completed_at` ascending (fallback `created_at`, then `id`) and cascade.
+- Failed runs do **not** count toward the 20 completed quota.
+- Validation errors that fail **before** a durable run row is created (e.g.
+  `400 invalid_config`, `400 oversized_history`) MUST NOT create a failed run
+  and MUST NOT consume failed retention.
+
+Survive backend restart via SQLite. List / get / delete endpoints.
+
+**Rationale**: Spec requires 20 completed; failed inspectability needs a fixed
+cap so retention is reproducible in tests (no “opportunistic” time-based
+pruning).
 
 **Alternatives considered**:
 - In-memory only — rejected (must survive restart).
-- Unlimited history — rejected (clarification: 20).
-
+- Unlimited / time-based failed prune — rejected (non-deterministic).
+- Failed count toward 20 — rejected (would evict successful evidence unfairly).
 ---
 
 ## Decision 7: Metrics definitions
@@ -172,15 +193,16 @@ SQLite; no new DB product.
 | Total fees / slippage | Sum from trade journal |
 | Max drawdown | From equity series recorded **after every processed closed candle** (liquidation-consistent mark); peak-to-trough absolute and % of peak |
 | Best / worst trade | Max / min round-trip net P&L |
-| Buy-and-hold | Buy at first available fill-style open after warm-up aligned with next-open rule (or first N+1 open in series used for strategy); sell at final processed close; apply same fee + adverse slippage model; report net P&L and return % |
+| Buy-and-hold | Cost-aware long over the **requested window**, **independent of Dual EMA warm-up**. Entry at the first **executable** price in the window: open of the candle after the first closed candle in the loaded window when that next candle exists; otherwise that first closed candle’s close. Exit at last processed closed candle’s close. Same fee + adverse slippage once on entry and once on exit. Sizing: full affordable from starting capital subject to nesting caps (same formula as a full BUY). |
 
-**Rationale**: Locks clarification on per-candle equity for drawdown; keeps
-B&H cost-aware and comparable to strategy path.
+**Rationale**: Locks per-candle equity for drawdown; B&H is a window baseline,
+not a strategy-warmed path — delaying entry until EMA warm-up would understate
+the hold period vs the configured window.
 
 **Alternatives considered**:
-- Mark-to-market mid without fees for equity — rejected (must match liquidation).
+- B&H entry only after EMA warm-up — rejected (user lock: independent of warm-up).
+- Mark-to-market mid without fees — rejected (must match liquidation economics).
 - B&H without fees — rejected (spec: cost-aware).
-
 ---
 
 ## Decision 8: UI placement
@@ -227,17 +249,40 @@ Money fields as Decimal strings. Errors use existing API error envelope
 
 ---
 
+## Decision 11: Decision outcomes — risk rejection vs approved-but-unexecutable
+
+**Decision**: Journal outcomes MUST distinguish controller/risk denial from
+historical non-execution after approval:
+
+| `outcome` | Meaning |
+|-----------|---------|
+| `hold` | Strategy HOLD; no order path |
+| `approved` | Controller + Risk approved **and** HistoricalExecutionAdapter executed a fill |
+| `approved_unexecutable` | Controller + Risk approved, but adapter could not fill (no Candle N+1 open). `reason_code` MUST be `no_next_candle`. **No** balance change. MUST NOT use `rejected`. |
+| `rejected` | Controller or Risk denied the order (e.g. conflicting position, max_trades, sizing, capital). `reason_code` names the risk/control rule. |
+| `forced` | End-of-run or early-exit flatten path |
+
+**Rationale**: Operators and tests must not confuse “risk said no” with “risk
+said yes but history had no next open.”
+
+**Alternatives considered**:
+- Map missing N+1 to `rejected` / `no_next_candle` — rejected (collapses meanings).
+- Silent skip with no journal row — rejected (traceability).
+
+---
+
 ## Resolved NEEDS CLARIFICATION checklist
 
 | Item | Resolution |
 |------|------------|
 | Exact max candle / span caps | Decision 4 — 5000 bars + estimate reject |
 | Range fetch approach | Decision 3 — Feature 002 + XT adapter paging |
-| Sync vs async run | Decision 5 — sync, one in-flight |
-| DB layout / retention | Decision 6 — SQLite FIFO 20 completed |
-| Metric formulas | Decision 7 |
+| Sync vs async run | Decision 5 — sync under 5000, one in-flight (confirmed) |
+| DB layout / retention | Decision 6 — FIFO 20 completed + FIFO 5 failed |
+| Metric formulas / B&H | Decision 7 — B&H independent of EMA warm-up |
 | UI host | Decision 8 — Auto Trading |
-| Strategy reuse | Decision 1 |
+| Shared vs forked modules | Decision 1 — shared strategy/control/risk/accounting; historical execution adapter |
 | Fill timing | Decision 2 (spec locked) |
+| Approved vs unexecutable | Decision 11 |
 
 No remaining `NEEDS CLARIFICATION` items for Phase 1 design.

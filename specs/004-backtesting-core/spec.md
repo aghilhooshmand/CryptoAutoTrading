@@ -18,6 +18,13 @@
 - Q: How often should equity be recorded for maximum drawdown during a backtest? → A: After every processed closed candle, record liquidation-consistent equity and compute maximum drawdown from that equity series
 - Q: What should happen if the requested history window is larger than the system can load for that timeframe? → A: Enforce a documented maximum candle count (or equivalent max span per timeframe); reject oversized requests before run with a clear reason (no silent truncation)
 
+### Session 2026-08-11 (plan refinements)
+
+- Q: How should Feature 003 modules be reused vs specialized for backtest fills? → A: Share strategy, controller, risk, accounting, sizing, and money; use a backtest-specific HistoricalExecutionAdapter for next-open / end-close fills (do not reuse live simulation execution)
+- Q: Does buy-and-hold wait for Dual EMA warm-up? → A: No — B&H starts from the first executable candle in the requested window (next-open after first closed candle in window when available; else that candle’s close), independent of EMA warm-up; exit at last processed close; cost-aware
+- Q: Sync vs async execution under the 5000-candle cap? → A: Keep synchronous execution for v1
+- Q: Failed-run retention and “approved but no next candle” journaling? → A: Retain at most 5 failed runs (FIFO oldest); separate from 20 completed. Journal `approved_unexecutable` + `no_next_candle` when risk approved but historical adapter cannot fill; never classify that as `rejected` (reserved for controller/risk denial)
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Configure and run one historical backtest (Priority: P1)
@@ -110,7 +117,7 @@ The operator reaches backtesting from the existing Auto Trading primary area (or
 - Optional max trades set → after strategy fill count reaches the limit, reject further strategy entries; end-of-run flatten still allowed if long.
 - Fee/slippage omitted → apply Feature 003 documented defaults (0.10% fee and 0.05% adverse slippage per side); never silently assume zero cost unless the operator explicitly sets zero.
 - Backtest ends while still long → flatten once at the **final processed closed candle’s close** using the same fee/slippage model so ending capital and net P&L are determinate (mark this flatten as end-of-run, not a strategy signal).
-- Approved strategy signal on Candle N with no Candle N+1 available in the historical series → do not create a normal strategy fill (next-open execution requires a subsequent candle).
+- Approved strategy signal on Candle N with no Candle N+1 available in the historical series → do not create a normal strategy fill (next-open execution requires a subsequent candle); journal as **approved-but-unexecutable** (`approved_unexecutable` / `no_next_candle`), not as a risk rejection.
 - Optional profit-target / max-loss rates provided → evaluate using the same liquidation-based Session NET rule as Feature 003 against derived absolute amounts; if a bound is hit, stop processing further strategy entries for the remainder of the window after applying the shared flatten rules for an open long.
 - Optional profit-target / max-loss rates omitted → do not apply those early exits; still enforce capital nesting, position model, and end-of-run flatten.
 - Operator runs a backtest while a simulation session is active → allowed; backtest is offline historical evaluation and MUST NOT place real orders or mutate the live simulation session state.
@@ -136,14 +143,16 @@ The operator reaches backtesting from the existing Auto Trading primary area (or
 - **FR-009**: Feature 004 MUST use the long-only single full-position model: BUY only from flat opens the entire allowed long in one fill (subject to Feature 003 sizing); SELL only while long closes the entire long in one fill. Partial adds/reduces, pyramiding, and short selling MUST NOT be supported.
 - **FR-010**: Full-position BUY sizing MUST use the same rules as Feature 003: `affordable_notional = current_cash / (1 + fee_rate)` and `intended_notional = min(affordable_notional, allocated_capital, max_position_size)`.
 - **FR-011**: Every non-HOLD signal MUST pass through Trading Controller and Risk Manager before simulated execution. HOLD MUST NOT execute a trade.
-- **FR-012**: Simulated execution in backtests MUST apply the same fee and adverse-slippage model as Feature 003 (defaults 0.10% fee and 0.05% adverse slippage per side unless overridden) and MUST update balances/positions deterministically with precise money arithmetic consistent with Feature 003 (no imprecise floating-point money math).
-- **FR-013**: Accounting, sizing, and risk/control rules SHOULD reuse shared domain logic with Feature 003 where clean reuse is possible rather than forking incompatible copies.
+- **FR-012**: Simulated execution in backtests MUST use a **HistoricalExecutionAdapter** (backtest-specific) that applies the same fee and adverse-slippage model as Feature 003 (defaults 0.10% fee and 0.05% adverse slippage per side unless overridden) and MUST update balances/positions deterministically with precise money arithmetic consistent with Feature 003 (no imprecise floating-point money math). Live simulation execution MUST NOT be reused for historical fill timing.
+- **FR-013**: Strategy, controller, risk, accounting, and sizing MUST reuse shared Feature 003 domain logic where clean reuse is possible rather than forking incompatible copies. Historical fill timing remains isolated in the backtest execution adapter.
 - **FR-014**: Identical backtest configuration inputs and identical historical candle series MUST produce identical results (summary metrics and trade list).
 - **FR-015**: If the backtest is still long after the last processed candle in range (or after an early exit bound), the system MUST perform exactly one end-of-run full simulated close using the **final processed closed candle’s close** as the reference price plus the session fee/slippage assumptions so ending capital is determinate; this flatten MUST be inspectable and distinguished from ordinary strategy fills. End-of-run flatten is the only fill path that uses close instead of next-open.
 - **FR-016**: A completed backtest result MUST include at least: starting capital; ending capital; net P&L; return %; trade count; winning trades; losing trades; win rate; total fees; total slippage; maximum drawdown; best trade; worst trade; buy-and-hold return for the same pair and period.
-- **FR-017**: Buy-and-hold return MUST be computed for the same pair and backtest window as a comparison baseline using one synthetic full entry at the **open of the candle after the first usable closed candle** in range when a next candle exists (otherwise the first usable closed candle’s close), and one full exit at the **last processed closed candle’s close**, applying the same fee and adverse-slippage assumptions once on entry and once on exit so the comparison is cost-aware and aligned with next-open / end-close execution semantics where applicable.
-- **FR-018**: The system MUST expose inspectable backtest trades and decision outcomes (including HOLD and rejections with reasons) for a completed run.
+- **FR-017**: Buy-and-hold return MUST be computed for the same pair and backtest window as a comparison baseline **independent of Dual EMA warm-up**, using the first executable opportunity in the requested window: one synthetic full entry at the **open of the candle after the first closed candle in the loaded window** when a next candle exists (otherwise that first closed candle’s close), and one full exit at the **last processed closed candle’s close**, applying the same fee and adverse-slippage assumptions once on entry and once on exit so the comparison is cost-aware and aligned with next-open / end-close execution semantics where applicable.
+- **FR-018**: The system MUST expose inspectable backtest trades and decision outcomes (including HOLD, approved fills, controller/risk rejections with reasons, and approved-but-unexecutable cases) for a completed run.
 - **FR-018a**: The system MUST persist completed backtest runs so each stored run includes at least its configuration, summary, trades, and decisions. Persisted completed runs MUST survive backend restart. The operator MUST be able to inspect stored runs and delete a stored run. The system MUST retain at most **20** completed runs; when a new completed run would exceed that limit, the **oldest** completed run MUST be removed.
+- **FR-018b**: Failed runs that were persisted after an accepted start MUST be retained at most **5** (FIFO oldest); failed retention is separate from the 20 completed quota. Validation failures that never create a durable run MUST NOT consume failed retention.
+- **FR-018c**: When Controller and Risk approve a strategy order but the historical execution adapter cannot fill it because Candle N+1 is missing, the decision MUST be recorded as **approved-but-unexecutable** (e.g. outcome `approved_unexecutable`, reason `no_next_candle`) with no balance change. That case MUST NOT be classified as a controller/risk **rejection**.
 - **FR-019**: Maximum drawdown MUST be computed from an equity series built by recording **liquidation-consistent equity after every processed closed candle** (cash when flat; liquidation equity while long, consistent with Feature 003 hard-limit equity semantics). The summary MUST report that maximum drawdown.
 - **FR-020**: Winning/losing trades and win rate MUST be defined on completed round-trips (entry to full exit), not on individual fill legs alone; end-of-run flatten participates in the final round-trip when needed.
 - **FR-021**: Backtesting MUST be reachable without adding a fourth primary navigation area; Auto Trading remains the primary home for this capability.
@@ -155,9 +164,9 @@ The operator reaches backtesting from the existing Auto Trading primary area (or
 - **Backtest Configuration**: Operator inputs that fully determine a run when combined with a fixed historical candle series; stored with each completed run.
 - **Historical Candle Series**: Ordered closed OHLC points from the normalized market-data boundary for the selected pair/timeframe/window.
 - **Strategy Signal**: BUY, SELL, or HOLD from the shared Dual EMA strategy on a closed candle; advisory only.
-- **Control/Risk Decision**: Approve or reject outcome for a non-HOLD signal, with explicit reason when rejected.
-- **Backtest Trade**: Deterministic simulated fill (strategy or end-of-run flatten) with fees/slippage; never a real exchange order; stored with the completed run.
-- **Backtest Decision Record**: Trace of each processed closed-candle evaluation (HOLD / approved / rejected); stored with the completed run.
+- **Control/Risk Decision**: Approve or reject outcome for a non-HOLD signal, with explicit reason when rejected. Approval is distinct from historical executability.
+- **Backtest Trade**: Deterministic simulated fill via HistoricalExecutionAdapter (strategy or end-of-run flatten) with fees/slippage; never a real exchange order; stored with the completed run.
+- **Backtest Decision Record**: Trace of each processed closed-candle evaluation (`hold` / `approved` / `approved_unexecutable` / `rejected` / `forced`); stored with the completed run.
 - **Backtest Summary**: Aggregate performance metrics required by FR-016, including buy-and-hold comparison and maximum drawdown; stored with the completed run.
 - **Equity Point**: Liquidation-consistent equity recorded after each processed closed candle; the ordered series is the sole input for maximum drawdown.
 
@@ -186,14 +195,16 @@ The operator reaches backtesting from the existing Auto Trading primary area (or
 - Session “duration” as a live wall-clock bound is not a primary backtest input; the historical start/end window defines the evaluation period.
 - Maximum trades (`max_trades`) is an **optional** backtest input; when set, enforce like Feature 003 (strategy fills only); when omitted, apply **no** max-trades cap.
 - End-of-run open longs are always flattened once at the final processed closed candle’s **close** for determinate ending capital.
-- Strategy fills use **next candle open** after the signal candle; missing N+1 means no normal strategy fill.
-- Buy-and-hold comparison is cost-aware and aligned with next-open entry / final-close exit where a next candle exists (FR-017).
+- Strategy fills use **next candle open** after the signal candle; missing N+1 means no normal strategy fill (journaled as approved-but-unexecutable, not risk rejection).
+- Buy-and-hold comparison is cost-aware, aligned with next-open entry / final-close exit where a next candle exists (FR-017), and **starts from the first executable candle in the requested window independent of Dual EMA warm-up**.
 - Maximum drawdown is taken from the series of liquidation-consistent equity values recorded after **every processed closed candle**.
 - Win/loss statistics are based on completed round-trips (FR-020).
 - Backtesting lives under the Auto Trading primary area; no fourth primary nav item.
 - A backtest run does not replace or resume a live simulation session and does not mutate simulation session balances.
-- Oversized history windows are rejected before run against a documented max candle count / per-timeframe span; exact numeric caps are set in planning/docs, not by silent truncation.
-- Completed backtests are persisted (configuration, summary, trades, decisions), survive backend restart, are operator-deletable, and retain at most **20** completed runs (evict oldest when exceeded).
+- Oversized history windows are rejected before run against a documented max candle count / per-timeframe span; exact numeric caps are set in planning/docs (**5000** candles), not by silent truncation.
+- Completed backtests are persisted (configuration, summary, trades, decisions), survive backend restart, are operator-deletable, and retain at most **20** completed runs (evict oldest when exceeded). Persisted **failed** runs retain at most **5** (FIFO), separate from completed.
+- Strategy / controller / risk / accounting are shared with Feature 003; historical fills use a backtest-specific execution adapter. Approved-but-unexecutable (no N+1) is distinct from risk rejection.
+- Synchronous execution under the candle cap for v1.
 - Local single-operator use; multi-user auth remains out of scope.
 - Constitution Market Sentiment capabilities remain out of scope here.
 - Real-money mode remains unavailable/non-functional.

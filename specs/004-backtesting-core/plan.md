@@ -1,7 +1,7 @@
 # Implementation Plan: Backtesting Core
 
 **Branch**: `004-backtesting-core` | **Date**: 2026-08-11 | **Spec**: [spec.md](./spec.md)
-
+ 
 **Input**: Feature specification from `/specs/004-backtesting-core/spec.md`  
 (including Session 2026-08-11 clarifications)
 
@@ -9,13 +9,11 @@
 
 Deliver **deterministic historical backtesting** under Auto Trading: load
 normalized closed candles for a pair/timeframe/window, walk them
-chronologically with the **shared Dual EMA(9)/EMA(21)** strategy, route
-signals through the same Controller → Risk → Simulation execution path as
-Feature 003, fill approved strategy trades at **Candle N+1 open** (fee +
-adverse slippage), flatten open longs at end using **final close**, persist
-up to **20** completed runs (config, summary, trades, decisions) in SQLite,
-and expose inspectable results including liquidation-path max drawdown and
-cost-aware buy-and-hold comparison. No real orders, WebSockets, or strategy
+chronologically with the **shared** Dual EMA(9)/EMA(21), Controller, Risk, and
+accounting modules, then fill via a **backtest-specific HistoricalExecutionAdapter**
+(next-open strategy fills; final-close flatten — not live simulation execution).
+Persist ≤**20** completed and ≤**5** failed runs; expose drawdown and
+warm-up-independent buy-and-hold. No real orders, WebSockets, or strategy
 optimization.
 
 ## Technical Context
@@ -24,19 +22,20 @@ optimization.
 
 **Primary Dependencies**: FastAPI + Uvicorn + httpx (existing); SQLAlchemy 2.x
 + SQLite (existing Feature 003); Vite + React Router + Lucide (existing).
-Reuse Feature 003 simulation modules (`strategy.dual_ema`, `control`,
-`accounting`, `position_sizing`, `execution.simulation`, `money`). No
-WebSockets. No XT private SDKs.
+Reuse Feature 003 modules (`strategy.dual_ema`, `control`, `accounting`,
+`position_sizing`, `money`). Feature 004 adds `HistoricalExecutionAdapter`
+for historical fills — do **not** route through live `execution.simulation`.
+No WebSockets. No XT private SDKs.
 
 **Storage**: SQLite (same `SIMULATION_DB_PATH` / `backend/data/` family or
-dedicated `backtest.db` under `backend/data/` — see research Decision 6).
-Tables for runs, trades, decisions; FIFO retention of 20 completed runs.
+dedicated `backtest.db` — see research Decision 6). FIFO **20** completed +
+FIFO **5** failed runs.
 
-**Testing**: pytest (unit: next-open fills, end-close flatten, drawdown from
-per-candle equity, round-trip win/loss, buy-and-hold, history-cap reject,
-determinism; contract: `/backtest` API; integration: fixture candles through
-full pipeline). Vitest + RTL for Auto Trading backtest configure/run/list/
-inspect (~375px).
+**Testing**: pytest (unit: next-open fills, end-close flatten, drawdown,
+round-trip win/loss, warm-up-independent B&H, history-cap reject, FIFO 5
+failed, `approved_unexecutable` vs `rejected`, determinism; contract:
+`/backtest` API; integration: fixture candles through shared pipeline +
+historical adapter). Vitest + RTL for Auto Trading backtest UI (~375px).
 
 **Target Platform**: Local developer machines via browser; phone-width ~375px
 
@@ -55,8 +54,9 @@ stored journals.
   no strategy fill; end-of-run flatten uses final processed **close**
 - Optional `max_trades`, optional profit/loss rates; required capital nesting
 - Reject oversized history before run (no silent truncate)
-- Persist ≤20 completed runs; survive restart; inspect + delete
-- Max one in-flight backtest at a time (v1)
+- Persist ≤20 completed runs; ≤5 failed runs (FIFO); survive restart; inspect + delete
+- Max one in-flight backtest at a time; **synchronous** execution under cap (v1)
+- Approved-but-unexecutable (`no_next_candle`) distinct from risk `rejected`
 - Market data only via Feature 002 normalized boundary (extend range fetch)
 - No WebSockets, shorts, leverage, optimization, ML, sentiment, real money
 
@@ -71,7 +71,7 @@ file; history capped (see research Decision 4)
 |-----------|--------|-------|
 | I Capital protection | Pass | Capital nesting; optional early exits; fail-safe on missing/oversized history |
 | II Simulation before real money | Pass | Backtest is offline simulated fills only; real money unavailable |
-| III–IV Pipeline / controller–risk | Pass | Shared Dual EMA advisory; Controller + Risk before sim execution |
+| III–IV Pipeline / controller–risk | Pass | Shared Dual EMA advisory; Controller + Risk before historical execution adapter |
 | V Explicit session boundaries | Pass | Window + capital nesting required; optional max_trades / profit / loss; backtest is historical evaluation (not a live wall-clock session) — duration replaced by start/end |
 | VI Net P&L | Pass | Fees/slippage; liquidation-consistent equity for drawdown/early exits |
 | VII Decision traceability | Pass | Persist decisions + trades per completed run |
@@ -92,11 +92,11 @@ file; history capped (see research Decision 4)
 
 ### Post-design Constitution Check
 
-Re-evaluated after `research.md`, `data-model.md`, `contracts/`, and
-`quickstart.md`: still **PASS**. Shared Dual EMA + accounting/risk reused;
-next-open / end-close fill rules isolated in backtest engine; market range
-fetch stays behind Feature 002 adapter; XT strings do not enter backtest
-domain contracts; SQLite retention FIFO of 20 completed runs.
+Re-evaluated after plan refinements (shared domain + historical adapter,
+warm-up-independent B&H, sync v1, failed retention + decision outcomes):
+still **PASS**. Shared Dual EMA / control / risk / accounting; fills isolated
+in HistoricalExecutionAdapter; Feature 002 range fetch only; FIFO 20
+completed + FIFO 5 failed; `approved_unexecutable` ≠ `rejected`.
 
 ## Project Structure
 
@@ -133,10 +133,11 @@ backend/
 │   │   └── money.py
 │   ├── backtest/                    # Feature 004 domain
 │   │   ├── __init__.py
-│   │   ├── engine.py                # chronological walk, next-open fills
-│   │   ├── metrics.py               # drawdown, round-trips, B&H
+│   │   ├── engine.py                # chronological walk; wires shared pipeline
+│   │   ├── execution.py             # HistoricalExecutionAdapter (next-open / end-close)
+│   │   ├── metrics.py               # drawdown, round-trips, B&H (window-based)
 │   │   ├── limits.py                # max candle / span caps
-│   │   ├── repository.py            # SQLite CRUD + FIFO 20
+│   │   ├── repository.py            # SQLite CRUD + FIFO 20 completed / 5 failed
 │   │   └── service.py               # validate, run, list, get, delete
 │   ├── db/
 │   │   └── models.py                # add backtest tables
@@ -168,9 +169,10 @@ frontend/
 ```
 
 **Structure Decision**: Keep dual-package layout. Add `backend/app/backtest/`
-that **imports** Feature 003 strategy/control/accounting/execution — never
-copies Dual EMA. Extend Feature 002 market-data range fetch at the adapter
-boundary only. Frontend adds `features/backtest/` under Auto Trading.
+that **imports** Feature 003 strategy/control/risk/accounting/sizing/money —
+never copies Dual EMA — and owns `HistoricalExecutionAdapter` for fills.
+Extend Feature 002 market-data range fetch at the adapter boundary only.
+Frontend adds `features/backtest/` under Auto Trading.
 
 ## Complexity Tracking
 

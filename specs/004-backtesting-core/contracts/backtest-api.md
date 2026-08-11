@@ -55,11 +55,19 @@ Never silently truncate.
 
 ### Fill semantics (operator-visible)
 
-- Strategy signal on closed Candle **N**; approved strategy fill reference =
-  Candle **N+1 open** + fee/slippage.
-- No N+1 → no normal strategy fill (`no_next_candle` in decisions).
+- Strategy signal on closed Candle **N**; if Controller + Risk approve,
+  HistoricalExecutionAdapter fills at Candle **N+1 open** + fee/slippage.
+- No N+1 → no fill; decision `outcome: "approved_unexecutable"`,
+  `reasonCode: "no_next_candle"` — **not** `rejected`.
+- `rejected` is reserved for controller/risk denial only.
 - End-of-run flatten (if still long): final processed closed candle **close** +
   fee/slippage; `isEndOfRunFlatten: true`.
+
+### Retention
+
+- Max **20** completed runs (FIFO oldest `completedAt`).
+- Max **5** failed runs (FIFO oldest failure timestamp); separate quota.
+- Sync execution under 5000-candle cap (v1).
 
 ### Concurrency
 
@@ -76,8 +84,8 @@ while a simulation session is active is allowed.
 ## `POST /backtest/runs`
 
 Validate config, reject oversized history, execute Dual EMA backtest
-**synchronously**, persist result (FIFO 20 completed), return completed (or
-failed) run with summary.
+**synchronously** (v1, ≤5000 candles), persist result (FIFO 20 completed /
+FIFO 5 failed), return completed (or failed) run with summary.
 
 ### Request body
 
@@ -231,10 +239,23 @@ Full configuration + summary for one run.
       "reasonMessage": null,
       "fastEma": "60100.1",
       "slowEma": "59950.2"
+    },
+    {
+      "id": "44444444-4444-4444-4444-444444444444",
+      "candleOpenTime": 1722466800000,
+      "signal": "BUY",
+      "outcome": "approved_unexecutable",
+      "reasonCode": "no_next_candle",
+      "reasonMessage": "Approved by risk but no next candle open for fill",
+      "fastEma": "61000.0",
+      "slowEma": "60500.0"
     }
   ]
 }
 ```
+
+`outcome` values: `hold` | `approved` | `approved_unexecutable` | `rejected` |
+`forced`. Never map `no_next_candle` to `rejected`.
 
 ---
 

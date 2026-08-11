@@ -73,9 +73,10 @@ unavailable.
 
 1. Prefer automated fixture tests for bit-identical determinism.
 2. Manually: run a window known to produce HOLD and at least one non-HOLD.
-3. Inspect decisions: HOLD does not change balances; approvals that lack a next
-   candle show `no_next_candle` and no strategy fill; approved fills use next
-   open semantics.
+3. Inspect decisions: HOLD does not change balances; risk **rejections** show
+   `outcome: rejected`; approved orders with no next candle show
+   `approved_unexecutable` / `no_next_candle` (not rejected); successful
+   fills use next-open via the historical execution adapter.
 
 **Expect**: Strategy never writes balances directly; controller/risk visible in
 decision outcomes.
@@ -85,11 +86,12 @@ decision outcomes.
 1. Open trades: each fill shows side, sizes, prices/costs, strategy vs
    end-of-run flatten.
 2. Summary includes win/loss (round-trips), fees, slippage, max drawdown,
-   best/worst, buy-and-hold.
+   best/worst, buy-and-hold (**window-based**, not delayed for EMA warm-up).
 3. Restart backend; reopen the same run id — config, summary, trades, decisions
-   still present (≤20 completed).
+   still present (≤20 completed; ≤5 failed if applicable).
 4. Create enough completed runs to exceed 20 → oldest completed disappears.
-5. Delete one run → gone from list and get-by-id.
+5. Create enough persisted failures to exceed 5 → oldest failed disappears.
+6. Delete one run → gone from list and get-by-id.
 
 ### 4. Isolation from simulation (edge)
 

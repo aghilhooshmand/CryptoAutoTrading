@@ -6,7 +6,7 @@
 
 Financial fields are stored/returned as decimal strings at the API; backend
 domain logic uses precise decimals (same money helpers as Feature 003).
-
+   
 ---
 
 ## Entity: BacktestRun
@@ -66,13 +66,15 @@ overflow.
 Illegal concurrent start while `running` → reject. Completed/failed are
 terminal. Delete removes the row and cascaded journals.
 
-### Retention
+### Retention (deterministic)
 
-- At most **20** rows with `status = completed`.
-- On new completion that would exceed 20: delete oldest completed (by
-  `completed_at`) and cascaded trades/decisions.
-- Failed runs do not count toward 20; keep a small recent failed set for
-  inspect (implementation may prune opportunistically).
+- At most **20** rows with `status = completed`. On overflow: delete oldest
+  completed by `completed_at` asc, then `id` asc; cascade children.
+- At most **5** rows with `status = failed` (`MAX_FAILED_BACKTEST_RUNS`). On
+  overflow: delete oldest failed by `completed_at` (else `created_at`) asc,
+  then `id` asc; cascade. Failed never count toward the 20 completed quota.
+- Pre-persist validation failures (`400`) create **no** run row and do not
+  consume failed retention.
 
 ---
 
@@ -131,14 +133,18 @@ One row per processed closed candle (and forced/end flatten decisions).
 | `created_at` | datetime | |
 | `candle_open_time` | int \| null | |
 | `signal` | enum | `BUY` \| `SELL` \| `HOLD` |
-| `outcome` | enum | `hold` \| `approved` \| `rejected` \| `forced` |
-| `reason_code` | string \| null | e.g. `conflicting_position_state`, `no_next_candle`, `max_trades`, `warmup`, `end_of_run_flatten`, `profit_target`, `max_loss` |
+| `outcome` | enum | `hold` \| `approved` \| `approved_unexecutable` \| `rejected` \| `forced` |
+| `reason_code` | string \| null | Risk/control: `conflicting_position_state`, `max_trades`, `warmup`, `profit_target`, `max_loss`, … Execution: `no_next_candle`. Flatten: `end_of_run_flatten` |
 | `reason_message` | string \| null | |
 | `fast_ema` / `slow_ema` | decimal string \| null | |
 
-**Rules**: HOLD produces a row with no balance change. Approved strategy
-non-HOLD with no N+1 → record rejection/skip with `no_next_candle` (no fill).
-End-of-run flatten SHOULD add `forced` / end-of-run reason.
+**Rules**:
+- `hold` — strategy HOLD; no balance change.
+- `approved` — controller + risk approved **and** historical adapter filled.
+- `approved_unexecutable` — controller + risk approved, but no Candle N+1;
+  `reason_code` = `no_next_candle`; **no** fill; MUST NOT use `rejected`.
+- `rejected` — controller or risk denied; reason names the rule.
+- `forced` — end-of-run / early-exit flatten.
 
 ---
 
@@ -215,14 +221,15 @@ Stored with completed run (JSON column or 1:1 table).
 
 ### Buy-and-hold (FR-017)
 
-- Entry reference: open of the candle **after** the first usable closed candle
-  in range when a next candle exists; else that candle’s close.
+Independent of Dual EMA warm-up (window baseline, not strategy readiness).
+
+- **First executable candle in the requested window**: first closed candle in
+  the loaded window series. Entry reference = open of the **next** candle when
+  it exists; else that first closed candle’s **close**.
 - Exit reference: last processed closed candle’s close.
 - Apply fee + adverse slippage once on entry and once on exit.
-- Same capital notionals as a single full long sized like Feature 003 from
-  starting cash / allocated / max position (document which sizing B&H uses —
-  **preferred**: full affordable from starting capital subject to nesting caps,
-  identical to first possible full BUY sizing at start).
+- Sizing: full affordable from starting capital subject to nesting caps
+  (same formula as a Feature 003 full BUY at start).
 
 ### Round-trip win/loss (FR-020)
 
