@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 
-from app.simulation.money import quantize_money
+from app.simulation.money import QUANTIZE_MONEY, quantize_money
 
 
 @dataclass(frozen=True)
@@ -90,4 +90,5 @@ def unrealized_gross(
 def qty_from_notional(intended_notional: Decimal, fill_price: Decimal) -> Decimal:
     if fill_price <= 0:
         raise ValueError("fill_price must be positive")
-    return quantize_money(intended_notional / fill_price)
+    # Floor so notional*fee cannot exceed the cash budget implied by intended_notional.
+    return (intended_notional / fill_price).quantize(QUANTIZE_MONEY, rounding=ROUND_DOWN)

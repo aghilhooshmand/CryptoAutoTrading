@@ -38,11 +38,11 @@
 
 **Purpose**: Package layout, Vite proxy, and package markers — no trading behavior yet
 
-- [ ] T001 Create backend package dir `backend/app/backtest/` and ensure `backend/tests/unit/`, `backend/tests/contract/`, `backend/tests/integration/` exist per plan.md
-- [ ] T002 [P] Create frontend dir `frontend/src/features/backtest/` per plan.md
-- [ ] T003 [P] Add package marker `backend/app/backtest/__init__.py`
-- [ ] T004 Extend Vite proxy in `frontend/vite.config.ts` to forward `/backtest` (keep `/health`, `/market`, `/simulation`) to `http://127.0.0.1:8000`
-- [ ] T005 [P] Document `BACKTEST_DB_PATH` optional env (default beside simulation DB under `backend/data/`) in `backend/app/db/session.py` or settings helper without breaking Feature 003
+- [X] T001 Create backend package dir `backend/app/backtest/` and ensure `backend/tests/unit/`, `backend/tests/contract/`, `backend/tests/integration/` exist per plan.md
+- [X] T002 [P] Create frontend dir `frontend/src/features/backtest/` per plan.md
+- [X] T003 [P] Add package marker `backend/app/backtest/__init__.py`
+- [X] T004 Extend Vite proxy in `frontend/vite.config.ts` to forward `/backtest` (keep `/health`, `/market`, `/simulation`) to `http://127.0.0.1:8000`
+- [X] T005 [P] Document `BACKTEST_DB_PATH` optional env (default beside simulation DB under `backend/data/`) in `backend/app/db/session.py` or settings helper without breaking Feature 003
 
 ---
 
@@ -52,18 +52,18 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T006 [P] Extend adapter protocol with optional `start_time`/`end_time` (UTC ms) in `backend/app/market_data/adapters/base.py` (**service/adapter only** — do not change public HTTP `/market/candles` contract in Feature 004)
-- [ ] T007 Extend XT Spot adapter ranged kline fetch + pagination (XT `startTime`/`endTime` only inside adapter) in `backend/app/market_data/adapters/xt_spot.py`
-- [ ] T008 Extend `MarketDataService.get_candles` to accept optional start/end and return normalized closed candles only in `backend/app/market_data/service.py` (internal callers such as backtest; **no** public HTTP query-param expansion in this feature)
-- [ ] T009 [P] Implement `MAX_BACKTEST_CANDLES = 5000` estimate/reject helpers in `backend/app/backtest/limits.py`
-- [ ] T010 [P] Add SQLAlchemy tables `backtest_runs`, `backtest_trades`, `backtest_decisions` in `backend/app/db/models.py` per `specs/004-backtesting-core/data-model.md`
-- [ ] T011 Wire table create for backtest models in FastAPI lifespan / `backend/app/db/session.py` (reuse existing engine pattern; optional `BACKTEST_DB_PATH`)
-- [ ] T012 Implement repository CRUD + deterministic FIFO retention (20 completed, 5 failed; cascade; tie-break by id) in `backend/app/backtest/repository.py`
-- [ ] T013 [P] Implement HistoricalExecutionAdapter next-open / end-close fill math (fee + adverse slippage; shared `money`/`accounting`/`position_sizing`) in `backend/app/backtest/execution.py` — do **not** import live `simulation.execution.simulation` for fill timing
-- [ ] T014 Implement config validation skeleton (capital nesting, window, timeframe, optional max_trades/profit/loss, defaults fee/slippage, oversized reject before fetch) in `backend/app/backtest/service.py`
-- [ ] T015 [P] Create typed frontend client `frontend/src/services/backtestApi.ts` for `/backtest/*` per `specs/004-backtesting-core/contracts/backtest-api.md`
-- [ ] T016 [P] Add unit tests for history limits: oversized reject (no run row) **and** failing-first `insufficient_history` for empty series and fewer than 21 closed candles (zero fabricated fills) in `backend/tests/unit/test_backtest_limits.py`
-- [ ] T017 [P] Add unit tests for FIFO 20 completed + FIFO 5 failed retention (including post-accept failed persistence) in `backend/tests/unit/test_backtest_retention.py`
+- [X] T006 [P] Extend adapter protocol with optional `start_time`/`end_time` (UTC ms) in `backend/app/market_data/adapters/base.py` (**service/adapter only** — do not change public HTTP `/market/candles` contract in Feature 004)
+- [X] T007 Extend XT Spot adapter ranged kline fetch + pagination (XT `startTime`/`endTime` only inside adapter) in `backend/app/market_data/adapters/xt_spot.py`
+- [X] T008 Extend `MarketDataService.get_candles` to accept optional start/end and return normalized closed candles only in `backend/app/market_data/service.py` (internal callers such as backtest; **no** public HTTP query-param expansion in this feature)
+- [X] T009 [P] Implement `MAX_BACKTEST_CANDLES = 5000` estimate/reject helpers in `backend/app/backtest/limits.py`
+- [X] T010 [P] Add SQLAlchemy tables `backtest_runs`, `backtest_trades`, `backtest_decisions` in `backend/app/db/models.py` per `specs/004-backtesting-core/data-model.md`
+- [X] T011 Wire table create for backtest models in FastAPI lifespan / `backend/app/db/session.py` (reuse existing engine pattern; optional `BACKTEST_DB_PATH`)
+- [X] T012 Implement repository CRUD + deterministic FIFO retention (20 completed, 5 failed; cascade; tie-break by id) in `backend/app/backtest/repository.py`
+- [X] T013 [P] Implement HistoricalExecutionAdapter next-open / end-close fill math (fee + adverse slippage; shared `money`/`accounting`/`position_sizing`) in `backend/app/backtest/execution.py` — do **not** import live `simulation.execution.simulation` for fill timing
+- [X] T014 Implement config validation skeleton (capital nesting, window, timeframe, optional max_trades/profit/loss, defaults fee/slippage, oversized reject before fetch) in `backend/app/backtest/service.py`
+- [X] T015 [P] Create typed frontend client `frontend/src/services/backtestApi.ts` for `/backtest/*` per `specs/004-backtesting-core/contracts/backtest-api.md`
+- [X] T016 [P] Add unit tests for history limits: oversized reject (no run row) **and** failing-first `insufficient_history` for empty series and fewer than 21 closed candles (zero fabricated fills) in `backend/tests/unit/test_backtest_limits.py`
+- [X] T017 [P] Add unit tests for FIFO 20 completed + FIFO 5 failed retention (including post-accept failed persistence) in `backend/tests/unit/test_backtest_retention.py`
 
 **Checkpoint**: Foundation ready — ranged market data, caps, DB/retention, historical fill adapter, validation skeleton, typed client; no XT types in `backtest/` package
 
@@ -81,19 +81,19 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T018 [P] [US1] Contract tests for `POST /backtest/runs`: `invalid_config`, `oversized_history` (no durable row), `backtest_already_running`, success summary fields, and post-accept `insufficient_history` for empty / fewer-than-21 series (durable `failed` row, zero fabricated fills) in `backend/tests/contract/test_backtest_api.py`
-- [ ] T019 [P] [US1] Frontend tests for backtest config validation (nesting, end > start, optional fields) in `frontend/src/__tests__/backtestConfig.test.tsx`
+- [X] T018 [P] [US1] Contract tests for `POST /backtest/runs`: `invalid_config`, `oversized_history` (no durable row), `backtest_already_running`, success summary fields, and post-accept `insufficient_history` for empty / fewer-than-21 series (durable `failed` row, zero fabricated fills) in `backend/tests/contract/test_backtest_api.py`
+- [X] T019 [P] [US1] Frontend tests for backtest config validation (nesting, end > start, optional fields) in `frontend/src/__tests__/backtestConfig.test.tsx`
 
 ### Implementation for User Story 1
 
-- [ ] T020 [US1] Implement chronological **engine skeleton** in `backend/app/backtest/engine.py`: load closed candles via Feature 002 service, single-pass walk hooks, call-sites/stubs for strategy→control→risk→HistoricalExecutionAdapter, end-of-run flatten hook, and **minimal** capital summary placeholders — do **not** complete shared Dual EMA/Controller/Risk wiring here (owned by T033)
-- [ ] T021 [US1] Complete `service.py` sync run orchestration in `backend/app/backtest/service.py`: one in-flight lock; pre-accept validate/estimate (`invalid_config`/`oversized_history` → **no** row); accept → `running` row; fetch/execute; empty or fewer-than-21 → persist `failed`/`insufficient_history`; other post-accept failures → persist `failed`; success → `completed`
-- [ ] T022 [US1] Implement `POST /backtest/runs` and `GET /backtest/runs/{id}` in `backend/app/api/backtest.py`; mount router in `backend/app/main.py`
-- [ ] T023 [P] [US1] Implement `BacktestConfigForm.tsx` (pair, TF, start/end, capital nesting, optional max trades / profit / loss rates with derived amounts, fee/slippage) in `frontend/src/features/backtest/BacktestConfigForm.tsx`
-- [ ] T024 [P] [US1] Implement `BacktestResultsPanel.tsx` showing starting/ending capital, net P&L, return % in `frontend/src/features/backtest/BacktestResultsPanel.tsx`
-- [ ] T025 [US1] Implement `useBacktest.ts` create/run + load-by-id hooks in `frontend/src/features/backtest/useBacktest.ts`
-- [ ] T026 [US1] Add Backtest section (distinct from Simulation) on `frontend/src/pages/AutoTradingPage.tsx` with configure → run → summary; ensure real-money remains unavailable
-- [ ] T027 [US1] Run T018–T019 tests and fix until passing; smoke quickstart scenario 1 against `specs/004-backtesting-core/quickstart.md`
+- [X] T020 [US1] Implement chronological **engine skeleton** in `backend/app/backtest/engine.py`: load closed candles via Feature 002 service, single-pass walk hooks, call-sites/stubs for strategy→control→risk→HistoricalExecutionAdapter, end-of-run flatten hook, and **minimal** capital summary placeholders — do **not** complete shared Dual EMA/Controller/Risk wiring here (owned by T033)
+- [X] T021 [US1] Complete `service.py` sync run orchestration in `backend/app/backtest/service.py`: one in-flight lock; pre-accept validate/estimate (`invalid_config`/`oversized_history` → **no** row); accept → `running` row; fetch/execute; empty or fewer-than-21 → persist `failed`/`insufficient_history`; other post-accept failures → persist `failed`; success → `completed`
+- [X] T022 [US1] Implement `POST /backtest/runs` and `GET /backtest/runs/{id}` in `backend/app/api/backtest.py`; mount router in `backend/app/main.py`
+- [X] T023 [P] [US1] Implement `BacktestConfigForm.tsx` (pair, TF, start/end, capital nesting, optional max trades / profit / loss rates with derived amounts, fee/slippage) in `frontend/src/features/backtest/BacktestConfigForm.tsx`
+- [X] T024 [P] [US1] Implement `BacktestResultsPanel.tsx` showing starting/ending capital, net P&L, return % in `frontend/src/features/backtest/BacktestResultsPanel.tsx`
+- [X] T025 [US1] Implement `useBacktest.ts` create/run + load-by-id hooks in `frontend/src/features/backtest/useBacktest.ts`
+- [X] T026 [US1] Add Backtest section (distinct from Simulation) on `frontend/src/pages/AutoTradingPage.tsx` with configure → run → summary; ensure real-money remains unavailable
+- [X] T027 [US1] Run T018–T019 tests and fix until passing; smoke quickstart scenario 1 against `specs/004-backtesting-core/quickstart.md`
 
 **Checkpoint**: US1 configure/run/summary UI + API orchestration exist; Dual EMA/Controller/Risk path is still stubbed until T033 — treat **runnable Dual EMA MVP** as US1+US2 (see Implementation Strategy)
 
@@ -107,22 +107,22 @@
 
 ### Tests for User Story 2
 
-- [ ] T028 [P] [US2] Unit tests for next-open fills, end-close flatten, and missing N+1 → `approved_unexecutable`/`no_next_candle` (not `rejected`) in `backend/tests/unit/test_backtest_fills.py`
-- [ ] T029 [P] [US2] Unit tests for duplicate-candle skip and chronological single-pass in `backend/tests/unit/test_backtest_duplicate_candle.py`
-- [ ] T030 [P] [US2] Unit tests for Dual EMA warm-up HOLD on ≥21 closed-candle windows (early HOLDs, zero strategy fills until ready; FR-008b) in `backend/tests/unit/test_backtest_warmup.py`
-- [ ] T031 [P] [US2] Integration test: fixture candles through shared Dual EMA + control + risk + HistoricalExecutionAdapter in `backend/tests/integration/test_backtest_pipeline.py`
-- [ ] T032 [P] [US2] Unit test determinism: identical config + fixture candles → identical decimal strings and trade lists in `backend/tests/unit/test_backtest_determinism.py`
+- [X] T028 [P] [US2] Unit tests for next-open fills, end-close flatten, and missing N+1 → `approved_unexecutable`/`no_next_candle` (not `rejected`) in `backend/tests/unit/test_backtest_fills.py`
+- [X] T029 [P] [US2] Unit tests for duplicate-candle skip and chronological single-pass in `backend/tests/unit/test_backtest_duplicate_candle.py`
+- [X] T030 [P] [US2] Unit tests for Dual EMA warm-up HOLD on ≥21 closed-candle windows (early HOLDs, zero strategy fills until ready; FR-008b) in `backend/tests/unit/test_backtest_warmup.py`
+- [X] T031 [P] [US2] Integration test: fixture candles through shared Dual EMA + control + risk + HistoricalExecutionAdapter in `backend/tests/integration/test_backtest_pipeline.py`
+- [X] T032 [P] [US2] Unit test determinism: identical config + fixture candles → identical decimal strings and trade lists in `backend/tests/unit/test_backtest_determinism.py`
 
 ### Implementation for User Story 2
 
-- [ ] T033 [US2] **Complete and harden** shared Dual EMA + Controller + Risk wiring in `backend/app/backtest/engine.py` (import Feature 003 modules; no Dual EMA fork); replace T020 stubs so non-HOLD paths always pass control/risk before HistoricalExecutionAdapter; warm-up HOLD on ≥21-candle windows until ready
-- [ ] T034 [US2] Persist decision rows for every processed closed candle (`hold` / `approved` / `approved_unexecutable` / `rejected` / `forced`) via repository in `backend/app/backtest/engine.py` + `backend/app/backtest/repository.py`
-- [ ] T035 [US2] Persist trade rows for strategy fills and end-of-run/early-exit flatten (`is_end_of_run_flatten` / forced flags) in `backend/app/backtest/execution.py` + repository
-- [ ] T036 [US2] Enforce optional `max_trades` on strategy fills only; allow end-of-run flatten after cap in `backend/app/backtest/engine.py` (reuse Feature 003 risk semantics)
-- [ ] T037 [US2] Enforce optional profit/loss early exits using liquidation Session NET (Feature 003 semantics) then flatten and stop further strategy entries in `backend/app/backtest/engine.py`
-- [ ] T038 [US2] Ensure `backtest/` imports only normalized `market_data` models/service — never XT adapter types — across engine/service
-- [ ] T039 [US2] Ensure backtest run uses ephemeral in-memory state and does not read/write Feature 003 simulation session tables/worker in `backend/app/backtest/service.py`
-- [ ] T040 [US2] Run T028–T032 tests under `backend/tests/unit/` and `backend/tests/integration/` and fix until passing
+- [X] T033 [US2] **Complete and harden** shared Dual EMA + Controller + Risk wiring in `backend/app/backtest/engine.py` (import Feature 003 modules; no Dual EMA fork); replace T020 stubs so non-HOLD paths always pass control/risk before HistoricalExecutionAdapter; warm-up HOLD on ≥21-candle windows until ready
+- [X] T034 [US2] Persist decision rows for every processed closed candle (`hold` / `approved` / `approved_unexecutable` / `rejected` / `forced`) via repository in `backend/app/backtest/engine.py` + `backend/app/backtest/repository.py`
+- [X] T035 [US2] Persist trade rows for strategy fills and end-of-run/early-exit flatten (`is_end_of_run_flatten` / forced flags) in `backend/app/backtest/execution.py` + repository
+- [X] T036 [US2] Enforce optional `max_trades` on strategy fills only; allow end-of-run flatten after cap in `backend/app/backtest/engine.py` (reuse Feature 003 risk semantics)
+- [X] T037 [US2] Enforce optional profit/loss early exits using liquidation Session NET (Feature 003 semantics) then flatten and stop further strategy entries in `backend/app/backtest/engine.py`
+- [X] T038 [US2] Ensure `backtest/` imports only normalized `market_data` models/service — never XT adapter types — across engine/service
+- [X] T039 [US2] Ensure backtest run uses ephemeral in-memory state and does not read/write Feature 003 simulation session tables/worker in `backend/app/backtest/service.py`
+- [X] T040 [US2] Run T028–T032 tests under `backend/tests/unit/` and `backend/tests/integration/` and fix until passing
 
 **Checkpoint**: Historical pipeline matches Feature 003 authority with next-open historical fills and correct decision outcomes — **runnable Dual EMA MVP** (US1+US2)
 
@@ -136,19 +136,19 @@
 
 ### Tests for User Story 3
 
-- [ ] T041 [P] [US3] Unit tests for max drawdown from per-candle liquidation equity, round-trip win/loss, and B&H independent of EMA warm-up in `backend/tests/unit/test_backtest_metrics.py`
-- [ ] T042 [P] [US3] Contract tests for `GET /backtest/runs`, `GET .../trades`, `GET .../decisions`, `DELETE .../{id}` and retention behavior in `backend/tests/contract/test_backtest_api.py`
-- [ ] T043 [P] [US3] Frontend tests for results/trades/decisions/list rendering in `frontend/src/__tests__/backtestResults.test.tsx`
+- [X] T041 [P] [US3] Unit tests for max drawdown from per-candle liquidation equity, round-trip win/loss, and B&H independent of EMA warm-up in `backend/tests/unit/test_backtest_metrics.py`
+- [X] T042 [P] [US3] Contract tests for `GET /backtest/runs`, `GET .../trades`, `GET .../decisions`, `DELETE .../{id}` and retention behavior in `backend/tests/contract/test_backtest_api.py`
+- [X] T043 [P] [US3] Frontend tests for results/trades/decisions/list rendering in `frontend/src/__tests__/backtestResults.test.tsx`
 
 ### Implementation for User Story 3
 
-- [ ] T044 [US3] Implement metrics module (equity series after every closed candle, max drawdown abs/%, round-trips, best/worst, cost-aware B&H from first executable window candle) in `backend/app/backtest/metrics.py`
-- [ ] T045 [US3] Attach full summary to completed runs in `backend/app/backtest/engine.py` / `service.py` per data-model FR-016 fields
-- [ ] T046 [US3] Implement list/get trades/decisions/delete routes in `backend/app/api/backtest.py` per `specs/004-backtesting-core/contracts/backtest-api.md`
-- [ ] T047 [P] [US3] Implement `BacktestRunList.tsx` in `frontend/src/features/backtest/BacktestRunList.tsx`
-- [ ] T048 [P] [US3] Implement `BacktestTrades.tsx` and `BacktestDecisions.tsx` in `frontend/src/features/backtest/`
-- [ ] T049 [US3] Wire list → inspect summary/trades/decisions → delete into `useBacktest.ts` and Auto Trading backtest section
-- [ ] T050 [US3] Run T041–T043 and T017 under `backend/tests/` / `frontend/src/__tests__/` and fix until passing; verify restart persistence per `specs/004-backtesting-core/quickstart.md`
+- [X] T044 [US3] Implement metrics module (equity series after every closed candle, max drawdown abs/%, round-trips, best/worst, cost-aware B&H from first executable window candle) in `backend/app/backtest/metrics.py`
+- [X] T045 [US3] Attach full summary to completed runs in `backend/app/backtest/engine.py` / `service.py` per data-model FR-016 fields
+- [X] T046 [US3] Implement list/get trades/decisions/delete routes in `backend/app/api/backtest.py` per `specs/004-backtesting-core/contracts/backtest-api.md`
+- [X] T047 [P] [US3] Implement `BacktestRunList.tsx` in `frontend/src/features/backtest/BacktestRunList.tsx`
+- [X] T048 [P] [US3] Implement `BacktestTrades.tsx` and `BacktestDecisions.tsx` in `frontend/src/features/backtest/`
+- [X] T049 [US3] Wire list → inspect summary/trades/decisions → delete into `useBacktest.ts` and Auto Trading backtest section
+- [X] T050 [US3] Run T041–T043 and T017 under `backend/tests/` / `frontend/src/__tests__/` and fix until passing; verify restart persistence per `specs/004-backtesting-core/quickstart.md`
 
 **Checkpoint**: Inspectable journals and metrics; durable history with deterministic retention
 
@@ -162,14 +162,14 @@
 
 ### Tests for User Story 4
 
-- [ ] T051 [P] [US4] Frontend tests for Auto Trading hosting both simulation and backtest sections with distinct labeling in `frontend/src/__tests__/backtestAutoTrading.test.tsx`
+- [X] T051 [P] [US4] Frontend tests for Auto Trading hosting both simulation and backtest sections with distinct labeling in `frontend/src/__tests__/backtestAutoTrading.test.tsx`
 
 ### Implementation for User Story 4
 
-- [ ] T052 [US4] Polish `AutoTradingPage.tsx` layout: clear Backtest vs Simulation headings; no new primary nav item in app shell/router
-- [ ] T053 [US4] Ensure primary backtest controls and summary/trade entry points are usable at ~375px (stacking, touch targets) across `frontend/src/features/backtest/*.tsx`
-- [ ] T054 [US4] Add short non-misleading historical-evaluation copy (no guaranteed profit) in `frontend/src/features/backtest/BacktestResultsPanel.tsx`
-- [ ] T055 [US4] Run T050 in `frontend/src/__tests__/backtestAutoTrading.test.tsx` and fix until passing
+- [X] T052 [US4] Polish `AutoTradingPage.tsx` layout: clear Backtest vs Simulation headings; no new primary nav item in app shell/router
+- [X] T053 [US4] Ensure primary backtest controls and summary/trade entry points are usable at ~375px (stacking, touch targets) across `frontend/src/features/backtest/*.tsx`
+- [X] T054 [US4] Add short non-misleading historical-evaluation copy (no guaranteed profit) in `frontend/src/features/backtest/BacktestResultsPanel.tsx`
+- [X] T055 [US4] Run T050 in `frontend/src/__tests__/backtestAutoTrading.test.tsx` and fix until passing
 
 **Checkpoint**: Backtest reachable and usable under Auto Trading on phone-width
 
@@ -179,12 +179,12 @@
 
 **Purpose**: Docs, isolation proof, out-of-scope guardrails, quickstart validation
 
-- [ ] T056 [P] Update root `README.md` with backtest overview, `/backtest` proxy, `MAX_BACKTEST_CANDLES=5000`, and link to `specs/004-backtesting-core/quickstart.md`
-- [ ] T057 [P] Do **not** expand public Feature 002 HTTP `/market/candles` for start/end in Feature 004 (service-only ranged fetch). Only update `specs/002-*/contracts/` if a future change explicitly adds public query params; otherwise leave 002 HTTP docs unchanged
-- [ ] T058 Add integration assertion that running backtest does not mutate an active simulation session in `backend/tests/integration/test_backtest_isolation.py`
-- [ ] T059 [P] Grep/guard: no XT types or private trading APIs under `backend/app/backtest/`; no WebSocket progress channels for backtest
-- [ ] T060 Run full validation scenarios in `specs/004-backtesting-core/quickstart.md` (manual or scripted smoke); fix gaps in `backend/app/backtest/` / `frontend/src/features/backtest/`
-- [ ] T061 Propose git commit message for Feature 004 implementation in chat (do not auto-commit unless asked); reference `specs/004-backtesting-core/`
+- [X] T056 [P] Update root `README.md` with backtest overview, `/backtest` proxy, `MAX_BACKTEST_CANDLES=5000`, and link to `specs/004-backtesting-core/quickstart.md`
+- [X] T057 [P] Do **not** expand public Feature 002 HTTP `/market/candles` for start/end in Feature 004 (service-only ranged fetch). Only update `specs/002-*/contracts/` if a future change explicitly adds public query params; otherwise leave 002 HTTP docs unchanged
+- [X] T058 Add integration assertion that running backtest does not mutate an active simulation session in `backend/tests/integration/test_backtest_isolation.py`
+- [X] T059 [P] Grep/guard: no XT types or private trading APIs under `backend/app/backtest/`; no WebSocket progress channels for backtest
+- [X] T060 Run full validation scenarios in `specs/004-backtesting-core/quickstart.md` (manual or scripted smoke); fix gaps in `backend/app/backtest/` / `frontend/src/features/backtest/`
+- [X] T061 Propose git commit message for Feature 004 implementation in chat (do not auto-commit unless asked); reference `specs/004-backtesting-core/`
 
 ---
 

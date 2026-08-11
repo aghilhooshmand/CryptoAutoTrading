@@ -5,8 +5,10 @@ Responsive cryptocurrency auto-trading platform.
 Feature `001-app-foundation` provides the local shell (three primary areas +
 health). Feature `002-xt-market-data` adds public XT Spot market data on the
 Dashboard (USDT pairs, quote, history). Feature `003-simulation-trading-core`
-adds simulation-only Auto Trading (dual EMA, journals, hard stops). Real-money
-trading, sentiment, and auth remain out of scope.
+adds simulation-only Auto Trading (dual EMA, journals, hard stops). Feature
+`004-backtesting-core` adds historical Dual EMA backtests under the same Auto
+Trading page (offline evaluation, no real orders). Real-money trading,
+sentiment, and auth remain out of scope.
 
 ## Prerequisites
 
@@ -54,8 +56,8 @@ npm run dev
 
 Frontend URL: `http://127.0.0.1:5173`
 
-Vite proxies `/health`, `/market`, and `/simulation` to the backend. Open the
-frontend URL and use Dashboard **Refresh** to load XT public market data
+Vite proxies `/health`, `/market`, `/simulation`, and `/backtest` to the backend.
+Open the frontend URL and use Dashboard **Refresh** to load XT public market data
 (manual refresh is required; auto-refresh is optional polish and not required).
 
 Feature 002 validation guide:
@@ -75,6 +77,27 @@ curl -sS http://127.0.0.1:8000/simulation/sessions/active
 
 Feature 003 validation guide:
 [`specs/003-simulation-trading-core/quickstart.md`](specs/003-simulation-trading-core/quickstart.md)
+
+## Historical backtesting (Feature 004)
+
+Offline Dual EMA backtests also live under **Auto Trading** (no fourth primary
+nav). Runs are synchronous, use public historical candles only, and do not place
+real orders or mutate a live simulation session.
+
+- Hard cap: **`MAX_BACKTEST_CANDLES = 5000`** (oversized windows are rejected
+  before fetch)
+- Optional DB path: `BACKTEST_DB_PATH` (defaults beside the simulation DB under
+  `backend/data/`)
+- Retention: up to **20** completed and **5** failed runs (FIFO)
+
+```bash
+# With backend + frontend running:
+# open http://127.0.0.1:5173/auto-trading  → Historical backtest section
+curl -sS http://127.0.0.1:8000/backtest/runs
+```
+
+Feature 004 validation guide:
+[`specs/004-backtesting-core/quickstart.md`](specs/004-backtesting-core/quickstart.md)
 
 ## Backend health
 

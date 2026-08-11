@@ -67,7 +67,12 @@ class FakeAdapter:
         )
 
     async def get_candles(
-        self, symbol: str, interval: CandleInterval, limit: int
+        self,
+        symbol: str,
+        interval: CandleInterval,
+        limit: int,
+        start_time: int | None = None,
+        end_time: int | None = None,
     ) -> CandlestickSeries:
         symbol = symbol.lower()
         if symbol not in {p.symbol for p in self.pairs}:

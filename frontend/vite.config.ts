@@ -9,6 +9,7 @@ export default defineConfig({
       "/health": "http://127.0.0.1:8000",
       "/market": "http://127.0.0.1:8000",
       "/simulation": "http://127.0.0.1:8000",
+      "/backtest": "http://127.0.0.1:8000",
     },
   },
 });

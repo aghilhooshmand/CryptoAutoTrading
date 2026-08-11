@@ -1,4 +1,4 @@
-"""SQLite engine and session factory for simulation domain state."""
+"""SQLite engine and session factory for simulation / backtest domain state."""
 
 from __future__ import annotations
 
@@ -13,7 +13,9 @@ _DEFAULT_PATH = _DEFAULT_DIR / "simulation.db"
 
 
 def db_path() -> Path:
-    raw = os.environ.get("SIMULATION_DB_PATH")
+    # Optional BACKTEST_DB_PATH: when set, shared domain DB uses that path
+    # (Feature 004). Otherwise SIMULATION_DB_PATH / default simulation.db.
+    raw = os.environ.get("BACKTEST_DB_PATH") or os.environ.get("SIMULATION_DB_PATH")
     if raw:
         return Path(raw)
     return _DEFAULT_PATH

@@ -6,6 +6,7 @@ from fastapi import APIRouter, FastAPI
 
 from app.api.health import router as health_router
 from app.api.market_data import router as market_data_router
+from app.api.backtest import router as backtest_router
 from app.api.simulation import router as simulation_router
 from app.db import session as db_session
 from app.simulation.recovery import recover_orphan_sessions
@@ -25,12 +26,13 @@ async def lifespan(_app: FastAPI):
     stop_worker()
 
 
-app = FastAPI(title="CryptoAutoTrading API", version="0.3.0", lifespan=lifespan)
+app = FastAPI(title="CryptoAutoTrading API", version="0.4.0", lifespan=lifespan)
 
 api_router = APIRouter()
 api_router.include_router(health_router)
 api_router.include_router(market_data_router)
 api_router.include_router(simulation_router)
+api_router.include_router(backtest_router)
 app.include_router(api_router)
 
 

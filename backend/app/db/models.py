@@ -87,3 +87,67 @@ class TradeJournalRow(Base):
     cash_delta: Mapped[str] = mapped_column(String(64))
     is_forced_close: Mapped[bool] = mapped_column(Boolean, default=False)
     candle_open_time: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class BacktestRunRow(Base):
+    __tablename__ = "backtest_runs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    symbol: Mapped[str] = mapped_column(String(64))
+    timeframe: Mapped[str] = mapped_column(String(8))
+    start_time: Mapped[int] = mapped_column(Integer)
+    end_time: Mapped[int] = mapped_column(Integer)
+    starting_capital: Mapped[str] = mapped_column(String(64))
+    allocated_capital: Mapped[str] = mapped_column(String(64))
+    max_position_size: Mapped[str] = mapped_column(String(64))
+    target_net_profit_rate: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    max_session_loss_rate: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    target_net_profit_amount: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    max_session_loss_amount: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    max_trades: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    fee_rate: Mapped[str] = mapped_column(String(64))
+    slippage_rate: Mapped[str] = mapped_column(String(64))
+    strategy_id: Mapped[str] = mapped_column(String(64), default="dual_ema_9_21")
+    error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    candle_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    summary_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class BacktestDecisionRow(Base):
+    __tablename__ = "backtest_decisions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(36), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    candle_open_time: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    signal: Mapped[str] = mapped_column(String(8))
+    outcome: Mapped[str] = mapped_column(String(32))
+    reason_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    reason_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fast_ema: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    slow_ema: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class BacktestTradeRow(Base):
+    __tablename__ = "backtest_trades"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(36), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    side: Mapped[str] = mapped_column(String(8))
+    qty: Mapped[str] = mapped_column(String(64))
+    reference_price: Mapped[str] = mapped_column(String(64))
+    fill_price: Mapped[str] = mapped_column(String(64))
+    fee: Mapped[str] = mapped_column(String(64))
+    slippage_cost: Mapped[str] = mapped_column(String(64))
+    notional: Mapped[str] = mapped_column(String(64))
+    signal_candle_open_time: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    fill_candle_open_time: Mapped[int] = mapped_column(Integer)
+    is_end_of_run_flatten: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_forced_close: Mapped[bool] = mapped_column(Boolean, default=False)
+    round_trip_id: Mapped[str | None] = mapped_column(String(36), nullable=True)

@@ -33,6 +33,11 @@ class MarketDataAdapter(Protocol):
         """Return normalized quote for a supported symbol."""
 
     async def get_candles(
-        self, symbol: str, interval: CandleInterval, limit: int
+        self,
+        symbol: str,
+        interval: CandleInterval,
+        limit: int,
+        start_time: int | None = None,
+        end_time: int | None = None,
     ) -> CandlestickSeries:
-        """Return normalized candlestick series for a supported symbol."""
+        """Return normalized candlesticks; optional UTC-ms start/end for range fetch."""

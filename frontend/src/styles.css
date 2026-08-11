@@ -600,6 +600,25 @@ a {
   background: #fff;
 }
 
+.backtest-section {
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+}
+
+.backtest-summary-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0.75rem 0 0;
+}
+
+.backtest-config button,
+.backtest-run-list button,
+.backtest-section button {
+  min-height: 2.75rem;
+}
+
 @media (max-width: 480px) {
   .sim-actions {
     flex-direction: column;
@@ -611,6 +630,17 @@ a {
 
   .auto-trading-page .sim-grid {
     grid-template-columns: 1fr;
+  }
+
+  .backtest-config form,
+  .backtest-section form {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .backtest-config button,
+  .backtest-section button {
+    width: 100%;
   }
 }
 

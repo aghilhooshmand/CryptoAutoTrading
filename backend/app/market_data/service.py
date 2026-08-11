@@ -51,11 +51,17 @@ class MarketDataService:
         symbol: str,
         interval: str,
         limit: int = DEFAULT_CANDLE_LIMIT,
+        start_time: int | None = None,
+        end_time: int | None = None,
     ) -> CandlestickSeries:
         if interval not in ALLOWED_INTERVALS:
             raise ValueError(f"Invalid interval: {interval}")
         return await self._adapter.get_candles(
-            symbol, CandleInterval(interval), limit
+            symbol,
+            CandleInterval(interval),
+            limit,
+            start_time=start_time,
+            end_time=end_time,
         )
 
 

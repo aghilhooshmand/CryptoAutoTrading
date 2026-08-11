@@ -269,24 +269,93 @@ class XtSpotAdapter:
         return quote
 
     async def get_candles(
-        self, symbol: str, interval: CandleInterval, limit: int
+        self,
+        symbol: str,
+        interval: CandleInterval,
+        limit: int,
+        start_time: int | None = None,
+        end_time: int | None = None,
     ) -> CandlestickSeries:
         normalized = await self._ensure_supported(symbol)
-        safe_limit = max(1, min(int(limit), 1000))
         retrieved_at = _utc_now()
-        payload = await self._get_json(
-            "/v4/public/kline",
-            params={
-                "symbol": normalized,
-                "interval": to_xt_kline_interval(interval),
-                "limit": safe_limit,
-            },
-        )
-        result = _require_envelope(payload)
-        if not isinstance(result, list):
-            raise MarketDataAdapterError("Malformed XT kline result")
+        xt_interval = to_xt_kline_interval(interval)
+
+        if start_time is None and end_time is None:
+            safe_limit = max(1, min(int(limit), 1000))
+            payload = await self._get_json(
+                "/v4/public/kline",
+                params={
+                    "symbol": normalized,
+                    "interval": xt_interval,
+                    "limit": safe_limit,
+                },
+            )
+            result = _require_envelope(payload)
+            if not isinstance(result, list):
+                raise MarketDataAdapterError("Malformed XT kline result")
+            return map_kline_rows(
+                result,
+                symbol=normalized,
+                interval=interval,
+                retrieved_at=retrieved_at,
+            )
+
+        # Ranged / paginated fetch (Feature 004). XT page size max 1000.
+        step_map = {
+            CandleInterval.M1: 60_000,
+            CandleInterval.M5: 5 * 60_000,
+            CandleInterval.M15: 15 * 60_000,
+            CandleInterval.H1: 60 * 60_000,
+            CandleInterval.H4: 4 * 60 * 60_000,
+            CandleInterval.D1: 24 * 60 * 60_000,
+        }
+        step = step_map[interval]
+        cursor = int(start_time) if start_time is not None else 0
+        end_bound = int(end_time) if end_time is not None else cursor + step * 1000
+        merged: list[dict] = []
+        seen: set[int] = set()
+        while cursor < end_bound and len(merged) < 5000:
+            payload = await self._get_json(
+                "/v4/public/kline",
+                params={
+                    "symbol": normalized,
+                    "interval": xt_interval,
+                    "limit": 1000,
+                    "startTime": cursor,
+                    "endTime": end_bound,
+                },
+            )
+            result = _require_envelope(payload)
+            if not isinstance(result, list) or not result:
+                break
+            batch_times: list[int] = []
+            for row in result:
+                if not isinstance(row, dict):
+                    continue
+                t = row.get("t")
+                if t is None:
+                    continue
+                ot = int(t)
+                if start_time is not None and ot < int(start_time):
+                    continue
+                if end_time is not None and ot >= int(end_time):
+                    continue
+                if ot in seen:
+                    continue
+                seen.add(ot)
+                merged.append(row)
+                batch_times.append(ot)
+            if not batch_times:
+                break
+            next_cursor = max(batch_times) + step
+            if next_cursor <= cursor:
+                break
+            cursor = next_cursor
+            if len(result) < 1000:
+                break
+
         return map_kline_rows(
-            result,
+            merged,
             symbol=normalized,
             interval=interval,
             retrieved_at=retrieved_at,
