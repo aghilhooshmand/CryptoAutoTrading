@@ -693,8 +693,10 @@ a {
   color: var(--ink);
 }
 
-.backtest-field-full {
-  margin-top: 0.75rem;
+.backtest-estimate {
+  margin: 0.55rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .backtest-config input,

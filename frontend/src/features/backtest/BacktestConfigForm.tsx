@@ -2,6 +2,10 @@ import { FormEvent, useMemo, useState } from "react";
 import {
   type CandleInterval,
   type CreateBacktestRequest,
+  MAX_BACKTEST_CANDLES,
+  estimateCandleCount,
+  maxWindowHint,
+  oversizedHistoryMessage,
   validateCapitalNesting,
 } from "../../services/backtestApi";
 
@@ -49,6 +53,13 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
     return (a * r).toFixed(8).replace(/\.?0+$/, "");
   }, [allocatedCapital, lossRate]);
 
+  const candleEstimate = useMemo(() => {
+    const startTime = toMs(startLocal);
+    const endTime = toMs(endLocal);
+    if (startTime == null || endTime == null || endTime <= startTime) return null;
+    return estimateCandleCount(startTime, endTime, timeframe);
+  }, [startLocal, endLocal, timeframe]);
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setLocalError(null);
@@ -65,6 +76,11 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
     }
     if (endTime <= startTime) {
       setLocalError("End must be after start");
+      return;
+    }
+    const estimated = estimateCandleCount(startTime, endTime, timeframe);
+    if (estimated > MAX_BACKTEST_CANDLES) {
+      setLocalError(oversizedHistoryMessage(estimated, timeframe));
       return;
     }
     const body: CreateBacktestRequest = {
@@ -85,6 +101,8 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
   }
 
   const locked = disabled || busy;
+  const oversized =
+    candleEstimate != null && candleEstimate > MAX_BACKTEST_CANDLES;
 
   return (
     <form
@@ -146,6 +164,16 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
             />
           </label>
         </div>
+        {candleEstimate != null && (
+          <p
+            className={oversized ? "form-error backtest-estimate" : "hint backtest-estimate"}
+            role={oversized ? "alert" : undefined}
+          >
+            {oversized
+              ? oversizedHistoryMessage(candleEstimate, timeframe)
+              : `≈ ${candleEstimate.toLocaleString()} candles (max ${MAX_BACKTEST_CANDLES}; ${timeframe} ≤ ${maxWindowHint(timeframe)})`}
+          </p>
+        )}
       </fieldset>
 
       <fieldset className="backtest-fieldset" disabled={locked}>
@@ -246,7 +274,7 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
       )}
 
       <div className="backtest-actions">
-        <button type="submit" disabled={locked}>
+        <button type="submit" disabled={locked || oversized}>
           {busy ? "Running…" : "Run Backtest"}
         </button>
       </div>

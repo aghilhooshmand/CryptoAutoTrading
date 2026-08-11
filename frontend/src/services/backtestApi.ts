@@ -128,6 +128,50 @@ export function validateCapitalNesting(
   return null;
 }
 
+/** Matches backend `MAX_BACKTEST_CANDLES` (Feature 004 hard cap). */
+export const MAX_BACKTEST_CANDLES = 5000;
+
+const INTERVAL_MS: Record<CandleInterval, number> = {
+  "1m": 60_000,
+  "5m": 5 * 60_000,
+  "15m": 15 * 60_000,
+  "1h": 60 * 60_000,
+  "4h": 4 * 60 * 60_000,
+  "1d": 24 * 60 * 60_000,
+};
+
+export function estimateCandleCount(
+  startMs: number,
+  endMs: number,
+  interval: CandleInterval,
+): number {
+  if (!(endMs > startMs)) return 0;
+  return Math.max(0, Math.floor((endMs - startMs) / INTERVAL_MS[interval]));
+}
+
+/** Human-friendly max window length at the selected timeframe for the 5000-candle cap. */
+export function maxWindowHint(interval: CandleInterval): string {
+  const ms = INTERVAL_MS[interval] * MAX_BACKTEST_CANDLES;
+  const minutes = ms / 60_000;
+  if (minutes < 60 * 48) {
+    const days = minutes / (60 * 24);
+    return `about ${days.toFixed(1)} days`;
+  }
+  const days = minutes / (60 * 24);
+  if (days < 60) return `about ${Math.floor(days)} days`;
+  return `about ${Math.floor(days / 30)} months`;
+}
+
+export function oversizedHistoryMessage(
+  estimated: number,
+  interval: CandleInterval,
+): string {
+  return (
+    `Estimated ${estimated.toLocaleString()} candles (max ${MAX_BACKTEST_CANDLES}). ` +
+    `At ${interval}, use at most ${maxWindowHint(interval)}, or pick a higher timeframe.`
+  );
+}
+
 export async function createBacktestRun(
   body: CreateBacktestRequest,
   signal?: AbortSignal,
