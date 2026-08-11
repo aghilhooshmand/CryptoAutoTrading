@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from decimal import Decimal, ROUND_HALF_UP
 
-DEFAULT_FEE_RATE = Decimal("0.001")  # 0.10%
-DEFAULT_SLIPPAGE_RATE = Decimal("0.0005")  # 0.05%
+DEFAULT_FEE_RATE = Decimal("0.002")  # 0.20% — XT Spot VIP0 base maker/taker
+DEFAULT_SLIPPAGE_RATE = Decimal("0.0005")  # 0.05% adverse-fill model (not XT schedule)
 # Reject BUY when intended notional rounds below this quote-currency floor.
 DUST_NOTIONAL = Decimal("0.00000001")
 

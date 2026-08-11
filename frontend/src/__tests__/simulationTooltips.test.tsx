@@ -23,8 +23,9 @@ describe("simulation info tooltips", () => {
     );
     expect(allocatedTip).toHaveAttribute("aria-expanded", "true");
 
-    await user.click(screen.getByRole("button", { name: "About Fee rate" }));
-    expect(await screen.findByTestId("tip-fee-bubble")).toHaveTextContent(/0\.10%/i);
+    expect(screen.getByText(/XT Spot VIP0 0\.20%/i)).toBeTruthy();
+    expect(screen.getByTestId("sim-fee")).toHaveValue("0.002");
+    expect(screen.getByTestId("sim-fee-usdt")).toHaveValue("1");
   });
 
   it("does not change create payload when tips are used", async () => {

@@ -8,6 +8,8 @@ import {
   oversizedHistoryMessage,
   validateCapitalNesting,
 } from "../../services/backtestApi";
+import { COST_DEFAULTS } from "../shared/CostRateFields";
+import { CostRateFields } from "../shared/CostRateFields";
 
 const INTERVALS: CandleInterval[] = ["1m", "5m", "15m", "1h", "4h", "1d"];
 
@@ -35,8 +37,8 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
   const [profitRate, setProfitRate] = useState("");
   const [lossRate, setLossRate] = useState("");
   const [maxTrades, setMaxTrades] = useState("");
-  const [feeRate, setFeeRate] = useState("");
-  const [slippageRate, setSlippageRate] = useState("");
+  const [feeRate, setFeeRate] = useState(COST_DEFAULTS.feeRate);
+  const [slippageRate, setSlippageRate] = useState(COST_DEFAULTS.slippageRate);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const derivedProfit = useMemo(() => {
@@ -95,8 +97,8 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
     if (profitRate) body.targetNetProfitRate = profitRate;
     if (lossRate) body.maxSessionLossRate = lossRate;
     if (maxTrades) body.maxTrades = Number(maxTrades);
-    if (feeRate) body.feeRate = feeRate;
-    if (slippageRate) body.slippageRate = slippageRate;
+    body.feeRate = feeRate;
+    body.slippageRate = slippageRate;
     onSubmit(body);
   }
 
@@ -244,26 +246,16 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
               inputMode="numeric"
             />
           </label>
-          <label>
-            Fee rate
-            <input
-              value={feeRate}
-              onChange={(e) => setFeeRate(e.target.value)}
+          <div className="backtest-cost-fields">
+            <CostRateFields
+              maxPositionSize={maxPositionSize}
+              feeRate={feeRate}
+              slippageRate={slippageRate}
               disabled={locked}
-              placeholder="default 0.001"
-              inputMode="decimal"
+              onFeeRateChange={setFeeRate}
+              onSlippageRateChange={setSlippageRate}
             />
-          </label>
-          <label>
-            Slippage rate
-            <input
-              value={slippageRate}
-              onChange={(e) => setSlippageRate(e.target.value)}
-              disabled={locked}
-              placeholder="default 0.0005"
-              inputMode="decimal"
-            />
-          </label>
+          </div>
         </div>
       </details>
 

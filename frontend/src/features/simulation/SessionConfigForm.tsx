@@ -6,6 +6,7 @@ import {
   rateToPercentLabel,
   validateCapitalNesting,
 } from "../../services/simulationApi";
+import { COST_DEFAULTS, CostRateFields } from "../shared/CostRateFields";
 import { InfoTooltip } from "./InfoTooltip";
 
 export interface SessionConfigValues {
@@ -39,8 +40,8 @@ const DEFAULTS: SessionConfigValues = {
   maxSessionLossRate: "0.007",
   maxTrades: "20",
   durationSeconds: "3600",
-  feeRate: "0.001",
-  slippageRate: "0.0005",
+  feeRate: COST_DEFAULTS.feeRate,
+  slippageRate: COST_DEFAULTS.slippageRate,
 };
 
 function FieldLabel({
@@ -287,38 +288,18 @@ export function SessionConfigForm({
             required
           />
         </label>
-        <label>
-          <FieldLabel
-            tipLabel="Fee rate"
-            tipText="Simulated trading fee each time you buy or sell. Entered as a decimal (0.001 = 0.10%)."
-            tipTestId="tip-fee"
-          >
-            Fee rate (optional)
-          </FieldLabel>
-          <input
-            data-testid="sim-fee"
-            inputMode="decimal"
-            value={values.feeRate}
+        <div className="sim-cost-fields">
+          <CostRateFields
+            maxPositionSize={values.maxPositionSize}
+            feeRate={values.feeRate}
+            slippageRate={values.slippageRate}
             disabled={disabled}
-            onChange={(e) => setField("feeRate", e.target.value)}
+            onFeeRateChange={(rate) => setField("feeRate", rate)}
+            onSlippageRateChange={(rate) => setField("slippageRate", rate)}
+            feeTestId="sim-fee"
+            slippageTestId="sim-slippage"
           />
-        </label>
-        <label>
-          <FieldLabel
-            tipLabel="Slippage rate"
-            tipText="Extra cost that makes fills a bit worse than the quote. Entered as a decimal (0.0005 = 0.05%)."
-            tipTestId="tip-slippage"
-          >
-            Slippage rate (optional)
-          </FieldLabel>
-          <input
-            data-testid="sim-slippage"
-            inputMode="decimal"
-            value={values.slippageRate}
-            disabled={disabled}
-            onChange={(e) => setField("slippageRate", e.target.value)}
-          />
-        </label>
+        </div>
       </div>
 
       {displayError ? (

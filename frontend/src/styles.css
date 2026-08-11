@@ -755,6 +755,32 @@ a {
   .backtest-advanced-body {
     grid-template-columns: 1fr 1fr;
   }
+
+  .backtest-cost-fields,
+  .sim-cost-fields {
+    grid-column: 1 / -1;
+  }
+}
+
+.cost-rate-fields {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.cost-rate-basis {
+  margin: 0;
+}
+
+.cost-rate-pair {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .cost-rate-pair {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .backtest-actions {
