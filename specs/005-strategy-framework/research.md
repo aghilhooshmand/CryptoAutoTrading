@@ -124,30 +124,41 @@ Default `S=21` preserves Feature 004 gate.
 
 **Decision**: Add `GET /strategies` returning registered strategies with
 canonical id, display name, aliases (optional), and parameter definitions
-(name, type, default, constraints, label). Simulation/Backtest forms fetch
-once and render `StrategyConfigFields`.
+(name, type, default, minimum/maximum, label). Cross-field rules are exposed
+as strategy-level `constraints` with an operator-facing `message` and optional
+`fields` list — e.g. Dual EMA: “Fast period must be less than slow period.”
+No generic expression/rule engine in Feature 005; UI displays the message;
+server always re-validates on create.
 
-**Rationale**: FR-013; avoids hard-coding Dual EMA fields only in frontend
-while still shipping one strategy.
+**Rationale**: FR-013; frontend can render min/max easily and show one clear
+cross-field message without inventing a rules DSL.
 
 **Alternatives considered**:
 - Hard-code Dual EMA fields in UI only — fights the registry goal.
+- Generic CEL/JSON-Logic rule engine — unjustified complexity (constitution X).
 - OpenAPI-only codegen — overkill for local operator app.
 
 ---
 
-## Decision 9: Legacy row readability
+## Decision 9: Legacy / unknown id lifecycle
 
-**Decision**: On read of existing rows with `strategy_id = dual_ema_9_21`,
-API responses MAY normalize display to canonical `dual_ema` and ensure
-`strategyParams` defaults to `{9,21}` when column null/empty. Do not require
-a one-shot DB rewrite migration for v1 (lazy normalize on read/serialize).
+**Decision**:
+- **READ** existing row: allowed for inspection (alias may normalize to
+  `dual_ema`; unknown ids returned as-stored).
+- **START / RESUME** execution: only registry-known canonical ids or
+  documented aliases; **unknown stored ids are forbidden** (fail safe — do
+  not evaluate).
+- **NEW create**: unknown ids forbidden; alias `dual_ema_9_21` allowed and
+  persisted as canonical `dual_ema`.
+No one-shot DB rewrite for legacy `dual_ema_9_21` rows (lazy normalize on
+read).
 
-**Rationale**: Assumptions allow pre-existing rows; minimize migration risk.
+**Rationale**: Inspection must not become an execution path after restart;
+matches fail-safe constitution VIII.
 
 **Alternatives considered**:
 - Eager SQL UPDATE all rows — unnecessary for single-operator local DB.
-
+- Allow START on unknown id “as no-op” — still unsafe / ambiguous.
 ---
 
 ## Decision 10: Tests for behavioral continuity

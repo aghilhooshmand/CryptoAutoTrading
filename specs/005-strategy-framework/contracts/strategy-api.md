@@ -52,7 +52,8 @@ List registered strategies and parameter schemas for UI rendering.
       "constraints": [
         {
           "code": "fast_lt_slow",
-          "message": "fastPeriod must be strictly less than slowPeriod"
+          "message": "Fast period must be less than slow period.",
+          "fields": ["fastPeriod", "slowPeriod"]
         }
       ]
     }
@@ -63,7 +64,8 @@ List registered strategies and parameter schemas for UI rendering.
 Notes:
 - List contains **canonical** ids only (not a separate entry for the alias).
 - With only Dual EMA registered, `strategies.length === 1`.
-
+- Per-parameter `minimum` / `maximum` cover single-field bounds.
+- Cross-field rules (e.g. fast &lt; slow) are **strategy-level** `constraints` entries with an operator-facing `message` and optional `fields` list. Feature 005 does **not** require a generic expression/rule engine — the UI may show `message` when client-side checks fail, and the server always re-validates on create.
 ---
 
 ## Simulation create — strategy fields
@@ -121,7 +123,7 @@ Even if the client sent `"strategyId": "dual_ema_9_21"`, the response
 |-----------|------|---------------------------|
 | Missing `strategyId` | 400 | `invalid_config` or `missing_strategy` |
 | Unknown id | 400 | `unknown_strategy` |
-| Invalid params | 400 | `invalid_strategy_params` |
+| Invalid params (incl. fast ≥ slow) | 400 | `invalid_strategy_params` (Dual EMA message: “Fast period must be less than slow period.”) |
 
 (Existing capital/mode errors unchanged.)
 
@@ -191,6 +193,10 @@ persistence rules (durable `failed` row if already `running`).
 
 Must return `strategyId` (canonical preferred) and `strategyParams` (effective
 or defaulted) for inspectability (FR-012, SC-005).
+
+Unknown stored ids MAY appear on GET for inspection. **START / RESUME** of
+simulation (or any path that evaluates the strategy) MUST refuse unknown
+stored ids — inspection ≠ executability.
 
 ---
 

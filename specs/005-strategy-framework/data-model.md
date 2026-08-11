@@ -50,7 +50,7 @@ BacktestRun        ── strategy_id + strategy_params
 | Alias | `dual_ema_9_21` |
 | `fastPeriod` | integer, default `9`, minimum `1` |
 | `slowPeriod` | integer, default `21`, minimum `2` |
-| Cross-field | `fastPeriod < slowPeriod` |
+| Cross-field | `fastPeriod < slowPeriod` — strategy-level validation message for UI/API: **“Fast period must be less than slow period.”** (No generic cross-field rule engine in Feature 005.) |
 | `min_history_candles` | `slowPeriod` (`S`) |
 | Warm-up | HOLD while closed-candle count `< S + 1` |
 
@@ -123,8 +123,18 @@ Must not carry execution authority. Invalid sides are rejected before control.
 | Stored `strategy_id` | Response `strategyId` | Params |
 |----------------------|----------------------|--------|
 | `dual_ema` | `dual_ema` | parse JSON or defaults |
-| `dual_ema_9_21` (legacy) | Prefer `dual_ema` (normalize) | parse or defaults `{9,21}` |
-| other unknown | return as-stored; execution should not start new work | — |
+| `dual_ema_9_21` (alias/legacy) | Prefer `dual_ema` (normalize) | parse or defaults `{9,21}` |
+| other unknown | return **as-stored** for inspection | best-effort parse; may be empty |
+
+### Legacy / unknown `strategy_id` lifecycle
+
+| Operation | Documented alias `dual_ema_9_21` | Unknown / unregistered id |
+|-----------|----------------------------------|---------------------------|
+| **READ** existing row (get/list/inspect) | Allowed — normalize display toward `dual_ema` when practical | **Allowed** — return as-stored for inspection only |
+| **START / RESUME** execution (sim start, pipeline tick, backtest run continue) | Allowed — resolve alias → Dual EMA | **Forbidden** — fail safe; do not construct or evaluate a strategy |
+| **NEW create** (POST session / POST backtest) | Allowed — resolve alias → persist canonical `dual_ema` | **Forbidden** — reject create (`unknown_strategy`) |
+
+Rationale: inspection of old or corrupt rows must not become an execution path after restart. Only registry-known canonical ids and documented aliases may drive trading evaluation.
 
 ---
 
@@ -143,7 +153,8 @@ Must not carry execution authority. Invalid sides are rejected before control.
 | Omit `strategyId` | Reject create |
 | Unknown id (not canonical or alias) | Reject create |
 | Invalid / failing param constraints | Reject create |
-| Dual EMA `fastPeriod >= slowPeriod` | Reject create |
+| Dual EMA `fastPeriod >= slowPeriod` | Reject create — message: “Fast period must be less than slow period.” |
+| START/RESUME with unknown stored strategy id | Fail safe — do not execute |
 | Backtest closed candles `< S` | `insufficient_history` (post-accept failed row per Feature 004 rules) |
 
 ---
