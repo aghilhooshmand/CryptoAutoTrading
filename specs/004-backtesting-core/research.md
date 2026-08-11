@@ -72,10 +72,13 @@ live **only** in `xt_spot` adapter. Backtest domain requests normalized
 
 Pre-run validation:
 1. Estimate bar count from `(end - start) / interval_ms`.
-2. If estimate **or** fetched closed-candle count exceeds caps (Decision 4) →
-   **reject** with clear error (no silent truncation).
-3. If after fetch the closed series is empty / insufficient for Dual EMA warm-up
-   → reject / fail safely (no invented bars).
+2. If estimate **or** a pre-accept size check shows closed-candle count would
+   exceed caps (Decision 4) → **reject** with `oversized_history` and **no**
+   BacktestRun row (no silent truncation).
+3. After accept/`running`, if fetch yields empty series or **fewer than 21**
+   closed candles → persist `failed` with `insufficient_history` (no invented
+   bars). On windows with ≥21 closed candles, Dual EMA warm-up produces HOLD
+   on early candles until ready (Decision 4).
 
 **Rationale**: Constitution XVI–XVIII and Feature 002 boundary; XT already
 supports ranged klines; current limit-only API is insufficient for arbitrary
@@ -98,7 +101,7 @@ windows.
 | `MAX_BACKTEST_CANDLES` | **5000** closed candles per run (all intervals) |
 | Pre-fetch estimate reject | If `(end_ms - start_ms) / interval_ms > 5000` → HTTP 400 before fetch |
 | Post-fetch reject | If closed candles in window > 5000 → HTTP 400 (no truncate) |
-| Warm-up | Dual EMA needs ≥ 21 closed closes before first cross can fire; fewer closed candles → fail with clear message (not silent empty results) |
+| Warm-up / min length | Fetched window with **fewer than 21** closed candles → fail `insufficient_history`. Windows with **≥ 21** closed candles: process chronologically; early candles before Dual EMA is ready produce **HOLD** until ready (no invented prior bars). |
 
 Documented approximate max spans at 5000 bars (operator guidance):
 
@@ -164,20 +167,30 @@ as Feature 003; may share engine or use `BACKTEST_DB_PATH`). Tables:
 - On new failure that would exceed 5: delete the **oldest** failed run(s) by
   `completed_at` ascending (fallback `created_at`, then `id`) and cascade.
 - Failed runs do **not** count toward the 20 completed quota.
-- Validation errors that fail **before** a durable run row is created (e.g.
-  `400 invalid_config`, `400 oversized_history`) MUST NOT create a failed run
-  and MUST NOT consume failed retention.
+
+**When a row is created (locked)**:
+
+- Pre-run validation failures (`invalid_config`) and oversized-history
+  rejection (`oversized_history`, including estimate / pre-accept size checks)
+  MUST create **no** BacktestRun row and MUST NOT consume failed retention.
+- Once a run is **accepted** and enters `running`, a durable row exists.
+  Downstream **fetch** or **execution** failures MUST persist `status=failed`
+  (including empty series and fewer than 21 closed candles →
+  `insufficient_history`; market transport failures → `market_data_unavailable`
+  or equivalent). Those failed rows consume the FIFO-5 quota.
 
 Survive backend restart via SQLite. List / get / delete endpoints.
 
 **Rationale**: Spec requires 20 completed; failed inspectability needs a fixed
 cap so retention is reproducible in tests (no “opportunistic” time-based
-pruning).
+pruning). Persistence rules keep validation noise out of history while
+preserving post-accept failures for operator diagnosis.
 
 **Alternatives considered**:
 - In-memory only — rejected (must survive restart).
 - Unlimited / time-based failed prune — rejected (non-deterministic).
 - Failed count toward 20 — rejected (would evict successful evidence unfairly).
+- Post-accept failure with no durable row — rejected (operator cannot inspect).
 ---
 
 ## Decision 7: Metrics definitions
@@ -278,11 +291,12 @@ said yes but history had no next open.”
 | Exact max candle / span caps | Decision 4 — 5000 bars + estimate reject |
 | Range fetch approach | Decision 3 — Feature 002 + XT adapter paging |
 | Sync vs async run | Decision 5 — sync under 5000, one in-flight (confirmed) |
-| DB layout / retention | Decision 6 — FIFO 20 completed + FIFO 5 failed |
+| DB layout / retention | Decision 6 — FIFO 20 completed + FIFO 5 failed; no row on pre-accept validation/oversize; durable failed after accept |
 | Metric formulas / B&H | Decision 7 — B&H independent of EMA warm-up |
 | UI host | Decision 8 — Auto Trading |
 | Shared vs forked modules | Decision 1 — shared strategy/control/risk/accounting; historical execution adapter |
 | Fill timing | Decision 2 (spec locked) |
 | Approved vs unexecutable | Decision 11 |
+| Warm-up / min candles | Decision 4 — fewer than 21 → `insufficient_history`; ≥21 → HOLD until ready |
 
 No remaining `NEEDS CLARIFICATION` items for Phase 1 design.

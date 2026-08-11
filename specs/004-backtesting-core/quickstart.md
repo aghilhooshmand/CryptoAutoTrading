@@ -66,8 +66,9 @@ Confirm:
 4. Run → completed summary with starting/ending capital, net P&L, return %.
 
 **Expect**: Invalid nesting, end ≤ start, unsupported TF, or oversized window
-blocked with a clear reason (no silent truncate). Real-money controls remain
-unavailable.
+blocked with a clear reason and **no** stored run (no silent truncate). Empty
+or fewer-than-21 closed-candle windows fail with `insufficient_history` (durable
+`failed` after accept). Real-money controls remain unavailable.
 
 ### 2. Pipeline + next-open fills (SC-002–SC-004, US2)
 
@@ -121,8 +122,10 @@ npm test -- --run
 
 - Determinism: identical fixture config + candles → identical decimal strings
   and trade lists (SC-002).
-- Oversized window → `oversized_history` before processing (SC-006a).
-- Missing history → safe fail, zero fabricated candles (SC-006).
+- Oversized window → `oversized_history` before accept; **no** BacktestRun row
+  (SC-006a).
+- Empty or fewer-than-21 closed candles → `insufficient_history`; zero
+  fabricated candles (SC-006).
 
 ---
 

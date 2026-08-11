@@ -69,6 +69,23 @@ Never silently truncate.
 - Max **5** failed runs (FIFO oldest failure timestamp); separate quota.
 - Sync execution under 5000-candle cap (v1).
 
+### Persistence (when a BacktestRun row exists)
+
+| Outcome | Durable row? |
+|---------|----------------|
+| `invalid_config` / pre-run validation | **No** |
+| `oversized_history` (estimate or pre-accept size check) | **No** |
+| Accepted → `running`, then fetch empty or fewer than 21 closed candles | **Yes** — `status: "failed"`, `errorCode: "insufficient_history"` |
+| Accepted → `running`, then market/fetch/execution failure | **Yes** — `status: "failed"` with appropriate `errorCode` |
+| Successful engine completion | **Yes** — `status: "completed"` |
+
+Failed-run FIFO remains **5**. Completed FIFO remains **20**.
+
+### Min history / warm-up
+
+- Fewer than **21** closed candles after fetch → `insufficient_history` (failed row if already `running`).
+- ≥21 closed candles: Dual EMA warm-up produces HOLD on early candles until ready.
+
 ### Concurrency
 
 At most one `running` backtest. Concurrent start → HTTP `409` /
@@ -114,25 +131,29 @@ amounts (same relationship as Feature 003).
 
 ### Success
 
-- HTTP `201` — run resource with `status: "completed"` and `summary` populated  
-  (or `status: "failed"` with error fields if market/history failed after
-  accept — prefer failing before persist when validation fails with `400`)
+- HTTP `201` — run resource with `status: "completed"` and `summary` populated,
+  **or** `status: "failed"` with error fields when failure occurs **after** the
+  run was accepted into `running` (including empty / fewer-than-21 history).
 
-Preferred: validation and history-size checks fail with `400` **before**
-creating a durable run. Runtime market failures after start may yield
-`failed` row or `503` without durable row — implementers SHOULD prefer clear
-`400`/`503` without counting toward the 20 completed retention.
-
-### Errors
+### Pre-accept errors (no BacktestRun row)
 
 | Condition | HTTP | `error.code` |
 |-----------|------|--------------|
 | Validation / capital nesting / bad window | `400` | `invalid_config` |
-| Window exceeds max candles | `400` | `oversized_history` |
-| Insufficient / empty history | `400` or `503` | `insufficient_history` |
+| Window exceeds max candles (estimate / pre-accept) | `400` | `oversized_history` |
 | Unsupported symbol / timeframe | `400` | `unsupported_symbol` / `unsupported_timeframe` |
 | Another backtest running | `409` | `backtest_already_running` |
-| Market data unavailable | `503` | `market_data_unavailable` |
+
+### Post-accept failures (durable `failed` row; still typically HTTP `201` with body)
+
+| Condition | `error.code` on run |
+|-----------|---------------------|
+| Empty series or fewer than 21 closed candles | `insufficient_history` |
+| Market data unavailable after accept | `market_data_unavailable` |
+| Other execution failure | implementation-specific stable code |
+
+Do **not** return post-accept failures without persisting a `failed` run.
+Oversized and validation failures MUST NOT create a row.
 
 ---
 

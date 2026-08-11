@@ -8,11 +8,15 @@
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
-**Spec precedence**: Latest `spec.md` clarifications (Session 2026-08-11 + plan refinements) override older wording where they differ:
+**Spec precedence**: Latest `spec.md` clarifications (Session 2026-08-11 + plan refinements + analyze remediations) override older wording where they differ:
 - Shared strategy/controller/risk/accounting; **HistoricalExecutionAdapter** for fills (not live simulation execution)
 - Buy-and-hold starts at first executable candle in the **requested window**, independent of EMA warm-up
 - Synchronous execution under **5000**-candle cap (v1)
 - FIFO **20** completed + FIFO **5** failed; `approved_unexecutable` ≠ `rejected`
+- Constitution V **1.2.0** historical-backtest exception (optional profit/loss/max_trades; window replaces duration)
+- Fewer than **21** closed candles → `insufficient_history`; ≥21 → HOLD through warm-up
+- Pre-run validation / oversized → **no** run row; post-accept fetch/execution failure → durable `failed` row
+- T020 = engine/orchestration skeleton only; T032 owns shared Dual EMA + Controller + Risk wiring
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -56,8 +60,8 @@
 - [ ] T013 [P] Implement HistoricalExecutionAdapter next-open / end-close fill math (fee + adverse slippage; shared `money`/`accounting`/`position_sizing`) in `backend/app/backtest/execution.py` — do **not** import live `simulation.execution.simulation` for fill timing
 - [ ] T014 Implement config validation skeleton (capital nesting, window, timeframe, optional max_trades/profit/loss, defaults fee/slippage, oversized reject before fetch) in `backend/app/backtest/service.py`
 - [ ] T015 [P] Create typed frontend client `frontend/src/services/backtestApi.ts` for `/backtest/*` per `specs/004-backtesting-core/contracts/backtest-api.md`
-- [ ] T016 [P] Add unit tests for history limits / oversized reject in `backend/tests/unit/test_backtest_limits.py`
-- [ ] T017 [P] Add unit tests for FIFO 20 completed + FIFO 5 failed retention in `backend/tests/unit/test_backtest_retention.py`
+- [ ] T016 [P] Add unit tests for history limits: oversized reject (no run row) **and** failing-first `insufficient_history` for empty series and fewer than 21 closed candles (zero fabricated fills) in `backend/tests/unit/test_backtest_limits.py`
+- [ ] T017 [P] Add unit tests for FIFO 20 completed + FIFO 5 failed retention (including post-accept failed persistence) in `backend/tests/unit/test_backtest_retention.py`
 
 **Checkpoint**: Foundation ready — ranged market data, caps, DB/retention, historical fill adapter, validation skeleton, typed client; no XT types in `backtest/` package
 
@@ -73,13 +77,13 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T018 [P] [US1] Contract tests for `POST /backtest/runs` validation (`invalid_config`, `oversized_history`, `backtest_already_running`) and success summary fields in `backend/tests/contract/test_backtest_api.py`
+- [ ] T018 [P] [US1] Contract tests for `POST /backtest/runs`: `invalid_config`, `oversized_history` (no durable row), `backtest_already_running`, success summary fields, and post-accept `insufficient_history` for empty / fewer-than-21 series (durable `failed` row, zero fabricated fills) in `backend/tests/contract/test_backtest_api.py`
 - [ ] T019 [P] [US1] Frontend tests for backtest config validation (nesting, end > start, optional fields) in `frontend/src/__tests__/backtestConfig.test.tsx`
 
 ### Implementation for User Story 1
 
-- [ ] T020 [US1] Implement chronological engine stub that loads closed candles via Feature 002 service, walks them once, applies shared Dual EMA + control + risk + HistoricalExecutionAdapter, end-of-run flatten, and builds minimal summary in `backend/app/backtest/engine.py`
-- [ ] T021 [US1] Complete `service.py` sync run orchestration: one in-flight lock, validate → estimate/fetch → reject insufficient/oversized → run engine → persist completed/failed → return run in `backend/app/backtest/service.py`
+- [ ] T020 [US1] Implement chronological **engine skeleton** in `backend/app/backtest/engine.py`: load closed candles via Feature 002 service, single-pass walk hooks, call-sites/stubs for strategy→control→risk→HistoricalExecutionAdapter, end-of-run flatten hook, and **minimal** capital summary placeholders — do **not** complete shared Dual EMA/Controller/Risk wiring here (owned by T032)
+- [ ] T021 [US1] Complete `service.py` sync run orchestration in `backend/app/backtest/service.py`: one in-flight lock; pre-accept validate/estimate (`invalid_config`/`oversized_history` → **no** row); accept → `running` row; fetch/execute; empty or fewer-than-21 → persist `failed`/`insufficient_history`; other post-accept failures → persist `failed`; success → `completed`
 - [ ] T022 [US1] Implement `POST /backtest/runs` and `GET /backtest/runs/{id}` in `backend/app/api/backtest.py`; mount router in `backend/app/main.py`
 - [ ] T023 [P] [US1] Implement `BacktestConfigForm.tsx` (pair, TF, start/end, capital nesting, optional max trades / profit / loss rates with derived amounts, fee/slippage) in `frontend/src/features/backtest/BacktestConfigForm.tsx`
 - [ ] T024 [P] [US1] Implement `BacktestResultsPanel.tsx` showing starting/ending capital, net P&L, return % in `frontend/src/features/backtest/BacktestResultsPanel.tsx`
@@ -106,7 +110,7 @@
 
 ### Implementation for User Story 2
 
-- [ ] T032 [US2] Wire engine to **import** shared `dual_ema`, controller, risk, accounting, sizing, money (no Dual EMA fork) in `backend/app/backtest/engine.py`
+- [ ] T032 [US2] **Complete and harden** shared Dual EMA + Controller + Risk wiring in `backend/app/backtest/engine.py` (import Feature 003 modules; no Dual EMA fork); replace T020 stubs so non-HOLD paths always pass control/risk before HistoricalExecutionAdapter; warm-up HOLD on ≥21-candle windows until ready
 - [ ] T033 [US2] Persist decision rows for every processed closed candle (`hold` / `approved` / `approved_unexecutable` / `rejected` / `forced`) via repository in `backend/app/backtest/engine.py` + `backend/app/backtest/repository.py`
 - [ ] T034 [US2] Persist trade rows for strategy fills and end-of-run/early-exit flatten (`is_end_of_run_flatten` / forced flags) in `backend/app/backtest/execution.py` + repository
 - [ ] T035 [US2] Enforce optional `max_trades` on strategy fills only; allow end-of-run flatten after cap in `backend/app/backtest/engine.py` (reuse Feature 003 risk semantics)

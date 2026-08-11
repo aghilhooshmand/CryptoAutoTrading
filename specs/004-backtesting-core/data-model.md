@@ -48,13 +48,15 @@ overflow.
 - `end_time > start_time`.
 - `timeframe` in supported set; `symbol` supported by Feature 002 at run time.
 - History size: estimated bars and fetched closed count ≤ `MAX_BACKTEST_CANDLES`
-  (**5000**); else reject (`oversized_history`) before processing.
+  (**5000**); else reject (`oversized_history`) before accept (no BacktestRun row).
 - `max_trades` if present: integer ≥ 1.
 - Profit/loss rates if present: > 0; derive absolute amounts from allocated.
 - `fee_rate` / `slippage_rate` ≥ 0 when provided; else Feature 003 defaults.
 - Reject if another run is `running` (`409` / `backtest_already_running`).
-- Insufficient closed candles for Dual EMA warm-up → fail safely
-  (`insufficient_history`); do not invent bars.
+- After accept/`running`: empty fetched series **or** fewer than **21** closed
+  candles → persist `failed` with `insufficient_history`; do not invent bars.
+- Windows with ≥21 closed candles: early candles before Dual EMA readiness
+  journal HOLD until the strategy is ready.
 
 ### State transitions
 
@@ -73,8 +75,10 @@ terminal. Delete removes the row and cascaded journals.
 - At most **5** rows with `status = failed` (`MAX_FAILED_BACKTEST_RUNS`). On
   overflow: delete oldest failed by `completed_at` (else `created_at`) asc,
   then `id` asc; cascade. Failed never count toward the 20 completed quota.
-- Pre-persist validation failures (`400`) create **no** run row and do not
-  consume failed retention.
+- Pre-run validation / oversized-history rejection create **no** run row and
+  do not consume failed retention.
+- Once accepted into `running`, fetch or execution failure MUST persist
+  `status=failed` (including empty / fewer-than-21 closed candles).
 
 ---
 

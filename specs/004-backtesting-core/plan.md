@@ -32,10 +32,11 @@ dedicated `backtest.db` — see research Decision 6). FIFO **20** completed +
 FIFO **5** failed runs.
 
 **Testing**: pytest (unit: next-open fills, end-close flatten, drawdown,
-round-trip win/loss, warm-up-independent B&H, history-cap reject, FIFO 5
-failed, `approved_unexecutable` vs `rejected`, determinism; contract:
-`/backtest` API; integration: fixture candles through shared pipeline +
-historical adapter). Vitest + RTL for Auto Trading backtest UI (~375px).
+round-trip win/loss, warm-up-independent B&H, history-cap reject, empty and
+fewer-than-21 `insufficient_history`, FIFO 5 failed, `approved_unexecutable`
+vs `rejected`, determinism; contract: `/backtest` API; integration: fixture
+candles through shared pipeline + historical adapter). Vitest + RTL for Auto
+Trading backtest UI (~375px).
 
 **Target Platform**: Local developer machines via browser; phone-width ~375px
 
@@ -53,8 +54,12 @@ stored journals.
 - Strategy signal on closed Candle N; fill reference = N+1 **open**; no N+1 →
   no strategy fill; end-of-run flatten uses final processed **close**
 - Optional `max_trades`, optional profit/loss rates; required capital nesting
-- Reject oversized history before run (no silent truncate)
+  (constitution V 1.2.0 historical-backtest exception)
+- Reject oversized history before accept (no silent truncate; no run row)
+- Fewer than 21 closed candles after fetch → `insufficient_history` (failed row
+  if already `running`); ≥21 → HOLD through EMA warm-up
 - Persist ≤20 completed runs; ≤5 failed runs (FIFO); survive restart; inspect + delete
+- Post-accept fetch/execution failures persist `failed`; pre-accept validation does not
 - Max one in-flight backtest at a time; **synchronous** execution under cap (v1)
 - Approved-but-unexecutable (`no_next_candle`) distinct from risk `rejected`
 - Market data only via Feature 002 normalized boundary (extend range fetch)
@@ -72,10 +77,10 @@ file; history capped (see research Decision 4)
 | I Capital protection | Pass | Capital nesting; optional early exits; fail-safe on missing/oversized history |
 | II Simulation before real money | Pass | Backtest is offline simulated fills only; real money unavailable |
 | III–IV Pipeline / controller–risk | Pass | Shared Dual EMA advisory; Controller + Risk before historical execution adapter |
-| V Explicit session boundaries | Pass | Window + capital nesting required; optional max_trades / profit / loss; backtest is historical evaluation (not a live wall-clock session) — duration replaced by start/end |
+| V Explicit session boundaries | Pass | Constitution V historical-backtest exception (1.2.0): window replaces duration; optional profit/loss/max_trades for offline backtests only; capital nesting + timeframe required; Feature 003/live unchanged |
 | VI Net P&L | Pass | Fees/slippage; liquidation-consistent equity for drawdown/early exits |
 | VII Decision traceability | Pass | Persist decisions + trades per completed run |
-| VIII Fail safe | Pass | Reject missing/insufficient/oversized history; no invented candles |
+| VIII Fail safe | Pass | Reject missing/empty/<21-candle/oversized history; HOLD only during warm-up on valid ≥21 windows; no invented candles |
 | IX Emergency stop | Pass N/A for offline batch | Live emergency stop remains Feature 003; backtest is not a live session (cancel in-flight optional polish) |
 | X Intentional simplicity | Pass | One strategy; reuse 003 domain; sync run under cap; 20-run retention |
 | XI Conventional strategies | Pass | Dual EMA only |
@@ -92,11 +97,12 @@ file; history capped (see research Decision 4)
 
 ### Post-design Constitution Check
 
-Re-evaluated after plan refinements (shared domain + historical adapter,
-warm-up-independent B&H, sync v1, failed retention + decision outcomes):
-still **PASS**. Shared Dual EMA / control / risk / accounting; fills isolated
-in HistoricalExecutionAdapter; Feature 002 range fetch only; FIFO 20
-completed + FIFO 5 failed; `approved_unexecutable` ≠ `rejected`.
+Re-evaluated after analyze remediations (constitution V 1.2.0 exception,
+FR-003 HistoricalExecutionAdapter wording, warm-up <21 fail / ≥21 HOLD,
+failed persistence rules): still **PASS**. Shared Dual EMA / control / risk /
+accounting; fills isolated in HistoricalExecutionAdapter; Feature 002 range
+fetch only; FIFO 20 completed + FIFO 5 failed; `approved_unexecutable` ≠
+`rejected`.
 
 ## Project Structure
 

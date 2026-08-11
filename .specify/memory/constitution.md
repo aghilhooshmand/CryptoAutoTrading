@@ -1,13 +1,14 @@
 <!--
 Sync Impact Report
-- Version change: 1.0.0 → 1.1.0
-- Modified principles: none (existing trading and product principles unchanged)
-- Added sections / principles:
-  - Spec-Driven Development → XXX. Git Commit Traceability (propose commit
-    messages after meaningful Spec Kit/implementation units; never auto-commit
-    without explicit user instruction; preferred conventional commit types)
+- Version change: 1.1.0 → 1.2.0
+- Modified principles:
+  - V. Explicit Session Boundaries — added explicit historical-backtest
+    exception (window replaces duration; optional profit/loss/max trades for
+    offline backtests only; Feature 003/live simulation bounds unchanged)
+- Added sections / principles: none
 - Removed sections: none
-- Follow-up TODOs: none
+- Follow-up TODOs: cascade into specs/004-backtesting-core (spec/plan/research/
+  data-model/contracts/tasks) — applied with this amendment
 -->
 
 # CryptoAutoTrading Constitution
@@ -64,7 +65,26 @@ at least:
 
 Sessions MUST NOT run without these bounds defined and enforced.
 
-**Rationale**: Bounded sessions make risk measurable and stoppable.
+**Historical backtest exception**: For **offline historical backtesting only**,
+the following replaces or relaxes the live-session list above and MUST NOT be
+read as weakening Feature 003 or any live simulation / real-money session:
+
+- A historical **start/end window** replaces live **trading-session duration**.
+- **Profit target**, **maximum loss**, and **maximum number of trades** MAY be
+  optional backtest inputs (when omitted, those early-exit / trade-cap bounds
+  MUST NOT apply).
+- Allocated capital, position-size limit, and strategy signal timeframe remain
+  required for backtests, together with starting capital and the capital
+  nesting invariant used by the product.
+
+Live simulation and any future real-money sessions MUST continue to require
+the full bound set (including duration, profit target, maximum loss, and
+maximum trades) with no optional carve-out.
+
+**Rationale**: Bounded sessions make risk measurable and stoppable. Offline
+backtests are bounded by a historical window and capital nesting; optional
+early-exit and trade caps are evaluation choices, not a license to run live
+sessions without full bounds.
 
 ### VI. Net P&L Accounting
 Session profit and loss MUST be based on NET P&L where possible, including
@@ -345,4 +365,4 @@ Use Spec Kit workflows (`/speckit-specify`, `/speckit-clarify`,
 `/speckit-plan`, `/speckit-tasks`, `/speckit-analyze`, `/speckit-implement`)
 for feature delivery. When guidance conflicts, this constitution wins.
 
-**Version**: 1.1.0 | **Ratified**: 2026-08-08 | **Last Amended**: 2026-08-08
+**Version**: 1.2.0 | **Ratified**: 2026-08-08 | **Last Amended**: 2026-08-11
