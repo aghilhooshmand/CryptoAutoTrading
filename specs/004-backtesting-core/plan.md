@@ -42,10 +42,11 @@ Trading backtest UI (~375px).
 
 **Project Type**: Web application (`backend/` + `frontend/`)
 
-**Performance Goals**: Local operator scale. A max-sized run (≤ documented
-candle cap) completes within tens of seconds on a developer machine; UI
-remains usable (list/summary) without multi-second freezes for typical
-stored journals.
+**Performance Goals**: Local operator scale. Soft goal (non-gating): a max-sized
+run (≤ documented candle cap) SHOULD complete within tens of seconds on a
+developer machine. UI remains usable (list/summary) without multi-second
+freezes for typical stored journals. No dedicated SLO/timing test is required
+for Feature 004 acceptance.
 
 **Constraints**:
 - Historical evaluation only; no private XT APIs; no real orders; no credentials
