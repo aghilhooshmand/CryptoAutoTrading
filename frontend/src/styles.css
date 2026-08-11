@@ -849,6 +849,69 @@ a {
   margin: 0.75rem 0 0;
 }
 
+.backtest-metrics {
+  display: grid;
+  gap: 0.45rem 1.25rem;
+  margin: 0.85rem 0 0;
+  padding: 0;
+}
+
+.backtest-metric {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) auto;
+  gap: 0.35rem 1rem;
+  align-items: start;
+  margin: 0;
+}
+
+.backtest-metric dt {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.backtest-metric dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.backtest-metric-value {
+  display: block;
+}
+
+.backtest-metric-sub {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.backtest-activity {
+  margin: 0.85rem 0 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.backtest-metrics-block {
+  margin-top: 1rem;
+}
+
+.backtest-metrics-heading {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

@@ -1,4 +1,5 @@
 import type { BacktestRun } from "../../services/backtestApi";
+import { formatRateAsPercent } from "../../services/backtestApi";
 
 interface Props {
   runs: BacktestRun[];
@@ -22,23 +23,6 @@ function formatShortDate(ms: number): string {
   });
 }
 
-function formatReturnPct(value: string | undefined): string | null {
-  if (value == null || value === "") return null;
-  const n = Number(value);
-  if (!Number.isFinite(n)) return value;
-  const pct = n * 100;
-  const sign = pct > 0 ? "+" : "";
-  return `${sign}${pct.toFixed(1)}%`;
-}
-
-function formatDrawdownPct(value: string | undefined): string | null {
-  if (value == null || value === "") return null;
-  const n = Number(value);
-  if (!Number.isFinite(n)) return value;
-  const pct = Math.abs(n) * 100;
-  return `Max DD -${pct.toFixed(1)}%`;
-}
-
 export function BacktestRunList({ runs, selectedId, onSelect, onDelete }: Props) {
   return (
     <section className="backtest-run-list" aria-labelledby="backtest-runs-title">
@@ -48,9 +32,22 @@ export function BacktestRunList({ runs, selectedId, onSelect, onDelete }: Props)
       ) : (
         <ul className="backtest-run-items">
           {runs.map((r) => {
-            const ret = formatReturnPct(r.summary?.returnPct);
-            const dd = formatDrawdownPct(r.summary?.maxDrawdownPct);
-            const meta = [ret, dd].filter(Boolean).join(" · ");
+            const ret = formatRateAsPercent(r.summary?.returnPct, {
+              signed: true,
+              digits: 1,
+            });
+            const ddAbs =
+              r.summary?.maxDrawdownPct == null
+                ? null
+                : Math.abs(Number(r.summary.maxDrawdownPct));
+            const dd =
+              ddAbs == null || !Number.isFinite(ddAbs)
+                ? null
+                : `Max DD ${formatRateAsPercent(-ddAbs, { signed: true, digits: 1 })}`;
+            const meta =
+              r.summary != null
+                ? [ret !== "—" ? ret : null, dd].filter(Boolean).join(" · ")
+                : "";
             return (
               <li
                 key={r.id}

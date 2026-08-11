@@ -128,6 +128,43 @@ export function validateCapitalNesting(
   return null;
 }
 
+/**
+ * Format API rate fractions (0.01 = 1%) for display.
+ * Backend stores returnPct / maxDrawdownPct / winRate / buyAndHoldReturnPct as decimals.
+ */
+export function formatRateAsPercent(
+  value: string | number | null | undefined,
+  options?: { signed?: boolean; digits?: number },
+): string {
+  if (value == null || value === "") return "—";
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return String(value);
+  const digits = options?.digits ?? 2;
+  const pct = n * 100;
+  if (options?.signed) {
+    const sign = pct > 0 ? "+" : pct < 0 ? "-" : "";
+    return `${sign}${Math.abs(pct).toFixed(digits)}%`;
+  }
+  return `${pct.toFixed(digits)}%`;
+}
+
+/** Format quote-currency amounts (`$0.26`, or signed `+$1.19` / `-$0.63`). */
+export function formatMoneyUsd(
+  value: string | number | null | undefined,
+  options?: { digits?: number; signed?: boolean },
+): string {
+  if (value == null || value === "") return "—";
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return String(value);
+  const digits = options?.digits ?? 2;
+  const signed = options?.signed ?? true;
+  if (!signed) {
+    return `$${Math.abs(n).toFixed(digits)}`;
+  }
+  const sign = n > 0 ? "+" : n < 0 ? "-" : "";
+  return `${sign}$${Math.abs(n).toFixed(digits)}`;
+}
+
 /** Matches backend `MAX_BACKTEST_CANDLES` (Feature 004 hard cap). */
 export const MAX_BACKTEST_CANDLES = 5000;
 
