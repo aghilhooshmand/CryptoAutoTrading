@@ -33,7 +33,7 @@ export interface StrategiesResponse {
   strategies: StrategyInfo[];
 }
 
-/** Built-in Dual EMA schema used while loading / if list fails. */
+/** Built-in strategy schemas used while loading / if list fails. */
 export const FALLBACK_STRATEGIES: StrategyInfo[] = [
   {
     id: "dual_ema",
@@ -62,6 +62,92 @@ export const FALLBACK_STRATEGIES: StrategyInfo[] = [
         fields: ["fastPeriod", "slowPeriod"],
       },
     ],
+  },
+  {
+    id: "rsi",
+    displayName: "RSI",
+    aliases: [],
+    parameters: [
+      { name: "period", type: "integer", label: "RSI period", default: 14, minimum: 2 },
+      {
+        name: "overbought",
+        type: "integer",
+        label: "Overbought",
+        default: 70,
+        minimum: 1,
+        maximum: 99,
+      },
+      {
+        name: "oversold",
+        type: "integer",
+        label: "Oversold",
+        default: 30,
+        minimum: 1,
+        maximum: 99,
+      },
+    ],
+    constraints: [
+      {
+        code: "oversold_lt_overbought",
+        message: "Oversold threshold must be less than overbought threshold.",
+        fields: ["oversold", "overbought"],
+      },
+    ],
+  },
+  {
+    id: "macd",
+    displayName: "MACD",
+    aliases: [],
+    parameters: [
+      { name: "fastPeriod", type: "integer", label: "Fast period", default: 12, minimum: 1 },
+      { name: "slowPeriod", type: "integer", label: "Slow period", default: 26, minimum: 2 },
+      {
+        name: "signalPeriod",
+        type: "integer",
+        label: "Signal period",
+        default: 9,
+        minimum: 1,
+      },
+    ],
+    constraints: [
+      {
+        code: "fast_lt_slow",
+        message: "Fast period must be less than slow period.",
+        fields: ["fastPeriod", "slowPeriod"],
+      },
+    ],
+  },
+  {
+    id: "bollinger_bands",
+    displayName: "Bollinger Bands",
+    aliases: [],
+    parameters: [
+      { name: "period", type: "integer", label: "Period", default: 20, minimum: 2 },
+      {
+        name: "stdDev",
+        type: "decimal_string",
+        label: "Std deviations",
+        default: "2.0",
+        minimum: 0,
+        exclusiveMinimum: true,
+      },
+    ],
+    constraints: [
+      {
+        code: "std_dev_gt_zero",
+        message: "Std deviations must be greater than 0.",
+        fields: ["stdDev"],
+      },
+    ],
+  },
+  {
+    id: "breakout",
+    displayName: "Breakout",
+    aliases: [],
+    parameters: [
+      { name: "lookback", type: "integer", label: "Lookback", default: 20, minimum: 2 },
+    ],
+    constraints: [],
   },
 ];
 

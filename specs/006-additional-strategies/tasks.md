@@ -36,8 +36,8 @@
 
 **Purpose**: Confirm layout; no trading behavior yet
 
-- [ ] T001 Verify Feature 005 strategy package paths exist (`backend/app/strategy/`, `frontend/src/features/strategy/`, `frontend/src/services/strategiesApi.ts`) per plan.md
-- [ ] T002 [P] Confirm `backend/tests/unit/`, `backend/tests/contract/`, `backend/tests/integration/` are ready for new strategy test files
+- [X] T001 Verify Feature 005 strategy package paths exist (`backend/app/strategy/`, `frontend/src/features/strategy/`, `frontend/src/services/strategiesApi.ts`) per plan.md
+- [X] T002 [P] Confirm `backend/tests/unit/`, `backend/tests/contract/`, `backend/tests/integration/` are ready for new strategy test files
 
 ---
 
@@ -47,14 +47,14 @@
 
 **⚠️ CRITICAL**: No user story work until this phase completes
 
-- [ ] T003 Implement Decimal helpers (EMA with Dual-EMA-compatible SMA seed + k=2/(n+1), SMA, population stdev, Wilder RSI series) in `backend/app/strategy/indicators.py` per research.md Decision 2–3
-- [ ] T004 [P] Unit tests for indicator helpers (EMA seed parity vs Dual EMA style, SMA, population σ, Wilder RSI warm-up Nones) in `backend/tests/unit/test_strategy_indicators.py`
+- [X] T003 Implement Decimal helpers (EMA with Dual-EMA-compatible SMA seed + k=2/(n+1), SMA, population stdev, Wilder RSI series) in `backend/app/strategy/indicators.py` per research.md Decision 2–3
+- [X] T004 [P] Unit tests for indicator helpers (EMA seed parity vs Dual EMA style, SMA, population σ, Wilder RSI warm-up Nones) in `backend/tests/unit/test_strategy_indicators.py`
 - [X] T041 Extend `ParamDef` / `coerce_and_bounds` for `decimal_string` (parse Decimal, reject malformed, bounds + `exclusive_minimum`) in `backend/app/strategy/params.py`; expose `exclusiveMinimum` in `backend/app/strategy/registry.py` `to_api_list`
 - [X] T042 [P] Unit tests for decimal_string preserve/reject/exclusive min in `backend/tests/unit/test_strategy_params.py`
 - [X] T043 Frontend: `StrategyParamValue` number|string; decimal_string inputs preserve strings in payloads; client validates integers vs decimals + `exclusiveMinimum` in `frontend/src/services/strategiesApi.ts` and `frontend/src/features/strategy/StrategyConfigFields.tsx`; widen create types in `frontend/src/services/simulationApi.ts` and `frontend/src/services/backtestApi.ts`
 - [X] T044 [P] Client constraint `oversold_lt_overbought` + decimal_string / exclusive-min tests in `frontend/src/__tests__/strategyConfig.test.tsx`
-- [ ] T005 Update `backend/app/strategy/__init__.py` (and `backend/app/main.py` if needed) so new strategy modules can be imported for auto-registration without changing Dual EMA registration
-- [ ] T006 Run existing Dual EMA continuity baseline: `pytest backend/tests/unit/test_dual_ema_continuity.py -q` must pass before adding strategies (FR-013 / SC-005 gate)
+- [X] T005 Update `backend/app/strategy/__init__.py` (and `backend/app/main.py` if needed) so new strategy modules can be imported for auto-registration without changing Dual EMA registration
+- [X] T006 Run existing Dual EMA continuity baseline: `pytest backend/tests/unit/test_dual_ema_continuity.py -q` must pass before adding strategies (FR-013 / SC-005 gate)
 
 **Checkpoint**: Indicators ready; Dual EMA still green; story modules can register independently
 
@@ -68,16 +68,16 @@
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] Unit/golden tests for RSI recovery crossover, warm-up HOLD until `S+1`, param validation (oversold &lt; overbought) in `backend/tests/unit/test_rsi_strategy.py`
-- [ ] T008 [P] [US1] Contract tests: create sim/backtest with `rsi`; reject invalid RSI params; insufficient_history when candles &lt; `period` in `backend/tests/contract/test_simulation_api.py` and `backend/tests/contract/test_backtest_api.py` (extend)
+- [X] T007 [P] [US1] Unit/golden tests for RSI recovery crossover, warm-up HOLD until `S+1`, param validation (oversold &lt; overbought) in `backend/tests/unit/test_rsi_strategy.py`
+- [X] T008 [P] [US1] Contract tests: create sim/backtest with `rsi`; reject invalid RSI params; insufficient_history when candles &lt; `period` in `backend/tests/contract/test_simulation_api.py` and `backend/tests/contract/test_backtest_api.py` (extend)
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Implement and register RSI strategy (Wilder RSI, recovery crossover, `min_history_candles` = `period`) in `backend/app/strategy/rsi.py` per data-model.md / FR-001–FR-002
-- [ ] T010 [US1] Import `rsi` for auto-registration from `backend/app/strategy/__init__.py` (and `backend/app/main.py` if required)
-- [ ] T011 [P] [US1] Add RSI schema to `FALLBACK_STRATEGIES` in `frontend/src/services/strategiesApi.ts` per `contracts/additional-strategies-api.md`
-- [ ] T012 [P] [US1] Extend frontend strategy selector coverage for RSI defaults; assert oversold&lt;overbought uses client constraint `oversold_lt_overbought` (message: “Oversold threshold must be less than overbought threshold.”) in `frontend/src/__tests__/strategyConfig.test.tsx` (framework validation landed in T044; wire RSI into FALLBACK / selector here)
-- [ ] T013 [US1] Run T006–T008 and T012; fix until passing (Dual EMA continuity still green)
+- [X] T009 [US1] Implement and register RSI strategy (Wilder RSI, recovery crossover, `min_history_candles` = `period`) in `backend/app/strategy/rsi.py` per data-model.md / FR-001–FR-002
+- [X] T010 [US1] Import `rsi` for auto-registration from `backend/app/strategy/__init__.py` (and `backend/app/main.py` if required)
+- [X] T011 [P] [US1] Add RSI schema to `FALLBACK_STRATEGIES` in `frontend/src/services/strategiesApi.ts` per `contracts/additional-strategies-api.md`
+- [X] T012 [P] [US1] Extend frontend strategy selector coverage for RSI defaults; assert oversold&lt;overbought uses client constraint `oversold_lt_overbought` (message: “Oversold threshold must be less than overbought threshold.”) in `frontend/src/__tests__/strategyConfig.test.tsx` (framework validation landed in T044; wire RSI into FALLBACK / selector here)
+- [X] T013 [US1] Run T006–T008 and T012; fix until passing (Dual EMA continuity still green)
 
 **Checkpoint**: RSI selectable end-to-end; MVP delivers second registered strategy
 
@@ -91,16 +91,16 @@
 
 ### Tests for User Story 2
 
-- [ ] T014 [P] [US2] Unit/golden tests for MACD crossover, warm-up, param validation (fast &lt; slow) in `backend/tests/unit/test_macd_strategy.py`
-- [ ] T015 [P] [US2] Contract tests: create with `macd`; reject invalid MACD params; insufficient_history when candles &lt; `slow+signal` in `backend/tests/contract/test_simulation_api.py` and `backend/tests/contract/test_backtest_api.py` (extend)
+- [X] T014 [P] [US2] Unit/golden tests for MACD crossover, warm-up, param validation (fast &lt; slow) in `backend/tests/unit/test_macd_strategy.py`
+- [X] T015 [P] [US2] Contract tests: create with `macd`; reject invalid MACD params; insufficient_history when candles &lt; `slow+signal` in `backend/tests/contract/test_simulation_api.py` and `backend/tests/contract/test_backtest_api.py` (extend)
 
 ### Implementation for User Story 2
 
-- [ ] T016 [US2] Implement and register MACD strategy (shared EMA helpers, line/signal crossover, `S = slowPeriod + signalPeriod`) in `backend/app/strategy/macd.py` per FR-003–FR-004 / research Decision 4
-- [ ] T017 [US2] Import `macd` for auto-registration from `backend/app/strategy/__init__.py` (and `backend/app/main.py` if required)
-- [ ] T018 [P] [US2] Add MACD schema to `FALLBACK_STRATEGIES` in `frontend/src/services/strategiesApi.ts`
-- [ ] T019 [P] [US2] Extend frontend tests for MACD defaults / fast&lt;slow in `frontend/src/__tests__/strategyConfig.test.tsx`
-- [ ] T020 [US2] Run T014–T015 and T019; fix until passing (Dual EMA continuity still green)
+- [X] T016 [US2] Implement and register MACD strategy (shared EMA helpers, line/signal crossover, `S = slowPeriod + signalPeriod`) in `backend/app/strategy/macd.py` per FR-003–FR-004 / research Decision 4
+- [X] T017 [US2] Import `macd` for auto-registration from `backend/app/strategy/__init__.py` (and `backend/app/main.py` if required)
+- [X] T018 [P] [US2] Add MACD schema to `FALLBACK_STRATEGIES` in `frontend/src/services/strategiesApi.ts`
+- [X] T019 [P] [US2] Extend frontend tests for MACD defaults / fast&lt;slow in `frontend/src/__tests__/strategyConfig.test.tsx`
+- [X] T020 [US2] Run T014–T015 and T019; fix until passing (Dual EMA continuity still green)
 
 **Checkpoint**: MACD available alongside Dual EMA and RSI
 
@@ -114,16 +114,16 @@
 
 ### Tests for User Story 3
 
-- [ ] T021 [P] [US3] Unit/golden tests for Bollinger recovery crossover, population σ, warm-up, stdDev validation in `backend/tests/unit/test_bollinger_strategy.py`
-- [ ] T022 [P] [US3] Contract tests: create with `bollinger_bands`; reject `stdDev` ≤ 0; insufficient_history when candles &lt; `period` in `backend/tests/contract/test_simulation_api.py` and `backend/tests/contract/test_backtest_api.py` (extend)
+- [X] T021 [P] [US3] Unit/golden tests for Bollinger recovery crossover, population σ, warm-up, stdDev validation in `backend/tests/unit/test_bollinger_strategy.py`
+- [X] T022 [P] [US3] Contract tests: create with `bollinger_bands`; reject `stdDev` ≤ 0; insufficient_history when candles &lt; `period` in `backend/tests/contract/test_simulation_api.py` and `backend/tests/contract/test_backtest_api.py` (extend)
 
 ### Implementation for User Story 3
 
-- [ ] T023 [US3] Implement and register Bollinger Bands strategy (`stdDev` ParamDef with `exclusive_minimum=True`, `minimum=0`) in `backend/app/strategy/bollinger.py` per FR-005–FR-006 / research Decision 5 / T041
-- [ ] T024 [US3] Import `bollinger` for auto-registration from `backend/app/strategy/__init__.py` (and `backend/app/main.py` if required)
-- [ ] T025 [P] [US3] Add Bollinger schema (`stdDev` as `decimal_string` with `exclusiveMinimum: true`, `minimum: 0`, optional `std_dev_gt_zero` constraint) to `FALLBACK_STRATEGIES` in `frontend/src/services/strategiesApi.ts` per `contracts/additional-strategies-api.md`
-- [ ] T026 [P] [US3] **Required**: Frontend tests that Bollinger `stdDev` renders as `decimal_string`, client rejects `0` via exclusive minimum, and create payloads preserve strings such as `"2.0"` / `"1.5"` in `frontend/src/__tests__/strategyConfig.test.tsx` (uses T043 framework; must not coerce through `Number.isInteger`)
-- [ ] T027 [US3] Run T021–T022 and T026; fix until passing
+- [X] T023 [US3] Implement and register Bollinger Bands strategy (`stdDev` ParamDef with `exclusive_minimum=True`, `minimum=0`) in `backend/app/strategy/bollinger.py` per FR-005–FR-006 / research Decision 5 / T041
+- [X] T024 [US3] Import `bollinger` for auto-registration from `backend/app/strategy/__init__.py` (and `backend/app/main.py` if required)
+- [X] T025 [P] [US3] Add Bollinger schema (`stdDev` as `decimal_string` with `exclusiveMinimum: true`, `minimum: 0`, optional `std_dev_gt_zero` constraint) to `FALLBACK_STRATEGIES` in `frontend/src/services/strategiesApi.ts` per `contracts/additional-strategies-api.md`
+- [X] T026 [P] [US3] **Required**: Frontend tests that Bollinger `stdDev` renders as `decimal_string`, client rejects `0` via exclusive minimum, and create payloads preserve strings such as `"2.0"` / `"1.5"` in `frontend/src/__tests__/strategyConfig.test.tsx` (uses T043 framework; must not coerce through `Number.isInteger`)
+- [X] T027 [US3] Run T021–T022 and T026; fix until passing
 
 **Checkpoint**: Mean-reversion Bollinger recovery strategy selectable
 
@@ -137,16 +137,16 @@
 
 ### Tests for User Story 4
 
-- [ ] T028 [P] [US4] Unit/golden tests for Breakout every-new-extreme semantics, warm-up, lookback validation in `backend/tests/unit/test_breakout_strategy.py`
-- [ ] T029 [P] [US4] Contract tests: create with `breakout`; reject lookback &lt; 2; insufficient_history when candles &lt; lookback in `backend/tests/contract/test_simulation_api.py` and `backend/tests/contract/test_backtest_api.py` (extend)
+- [X] T028 [P] [US4] Unit/golden tests for Breakout every-new-extreme semantics, warm-up, lookback validation in `backend/tests/unit/test_breakout_strategy.py`
+- [X] T029 [P] [US4] Contract tests: create with `breakout`; reject lookback &lt; 2; insufficient_history when candles &lt; lookback in `backend/tests/contract/test_simulation_api.py` and `backend/tests/contract/test_backtest_api.py` (extend)
 
 ### Implementation for User Story 4
 
-- [ ] T030 [US4] Implement and register Breakout strategy (prior window excludes current bar) in `backend/app/strategy/breakout.py` per FR-007–FR-008 / research Decision 6
-- [ ] T031 [US4] Import `breakout` for auto-registration from `backend/app/strategy/__init__.py` (and `backend/app/main.py` if required)
-- [ ] T032 [P] [US4] Add Breakout schema to `FALLBACK_STRATEGIES` in `frontend/src/services/strategiesApi.ts`
-- [ ] T033 [P] [US4] Extend frontend tests for Breakout defaults in `frontend/src/__tests__/strategyConfig.test.tsx`
-- [ ] T034 [US4] Run T028–T029 and T033; fix until passing
+- [X] T030 [US4] Implement and register Breakout strategy (prior window excludes current bar) in `backend/app/strategy/breakout.py` per FR-007–FR-008 / research Decision 6
+- [X] T031 [US4] Import `breakout` for auto-registration from `backend/app/strategy/__init__.py` (and `backend/app/main.py` if required)
+- [X] T032 [P] [US4] Add Breakout schema to `FALLBACK_STRATEGIES` in `frontend/src/services/strategiesApi.ts`
+- [X] T033 [P] [US4] Extend frontend tests for Breakout defaults in `frontend/src/__tests__/strategyConfig.test.tsx`
+- [X] T034 [US4] Run T028–T029 and T033; fix until passing
 
 **Checkpoint**: All four new strategies registered and selectable
 
@@ -156,12 +156,12 @@
 
 **Purpose**: Catalog completeness, shared-path proof, Dual EMA regression, docs, non-mutation
 
-- [ ] T035 [P] Update `GET /strategies` contract tests to expect exactly 5 strategies with schemas from `contracts/additional-strategies-api.md` in `backend/tests/contract/test_strategies_api.py` (SC-001)
-- [ ] T036 [P] Extend integration test so Simulation and Backtest resolve the same class for at least one non–Dual-EMA id (e.g. `rsi`) in `backend/tests/integration/test_strategy_shared_sim_backtest.py`
-- [ ] T037 [P] Assert new strategies’ `evaluate` does not take/mutate balances (extend or add) in `backend/tests/unit/test_strategy_no_balance_mutation.py`
-- [ ] T038 Re-run Dual EMA continuity unmodified: `pytest backend/tests/unit/test_dual_ema_continuity.py -q` (SC-005)
-- [ ] T039 [P] Document Feature 006 strategy list in root `README.md` (link to `specs/006-additional-strategies/quickstart.md`)
-- [ ] T040 Run quickstart.md automated checks (backend unit/contract + frontend strategyConfig) and fix remaining failures
+- [X] T035 [P] Update `GET /strategies` contract tests to expect exactly 5 strategies with schemas from `contracts/additional-strategies-api.md` in `backend/tests/contract/test_strategies_api.py` (SC-001)
+- [X] T036 [P] Extend integration test so Simulation and Backtest resolve the same class for at least one non–Dual-EMA id (e.g. `rsi`) in `backend/tests/integration/test_strategy_shared_sim_backtest.py`
+- [X] T037 [P] Assert new strategies’ `evaluate` does not take/mutate balances (extend or add) in `backend/tests/unit/test_strategy_no_balance_mutation.py`
+- [X] T038 Re-run Dual EMA continuity unmodified: `pytest backend/tests/unit/test_dual_ema_continuity.py -q` (SC-005)
+- [X] T039 [P] Document Feature 006 strategy list in root `README.md` (link to `specs/006-additional-strategies/quickstart.md`)
+- [X] T040 Run quickstart.md automated checks (backend unit/contract + frontend strategyConfig) and fix remaining failures
 
 **Checkpoint**: Feature complete — five strategies, Dual EMA unchanged, quickstart green
 

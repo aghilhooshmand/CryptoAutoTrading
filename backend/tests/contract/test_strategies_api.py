@@ -28,14 +28,34 @@ def test_list_strategies_schema(client):
     assert r.status_code == 200
     data = r.json()
     assert "strategies" in data
-    assert len(data["strategies"]) == 1
-    s = data["strategies"][0]
-    assert s["id"] == "dual_ema"
-    assert s["displayName"] == "Dual EMA"
-    assert "dual_ema_9_21" in s["aliases"]
-    names = {p["name"] for p in s["parameters"]}
-    assert names == {"fastPeriod", "slowPeriod"}
-    assert any(c["code"] == "fast_lt_slow" for c in s["constraints"])
-    assert any(
-        "Fast period must be less than slow period." == c["message"] for c in s["constraints"]
-    )
+    assert len(data["strategies"]) == 5
+    by_id = {s["id"]: s for s in data["strategies"]}
+    assert set(by_id) == {"dual_ema", "rsi", "macd", "bollinger_bands", "breakout"}
+
+    dual = by_id["dual_ema"]
+    assert dual["displayName"] == "Dual EMA"
+    assert "dual_ema_9_21" in dual["aliases"]
+    assert {p["name"] for p in dual["parameters"]} == {"fastPeriod", "slowPeriod"}
+
+    rsi = by_id["rsi"]
+    assert rsi["displayName"] == "RSI"
+    assert {p["name"] for p in rsi["parameters"]} == {"period", "overbought", "oversold"}
+    assert any(c["code"] == "oversold_lt_overbought" for c in rsi["constraints"])
+
+    macd = by_id["macd"]
+    assert macd["displayName"] == "MACD"
+    assert {p["name"] for p in macd["parameters"]} == {
+        "fastPeriod",
+        "slowPeriod",
+        "signalPeriod",
+    }
+
+    bollinger = by_id["bollinger_bands"]
+    assert bollinger["displayName"] == "Bollinger Bands"
+    std_dev = next(p for p in bollinger["parameters"] if p["name"] == "stdDev")
+    assert std_dev["type"] == "decimal_string"
+    assert std_dev.get("exclusiveMinimum") is True
+
+    breakout = by_id["breakout"]
+    assert breakout["displayName"] == "Breakout"
+    assert {p["name"] for p in breakout["parameters"]} == {"lookback"}

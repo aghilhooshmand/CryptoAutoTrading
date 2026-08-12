@@ -6,9 +6,13 @@ import inspect
 from decimal import Decimal
 from unittest.mock import MagicMock
 
+import pytest
+
 from app.strategy.base import CandleClose, StrategySignal
 from app.strategy.dual_ema import DualEmaCrossoverStrategy
 from app.strategy.registry import validate_and_materialize
+
+NEW_STRATEGY_IDS = ("rsi", "macd", "bollinger_bands", "breakout")
 
 
 def test_evaluate_signature_has_no_balance_parameters():
@@ -48,3 +52,24 @@ def test_registry_strategy_evaluate_does_not_touch_mock_balances():
     assert account.cash == Decimal("1000")
     assert account.position_qty == Decimal("0")
     account.assert_not_called()
+
+
+@pytest.mark.parametrize("strategy_id", NEW_STRATEGY_IDS)
+def test_new_strategies_evaluate_without_balance_access(strategy_id):
+    account = MagicMock()
+    account.cash = Decimal("1000")
+    account.position_qty = Decimal("0")
+
+    _, _, strategy = validate_and_materialize(strategy_id, None)
+    sig = inspect.signature(type(strategy).evaluate)
+    assert list(sig.parameters) == ["self", "closes"]
+
+    closes = [CandleClose(i * 60_000, Decimal("100")) for i in range(40)]
+    snapshot = [(c.open_time, c.close) for c in closes]
+    signal = strategy.evaluate(closes)
+
+    assert account.cash == Decimal("1000")
+    assert account.position_qty == Decimal("0")
+    account.assert_not_called()
+    assert [(c.open_time, c.close) for c in closes] == snapshot
+    assert isinstance(signal, StrategySignal)

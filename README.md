@@ -10,7 +10,9 @@ adds simulation-only Auto Trading (dual EMA, journals, hard stops). Feature
 Trading page (offline evaluation, no real orders). Feature
 `005-strategy-framework` makes strategies selectable (registry + Dual EMA
 canonical id `dual_ema`, editable periods defaulting to 9/21) for Simulation
-and Backtest. Real-money trading, sentiment, and auth remain out of scope.
+and Backtest. Feature `006-additional-strategies` adds RSI, MACD, Bollinger
+Bands, and Breakout on the same registry (five strategies total). Real-money
+trading, sentiment, and auth remain out of scope.
 
 ## Prerequisites
 
@@ -102,12 +104,21 @@ curl -sS http://127.0.0.1:8000/backtest/runs
 Feature 004 validation guide:
 [`specs/004-backtesting-core/quickstart.md`](specs/004-backtesting-core/quickstart.md)
 
-## Strategy selection (Feature 005)
+## Strategy selection (Feature 005 / 006)
 
-Simulation and Backtest share a strategy registry. Operators select Dual EMA
-(`dual_ema`, defaults fast 9 / slow 21) under Auto Trading; `strategyId` is
-required on create. See
-[`specs/005-strategy-framework/quickstart.md`](specs/005-strategy-framework/quickstart.md).
+Simulation and Backtest share a strategy registry. Operators choose among
+**Dual EMA**, **RSI**, **MACD**, **Bollinger Bands**, and **Breakout** under
+Auto Trading; `strategyId` is required on create. Dual EMA defaults remain fast
+9 / slow 21. See
+[`specs/005-strategy-framework/quickstart.md`](specs/005-strategy-framework/quickstart.md)
+and
+[`specs/006-additional-strategies/quickstart.md`](specs/006-additional-strategies/quickstart.md).
+
+```bash
+curl -sS http://127.0.0.1:8000/strategies
+```
+
+Expected: five registered strategies when Feature 006 is complete.
 
 ## Backend health
 

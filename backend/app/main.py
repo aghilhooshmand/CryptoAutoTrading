@@ -12,8 +12,14 @@ from app.api.strategies import router as strategies_router
 from app.db import session as db_session
 from app.simulation.recovery import recover_orphan_sessions
 from app.simulation.worker import ensure_worker_running, stop_worker
-# Ensure Dual EMA is registered before serving
-from app.strategy import dual_ema as _dual_ema  # noqa: F401
+# Ensure all strategies register before serving
+from app.strategy import (  # noqa: F401
+    bollinger,
+    breakout,
+    dual_ema,
+    macd,
+    rsi,
+)
 
 
 @asynccontextmanager
@@ -29,7 +35,7 @@ async def lifespan(_app: FastAPI):
     stop_worker()
 
 
-app = FastAPI(title="CryptoAutoTrading API", version="0.5.0", lifespan=lifespan)
+app = FastAPI(title="CryptoAutoTrading API", version="0.6.0", lifespan=lifespan)
 
 api_router = APIRouter()
 api_router.include_router(health_router)

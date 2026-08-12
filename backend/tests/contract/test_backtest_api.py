@@ -179,3 +179,81 @@ def test_successful_run_summary(client):
     assert trades.status_code == 200
     assert decisions.status_code == 200
     assert len(decisions.json()["decisions"]) >= 21
+
+
+@pytest.mark.parametrize(
+    ("strategy_id", "params", "expected_params"),
+    [
+        ("rsi", None, {"period": 14, "overbought": 70, "oversold": 30}),
+        ("macd", None, {"fastPeriod": 12, "slowPeriod": 26, "signalPeriod": 9}),
+        ("bollinger_bands", {"period": 20, "stdDev": "2.5"}, {"period": 20, "stdDev": "2.5"}),
+        ("breakout", None, {"lookback": 20}),
+    ],
+)
+def test_create_accepts_new_strategies(client, strategy_id, params, expected_params):
+    c, _Session = client
+    mock = AsyncMock()
+    mock.get_candles = AsyncMock(return_value=_mock_series(40))
+    body = _body(strategyId=strategy_id)
+    if params is not None:
+        body["strategyParams"] = params
+    with patch("app.backtest.service.get_market_data_service", return_value=mock):
+        r = c.post("/backtest/runs", json=body)
+    assert r.status_code == 201, r.text
+    data = r.json()
+    assert data["strategyId"] == strategy_id
+    assert data["strategyParams"] == expected_params
+
+
+@pytest.mark.parametrize(
+    ("strategy_id", "params", "message_part"),
+    [
+        (
+            "rsi",
+            {"period": 14, "overbought": 30, "oversold": 70},
+            "Oversold threshold must be less than overbought threshold.",
+        ),
+        (
+            "macd",
+            {"fastPeriod": 26, "slowPeriod": 12, "signalPeriod": 9},
+            "Fast period must be less than slow period.",
+        ),
+        (
+            "bollinger_bands",
+            {"period": 20, "stdDev": "0"},
+            "must be > 0",
+        ),
+        ("breakout", {"lookback": 1}, "lookback"),
+    ],
+)
+def test_invalid_new_strategy_params(client, strategy_id, params, message_part):
+    c, _Session = client
+    r = c.post(
+        "/backtest/runs",
+        json=_body(strategyId=strategy_id, strategyParams=params),
+    )
+    assert r.status_code == 400
+    assert message_part in r.json()["detail"]["error"]["message"]
+
+
+@pytest.mark.parametrize(
+    ("strategy_id", "params", "candle_count"),
+    [
+        ("rsi", {"period": 14, "overbought": 70, "oversold": 30}, 13),
+        ("macd", {"fastPeriod": 12, "slowPeriod": 26, "signalPeriod": 9}, 34),
+        ("bollinger_bands", {"period": 20, "stdDev": "2.0"}, 19),
+        ("breakout", {"lookback": 20}, 19),
+    ],
+)
+def test_insufficient_history_for_new_strategies(client, strategy_id, params, candle_count):
+    c, _Session = client
+    mock = AsyncMock()
+    mock.get_candles = AsyncMock(return_value=_mock_series(candle_count))
+    with patch("app.backtest.service.get_market_data_service", return_value=mock):
+        r = c.post(
+            "/backtest/runs",
+            json=_body(strategyId=strategy_id, strategyParams=params),
+        )
+    assert r.status_code == 201
+    assert r.json()["status"] == "failed"
+    assert r.json()["errorCode"] == "insufficient_history"

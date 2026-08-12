@@ -69,6 +69,40 @@ const RSI_FIXTURE: StrategyInfo = {
   ],
 };
 
+const MACD_FIXTURE: StrategyInfo = {
+  id: "macd",
+  displayName: "MACD",
+  aliases: [],
+  parameters: [
+    { name: "fastPeriod", type: "integer", label: "Fast period", default: 12, minimum: 1 },
+    { name: "slowPeriod", type: "integer", label: "Slow period", default: 26, minimum: 2 },
+    {
+      name: "signalPeriod",
+      type: "integer",
+      label: "Signal period",
+      default: 9,
+      minimum: 1,
+    },
+  ],
+  constraints: [
+    {
+      code: "fast_lt_slow",
+      message: "Fast period must be less than slow period.",
+      fields: ["fastPeriod", "slowPeriod"],
+    },
+  ],
+};
+
+const BREAKOUT_FIXTURE: StrategyInfo = {
+  id: "breakout",
+  displayName: "Breakout",
+  aliases: [],
+  parameters: [
+    { name: "lookback", type: "integer", label: "Lookback", default: 20, minimum: 2 },
+  ],
+  constraints: [],
+};
+
 vi.mock("../services/strategiesApi", async () => {
   const actual = await vi.importActual<typeof import("../services/strategiesApi")>(
     "../services/strategiesApi",
@@ -110,6 +144,28 @@ describe("strategy config fields", () => {
       "Fast period must be less than slow period.",
     );
   });
+
+  it("lists all fallback strategies in the selector", async () => {
+    render(<Harness />);
+    await waitFor(() => screen.getByTestId("strategy-id"));
+    const select = screen.getByTestId("strategy-id");
+    expect(select.tagName).toBe("SELECT");
+    expect(select).toHaveTextContent("Dual EMA");
+    expect(select).toHaveTextContent("RSI");
+    expect(select).toHaveTextContent("MACD");
+    expect(select).toHaveTextContent("Bollinger Bands");
+    expect(select).toHaveTextContent("Breakout");
+  });
+
+  it("switches to RSI defaults when selected", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await waitFor(() => screen.getByTestId("strategy-id"));
+    await user.selectOptions(screen.getByTestId("strategy-id"), "rsi");
+    expect(screen.getByTestId("strategy-param-period")).toHaveValue(14);
+    expect(screen.getByTestId("strategy-param-overbought")).toHaveValue(70);
+    expect(screen.getByTestId("strategy-param-oversold")).toHaveValue(30);
+  });
 });
 
 describe("validateStrategyParamsClient decimal_string and RSI", () => {
@@ -146,17 +202,21 @@ describe("validateStrategyParamsClient decimal_string and RSI", () => {
       }),
     ).toBe("Oversold threshold must be less than overbought threshold.");
   });
+
+  it("shows fast < slow message for MACD", () => {
+    expect(
+      validateStrategyParamsClient(MACD_FIXTURE, {
+        fastPeriod: 26,
+        slowPeriod: 12,
+        signalPeriod: 9,
+      }),
+    ).toBe("Fast period must be less than slow period.");
+  });
 });
 
 describe("decimal_string field rendering", () => {
   it("renders decimal_string as text and preserves spelling in controlled value", async () => {
-    const { listStrategies } = await import("../services/strategiesApi");
-    vi.mocked(listStrategies).mockResolvedValueOnce([
-      ...((await vi.importActual<typeof import("../services/strategiesApi")>(
-        "../services/strategiesApi",
-      )).FALLBACK_STRATEGIES),
-      BOLLINGER_FIXTURE,
-    ]);
+    const user = userEvent.setup();
 
     function DecimalHarness() {
       const [value, setValue] = useState<StrategyConfigValue>({
@@ -171,7 +231,6 @@ describe("decimal_string field rendering", () => {
       );
     }
 
-    const user = userEvent.setup();
     render(<DecimalHarness />);
     await waitFor(() => screen.getByTestId("strategy-param-stdDev"));
     const input = screen.getByTestId("strategy-param-stdDev");
@@ -182,5 +241,13 @@ describe("decimal_string field rendering", () => {
     await user.clear(input);
     await user.type(input, "1.5");
     expect(screen.getByTestId("payload")).toHaveTextContent('"stdDev":"1.5"');
+  });
+
+  it("renders Breakout lookback default from fallback catalog", async () => {
+    render(<Harness />);
+    await waitFor(() => screen.getByTestId("strategy-id"));
+    const user = userEvent.setup();
+    await user.selectOptions(screen.getByTestId("strategy-id"), "breakout");
+    expect(screen.getByTestId("strategy-param-lookback")).toHaveValue(20);
   });
 });

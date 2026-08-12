@@ -132,6 +132,60 @@ def test_create_derives_amounts(client):
     assert data["state"] == "CONFIGURED"
 
 
+@pytest.mark.parametrize(
+    ("strategy_id", "params", "expected_params"),
+    [
+        ("rsi", None, {"period": 14, "overbought": 70, "oversold": 30}),
+        ("macd", None, {"fastPeriod": 12, "slowPeriod": 26, "signalPeriod": 9}),
+        (
+            "bollinger_bands",
+            None,
+            {"period": 20, "stdDev": "2.0"},
+        ),
+        ("breakout", None, {"lookback": 20}),
+    ],
+)
+def test_create_accepts_new_strategies(client, strategy_id, params, expected_params):
+    body = _body(strategyId=strategy_id)
+    if params is not None:
+        body["strategyParams"] = params
+    r = client.post("/simulation/sessions", json=body)
+    assert r.status_code == 201, r.text
+    data = r.json()
+    assert data["strategyId"] == strategy_id
+    assert data["strategyParams"] == expected_params
+
+
+@pytest.mark.parametrize(
+    ("strategy_id", "params", "message_part"),
+    [
+        (
+            "rsi",
+            {"period": 14, "overbought": 30, "oversold": 70},
+            "Oversold threshold must be less than overbought threshold.",
+        ),
+        (
+            "macd",
+            {"fastPeriod": 26, "slowPeriod": 12, "signalPeriod": 9},
+            "Fast period must be less than slow period.",
+        ),
+        (
+            "bollinger_bands",
+            {"period": 20, "stdDev": "0"},
+            "must be > 0",
+        ),
+        ("breakout", {"lookback": 1}, "lookback"),
+    ],
+)
+def test_invalid_new_strategy_params(client, strategy_id, params, message_part):
+    r = client.post(
+        "/simulation/sessions",
+        json=_body(strategyId=strategy_id, strategyParams=params),
+    )
+    assert r.status_code == 400
+    assert message_part in r.json()["detail"]["error"]["message"]
+
+
 def test_reject_real_money(client):
     r = client.post("/simulation/sessions", json=_body(mode="real_money"))
     assert r.status_code == 400
