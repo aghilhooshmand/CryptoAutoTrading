@@ -641,6 +641,34 @@ a {
 
 .auto-trading-lede {
   margin: 0 0 1rem;
+  color: var(--muted, #5c6570);
+  max-width: 40rem;
+}
+
+.form-warning {
+  color: #8a5a00;
+  background: #fff6e5;
+  border: 1px solid #e6c88a;
+  padding: 0.6rem 0.75rem;
+  border-radius: 4px;
+  margin: 0.5rem 0;
+}
+
+.form-status {
+  color: #1a5c2e;
+  margin: 0.5rem 0;
+}
+
+.settings-actions {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.settings-form {
+  max-width: 40rem;
+}
+
+  margin: 0 0 1rem;
   color: var(--muted);
   line-height: 1.45;
 }

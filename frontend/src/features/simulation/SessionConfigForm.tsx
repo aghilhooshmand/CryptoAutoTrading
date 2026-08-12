@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 
 import type { CandleInterval, CreateSessionRequest } from "../../services/simulationApi";
 import {
@@ -6,6 +6,8 @@ import {
   rateToPercentLabel,
   validateCapitalNesting,
 } from "../../services/simulationApi";
+import { getSettings } from "../../services/settingsApi";
+import { settingsToSharedSeed } from "../settings/mapSettingsToForm";
 import { COST_DEFAULTS, CostRateFields } from "../shared/CostRateFields";
 import {
   StrategyConfigFields,
@@ -38,12 +40,12 @@ interface Props {
 const DEFAULTS: SessionConfigValues = {
   symbol: "btc_usdt",
   timeframe: "1h",
-  startingCapital: "500",
-  allocatedCapital: "500",
-  maxPositionSize: "500",
-  targetNetProfitRate: "0.01",
-  maxSessionLossRate: "0.007",
-  maxTrades: "20",
+  startingCapital: "1000",
+  allocatedCapital: "1000",
+  maxPositionSize: "1000",
+  targetNetProfitRate: "",
+  maxSessionLossRate: "",
+  maxTrades: "",
   durationSeconds: "3600",
   feeRate: COST_DEFAULTS.feeRate,
   slippageRate: COST_DEFAULTS.slippageRate,
@@ -83,6 +85,41 @@ export function SessionConfigForm({
   const [strategy, setStrategy] = useState<StrategyConfigValue>(defaultStrategyConfig());
   const [strategyError, setStrategyError] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [seeded, setSeeded] = useState(false);
+
+  // Fresh open only: seed once on mount. Parent keeps form mounted across tabs.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const settings = await getSettings();
+        if (cancelled || seeded) return;
+        const seed = settingsToSharedSeed(settings);
+        setValues((prev) => ({
+          ...prev,
+          symbol: seed.symbol,
+          timeframe: seed.timeframe as CandleInterval,
+          startingCapital: seed.startingCapital,
+          allocatedCapital: seed.allocatedCapital,
+          maxPositionSize: seed.maxPositionSize,
+          targetNetProfitRate: seed.targetNetProfitRate,
+          maxSessionLossRate: seed.maxSessionLossRate,
+          maxTrades: seed.maxTrades,
+          feeRate: seed.feeRate,
+          slippageRate: seed.slippageRate,
+          // durationSeconds stays a Simulation-only local default
+        }));
+        setStrategy(seed.strategy);
+        setSeeded(true);
+      } catch {
+        if (!cancelled) setSeeded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once on fresh mount
+  }, []);
 
   const profitAmount = useMemo(
     () => deriveAmount(values.allocatedCapital, values.targetNetProfitRate),
@@ -106,6 +143,10 @@ export function SessionConfigForm({
     );
     if (nest) {
       setLocalError(nest);
+      return;
+    }
+    if (!values.targetNetProfitRate.trim() || !values.maxSessionLossRate.trim()) {
+      setLocalError("Target net profit rate and max session loss rate are required for Simulation.");
       return;
     }
     const maxTrades = Number(values.maxTrades);

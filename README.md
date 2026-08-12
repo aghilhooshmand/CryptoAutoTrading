@@ -138,6 +138,21 @@ curl -sS http://127.0.0.1:8000/comparisons
 Feature 007 validation guide:
 [`specs/007-strategy-comparison/quickstart.md`](specs/007-strategy-comparison/quickstart.md)
 
+## Trading defaults (Feature 008)
+
+Reusable operator defaults live under **Auto Trading → Settings** (not a fourth
+primary nav). Explicit Save / Reset; defaults only seed **fresh** Simulation,
+Backtest, and Comparison forms (comparison: first strategy leg only). Changing
+Settings never rewrites historical runs or starts trading.
+
+```bash
+# open http://127.0.0.1:5173/auto-trading → Settings tab
+curl -sS http://127.0.0.1:8000/settings
+```
+
+Feature 008 validation guide:
+[`specs/008-trading-experiment-defaults/quickstart.md`](specs/008-trading-experiment-defaults/quickstart.md)
+
 ## Backend health
 
 ```bash

@@ -272,7 +272,7 @@ Execution Abstraction
 
 | ID | Feature | Status |
 |---|---|---|
-| 008 | Trading & Experiment Defaults | PLANNED |
+| 008 | Trading & Experiment Defaults | IN PROGRESS |
 | 009 | Portfolio & Capital Allocation Core | PLANNED |
 | 010 | Advanced Risk Management | PLANNED |
 | 011 | Execution Abstraction | PLANNED |
@@ -334,7 +334,7 @@ Persisted Effective Configuration
 
 Changing Settings MUST NOT rewrite historical configurations.
 
-Status: `PLANNED`
+Status: `IN PROGRESS`
 
 ---
 

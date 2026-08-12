@@ -162,6 +162,27 @@ class ComparisonLegRow(Base):
     metrics_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class OperatorDefaultsRow(Base):
+    """Singleton local operator Settings (Feature 008). Fixed id=1."""
+
+    __tablename__ = "operator_defaults"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    symbol: Mapped[str] = mapped_column(String(64))
+    timeframe: Mapped[str] = mapped_column(String(8))
+    starting_capital: Mapped[str] = mapped_column(String(64))
+    allocated_capital: Mapped[str] = mapped_column(String(64))
+    max_position_size: Mapped[str] = mapped_column(String(64))
+    fee_rate: Mapped[str] = mapped_column(String(64))
+    slippage_rate: Mapped[str] = mapped_column(String(64))
+    target_net_profit_rate: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    max_session_loss_rate: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    max_trades: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    strategy_id: Mapped[str] = mapped_column(String(64))
+    strategy_params: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class BacktestDecisionRow(Base):
     __tablename__ = "backtest_decisions"
 

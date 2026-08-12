@@ -16,8 +16,9 @@ import { ComparisonConfigForm } from "../features/comparison/ComparisonConfigFor
 import { ComparisonList } from "../features/comparison/ComparisonList";
 import { ComparisonResultsTable } from "../features/comparison/ComparisonResultsTable";
 import { useComparison } from "../features/comparison/useComparison";
+import { SettingsPanel } from "../features/settings/SettingsPanel";
 
-type AutoTradingTab = "simulation" | "backtest" | "comparison";
+type AutoTradingTab = "simulation" | "backtest" | "comparison" | "settings";
 
 export function AutoTradingPage() {
   const [tab, setTab] = useState<AutoTradingTab>("simulation");
@@ -81,6 +82,17 @@ export function AutoTradingPage() {
           onClick={() => setTab("comparison")}
         >
           Comparison
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="tab-settings"
+          aria-selected={tab === "settings"}
+          aria-controls="panel-settings"
+          className={tab === "settings" ? "is-active" : undefined}
+          onClick={() => setTab("settings")}
+        >
+          Settings
         </button>
       </div>
 
@@ -203,6 +215,17 @@ export function AutoTradingPage() {
             void comparison.removeComparison(id);
           }}
         />
+      </div>
+
+      <div
+        id="panel-settings"
+        role="tabpanel"
+        aria-labelledby="tab-settings"
+        hidden={tab !== "settings"}
+        className="auto-trading-panel"
+      >
+        <h2 className="auto-trading-panel-title">Settings</h2>
+        <SettingsPanel />
       </div>
     </section>
   );
