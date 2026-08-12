@@ -21,6 +21,12 @@ interface Props {
   onValidationError?: (message: string | null) => void;
   /** Visual shell: simulation sits inside a card; backtest matches fieldset sections. */
   variant?: "simulation" | "backtest";
+  /**
+   * When the operator picks this strategy id (create forms), restore these
+   * params instead of registry defaults — typically the saved Settings preferred
+   * strategy. Omit on Settings itself (draft switch always uses registry defaults).
+   */
+  preferredStrategy?: StrategyConfigValue | null;
 }
 
 function paramLabel(name: string, fallback: string): string {
@@ -39,6 +45,7 @@ export function StrategyConfigFields({
   onChange,
   onValidationError,
   variant = "simulation",
+  preferredStrategy = null,
 }: Props) {
   const [strategies, setStrategies] = useState<StrategyInfo[]>(FALLBACK_STRATEGIES);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -95,6 +102,16 @@ export function StrategyConfigFields({
   function selectStrategy(id: string) {
     const strat = strategies.find((s) => s.id === id);
     if (!strat) return;
+    // Same Rule as saved Settings → restore those params (e.g. fastPeriod 10).
+    // Any other Rule → registry defaults. Settings panel omits preferredStrategy
+    // so a draft Rule change always resets to registry defaults (FR-003).
+    if (preferredStrategy && preferredStrategy.strategyId === id) {
+      onChange({
+        strategyId: id,
+        strategyParams: { ...preferredStrategy.strategyParams },
+      });
+      return;
+    }
     onChange({ strategyId: id, strategyParams: defaultParamsFor(strat) });
   }
 

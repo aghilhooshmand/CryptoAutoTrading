@@ -117,6 +117,31 @@ describe("create form init from Settings", () => {
     expect(screen.getByDisplayValue("2500")).toBeInTheDocument();
   });
 
+  it("Backtest Rule change back to preferred restores Settings params", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      mockApis({
+        ...distinctive,
+        strategyId: "dual_ema",
+        strategyParams: { fastPeriod: 10, slowPeriod: 21 },
+      }),
+    );
+    render(<BacktestConfigForm onSubmit={vi.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByTestId("strategy-id")).toHaveValue("dual_ema");
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("strategy-param-fastPeriod")).toHaveValue(10);
+    });
+
+    await user.selectOptions(screen.getByTestId("strategy-id"), "rsi");
+    expect(screen.getByTestId("strategy-param-period")).toHaveValue(14);
+
+    await user.selectOptions(screen.getByTestId("strategy-id"), "dual_ema");
+    expect(screen.getByTestId("strategy-param-fastPeriod")).toHaveValue(10);
+  });
+
   it("seeds Comparison shared fields and first leg only from Settings", async () => {
     // Preferred dual_ema so leg 0 ≠ secondary RSI starter.
     vi.stubGlobal(

@@ -83,6 +83,7 @@ export function SessionConfigForm({
     symbol: defaultSymbol,
   });
   const [strategy, setStrategy] = useState<StrategyConfigValue>(defaultStrategyConfig());
+  const [preferredStrategy, setPreferredStrategy] = useState<StrategyConfigValue | null>(null);
   const [strategyError, setStrategyError] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [seeded, setSeeded] = useState(false);
@@ -110,6 +111,7 @@ export function SessionConfigForm({
           // durationSeconds stays a Simulation-only local default
         }));
         setStrategy(seed.strategy);
+        setPreferredStrategy(seed.strategy);
         setSeeded(true);
       } catch {
         if (!cancelled) setSeeded(true);
@@ -201,6 +203,7 @@ export function SessionConfigForm({
         value={strategy}
         onChange={setStrategy}
         onValidationError={setStrategyError}
+        preferredStrategy={preferredStrategy}
         variant="simulation"
       />
 

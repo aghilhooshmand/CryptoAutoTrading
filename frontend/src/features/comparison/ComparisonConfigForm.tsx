@@ -62,6 +62,7 @@ export function ComparisonConfigForm({ disabled, busy, error, onSubmit }: Props)
     defaultStrategyConfig(),
     comparisonSecondaryLegStarter(),
   ]);
+  const [preferredStrategy, setPreferredStrategy] = useState<StrategyConfigValue | null>(null);
   const [legErrors, setLegErrors] = useState<(string | null)[]>([null, null]);
   const [localError, setLocalError] = useState<string | null>(null);
   const [seeded, setSeeded] = useState(false);
@@ -83,6 +84,7 @@ export function ComparisonConfigForm({ disabled, busy, error, onSubmit }: Props)
         setMaxTrades(seed.maxTrades);
         setFeeRate(seed.feeRate);
         setSlippageRate(seed.slippageRate);
+        setPreferredStrategy(seed.strategy);
         setLegs((prev) => {
           const next = [...prev];
           next[0] = seed.strategy;
@@ -230,6 +232,7 @@ export function ComparisonConfigForm({ disabled, busy, error, onSubmit }: Props)
               value={leg}
               onChange={(next) => updateLeg(index, next)}
               onValidationError={legValidationHandlers[index]}
+              preferredStrategy={preferredStrategy}
               variant="backtest"
             />
           </div>

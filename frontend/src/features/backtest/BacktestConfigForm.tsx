@@ -47,6 +47,7 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
   const [feeRate, setFeeRate] = useState(COST_DEFAULTS.feeRate);
   const [slippageRate, setSlippageRate] = useState(COST_DEFAULTS.slippageRate);
   const [strategy, setStrategy] = useState<StrategyConfigValue>(defaultStrategyConfig());
+  const [preferredStrategy, setPreferredStrategy] = useState<StrategyConfigValue | null>(null);
   const [strategyError, setStrategyError] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [seeded, setSeeded] = useState(false);
@@ -69,6 +70,7 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
         setFeeRate(seed.feeRate);
         setSlippageRate(seed.slippageRate);
         setStrategy(seed.strategy);
+        setPreferredStrategy(seed.strategy);
         setSeeded(true);
       } catch {
         if (!cancelled) setSeeded(true);
@@ -166,6 +168,7 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
         value={strategy}
         onChange={setStrategy}
         onValidationError={setStrategyError}
+        preferredStrategy={preferredStrategy}
         variant="backtest"
       />
 
