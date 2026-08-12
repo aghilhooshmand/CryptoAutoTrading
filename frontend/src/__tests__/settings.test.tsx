@@ -236,6 +236,30 @@ describe("Settings panel", () => {
     expect(screen.queryByTestId("strategy-param-fastPeriod")).not.toBeInTheDocument();
   });
 
+  it("restores Dual EMA draft params when switching Rule back in Settings", async () => {
+    const user = userEvent.setup();
+    render(<SettingsPanel />);
+    await screen.findByTestId("settings-form");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("strategy-id")).toHaveValue("dual_ema");
+    });
+    const fast = screen.getByTestId("strategy-param-fastPeriod");
+    await user.clear(fast);
+    await user.type(fast, "10");
+    expect(screen.getByTestId("strategy-param-fastPeriod")).toHaveValue(10);
+
+    await user.selectOptions(screen.getByTestId("strategy-id"), "rsi");
+    await waitFor(() => {
+      expect(screen.getByTestId("strategy-param-period")).toHaveValue(14);
+    });
+
+    await user.selectOptions(screen.getByTestId("strategy-id"), "dual_ema");
+    await waitFor(() => {
+      expect(screen.getByTestId("strategy-param-fastPeriod")).toHaveValue(10);
+    });
+  });
+
   it("keeps Save and Reset usable at ~375px width", async () => {
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 375 });
     render(<SettingsPanel />);

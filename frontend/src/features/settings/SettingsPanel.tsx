@@ -53,6 +53,7 @@ function applySettingsToState(
   data: OperatorSettings,
   setValues: (v: ReturnType<typeof emptyValues>) => void,
   setStrategy: (s: StrategyConfigValue) => void,
+  setPreferredStrategy: (s: StrategyConfigValue) => void,
   setWarning: (w: string | null) => void,
 ) {
   setValues({
@@ -67,10 +68,12 @@ function applySettingsToState(
     maxSessionLossRate: data.maxSessionLossRate ?? "",
     maxTrades: data.maxTrades == null ? "" : String(data.maxTrades),
   });
-  setStrategy({
+  const nextStrategy = {
     strategyId: data.strategyId,
     strategyParams: { ...data.strategyParams },
-  });
+  };
+  setStrategy(nextStrategy);
+  setPreferredStrategy(nextStrategy);
   setWarning(data.warning);
 }
 
@@ -92,6 +95,7 @@ function emptyValues() {
 export function SettingsPanel({ onPersisted }: { onPersisted?: () => void }) {
   const [values, setValues] = useState(emptyValues);
   const [strategy, setStrategy] = useState<StrategyConfigValue>(() => defaultStrategyConfig());
+  const [preferredStrategy, setPreferredStrategy] = useState<StrategyConfigValue | null>(null);
   const [strategyError, setStrategyError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +116,7 @@ export function SettingsPanel({ onPersisted }: { onPersisted?: () => void }) {
       try {
         const data = await getSettings();
         if (cancelled) return;
-        applySettingsToState(data, setValues, setStrategy, setWarning);
+        applySettingsToState(data, setValues, setStrategy, setPreferredStrategy, setWarning);
       } catch (err) {
         if (!cancelled) {
           setError((err as SettingsApiError).message ?? "Failed to load Settings");
@@ -173,7 +177,7 @@ export function SettingsPanel({ onPersisted }: { onPersisted?: () => void }) {
       await putSettings(body);
       // Re-read from server so the UI matches what was actually persisted (incl. Rule).
       const confirmed = await getSettings();
-      applySettingsToState(confirmed, setValues, setStrategy, setWarning);
+      applySettingsToState(confirmed, setValues, setStrategy, setPreferredStrategy, setWarning);
       setStatus(
         `Settings saved (Rule: ${confirmed.strategyId}). New Simulation, Backtest, and Comparison forms will use these defaults.`,
       );
@@ -199,7 +203,7 @@ export function SettingsPanel({ onPersisted }: { onPersisted?: () => void }) {
     setStatus(null);
     try {
       const saved = await resetSettings();
-      applySettingsToState(saved, setValues, setStrategy, setWarning);
+      applySettingsToState(saved, setValues, setStrategy, setPreferredStrategy, setWarning);
       setStatus("Settings reset to product starters.");
       onPersisted?.();
     } catch (err) {
@@ -334,12 +338,12 @@ export function SettingsPanel({ onPersisted }: { onPersisted?: () => void }) {
       />
 
       <StrategyConfigFields
-        key={strategy.strategyId}
         variant="backtest"
         disabled={busy}
         value={strategy}
         onChange={handleStrategyChange}
         onValidationError={setStrategyError}
+        preferredStrategy={preferredStrategy}
       />
 
       <div className="sim-actions settings-actions">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import {
   FALLBACK_STRATEGIES,
@@ -22,9 +22,8 @@ interface Props {
   /** Visual shell: simulation sits inside a card; backtest matches fieldset sections. */
   variant?: "simulation" | "backtest";
   /**
-   * When the operator picks this strategy id (create forms), restore these
-   * params instead of registry defaults — typically the saved Settings preferred
-   * strategy. Omit on Settings itself (draft switch always uses registry defaults).
+   * When the operator picks this strategy id and no draft params were remembered
+   * for it yet, restore these params instead of registry defaults (saved Settings).
    */
   preferredStrategy?: StrategyConfigValue | null;
 }
@@ -49,6 +48,8 @@ export function StrategyConfigFields({
 }: Props) {
   const [strategies, setStrategies] = useState<StrategyInfo[]>(FALLBACK_STRATEGIES);
   const [loadError, setLoadError] = useState<string | null>(null);
+  /** Draft params remembered per Rule so switching away and back does not wipe edits. */
+  const paramsByStrategyRef = useRef<Record<string, Record<string, StrategyParamValue>>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -67,6 +68,20 @@ export function StrategyConfigFields({
       cancelled = true;
     };
   }, []);
+
+  // Keep memory in sync with the controlled value (load, Save, Reset, edits).
+  useEffect(() => {
+    if (!value.strategyId) return;
+    paramsByStrategyRef.current[value.strategyId] = { ...value.strategyParams };
+  }, [value.strategyId, value.strategyParams]);
+
+  // Seed memory from saved preferred strategy when it arrives / changes.
+  useEffect(() => {
+    if (!preferredStrategy?.strategyId) return;
+    paramsByStrategyRef.current[preferredStrategy.strategyId] = {
+      ...preferredStrategy.strategyParams,
+    };
+  }, [preferredStrategy]);
 
   // Normalize aliases (e.g. dual_ema_9_21 → dual_ema) once the registry list is known.
   useEffect(() => {
@@ -99,20 +114,24 @@ export function StrategyConfigFields({
     onValidationError?.(clientError);
   }, [clientError, onValidationError]);
 
+  function paramsForStrategy(id: string, strat: StrategyInfo): Record<string, StrategyParamValue> {
+    const remembered = paramsByStrategyRef.current[id];
+    if (remembered && Object.keys(remembered).length > 0) {
+      return { ...remembered };
+    }
+    if (preferredStrategy && preferredStrategy.strategyId === id) {
+      return { ...preferredStrategy.strategyParams };
+    }
+    return defaultParamsFor(strat);
+  }
+
   function selectStrategy(id: string) {
     const strat = strategies.find((s) => s.id === id);
     if (!strat) return;
-    // Same Rule as saved Settings → restore those params (e.g. fastPeriod 10).
-    // Any other Rule → registry defaults. Settings panel omits preferredStrategy
-    // so a draft Rule change always resets to registry defaults (FR-003).
-    if (preferredStrategy && preferredStrategy.strategyId === id) {
-      onChange({
-        strategyId: id,
-        strategyParams: { ...preferredStrategy.strategyParams },
-      });
-      return;
-    }
-    onChange({ strategyId: id, strategyParams: defaultParamsFor(strat) });
+    if (id === value.strategyId) return;
+    // Remember current Rule params before switching.
+    paramsByStrategyRef.current[value.strategyId] = { ...value.strategyParams };
+    onChange({ strategyId: id, strategyParams: paramsForStrategy(id, strat) });
   }
 
   function setParam(name: string, raw: string, type: StrategyInfo["parameters"][0]["type"]) {
@@ -123,12 +142,14 @@ export function StrategyConfigFields({
       const n = Number(raw);
       next = Number.isFinite(n) ? n : (value.strategyParams[name] ?? 0);
     }
+    const strategyParams = {
+      ...value.strategyParams,
+      [name]: next,
+    };
+    paramsByStrategyRef.current[value.strategyId] = strategyParams;
     onChange({
       ...value,
-      strategyParams: {
-        ...value.strategyParams,
-        [name]: next,
-      },
+      strategyParams,
     });
   }
 

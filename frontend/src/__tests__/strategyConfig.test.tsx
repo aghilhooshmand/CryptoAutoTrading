@@ -201,6 +201,21 @@ describe("strategy config fields", () => {
     expect(screen.getByTestId("strategy-param-fastPeriod")).toHaveValue(10);
     expect(screen.getByTestId("strategy-param-slowPeriod")).toHaveValue(21);
   });
+
+  it("remembers draft params when switching Rule away and back", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await waitFor(() => screen.getByTestId("strategy-param-fastPeriod"));
+    await user.clear(screen.getByTestId("strategy-param-fastPeriod"));
+    await user.type(screen.getByTestId("strategy-param-fastPeriod"), "10");
+    expect(screen.getByTestId("strategy-param-fastPeriod")).toHaveValue(10);
+
+    await user.selectOptions(screen.getByTestId("strategy-id"), "rsi");
+    expect(screen.getByTestId("strategy-param-period")).toHaveValue(14);
+
+    await user.selectOptions(screen.getByTestId("strategy-id"), "dual_ema");
+    expect(screen.getByTestId("strategy-param-fastPeriod")).toHaveValue(10);
+  });
 });
 
 describe("validateStrategyParamsClient decimal_string and RSI", () => {
