@@ -32,6 +32,7 @@
 ## Notes
 
 - Validation passed on first review (2026-08-12).
+- Clarification session 2026-08-12 complete (4 Qs): RSI/Bollinger recovery crossovers; Dual EMA-aligned `S` formulas (MACD conventional bound); Breakout every-new-extreme trend-following.
 - Four strategies (RSI, MACD, Bollinger Bands, Breakout) with conventional, documented defaults.
 - Spec assumes Feature 005 framework is converged (registry, dynamic UI, shared contract).
 - Ready for `/speckit-plan`.
