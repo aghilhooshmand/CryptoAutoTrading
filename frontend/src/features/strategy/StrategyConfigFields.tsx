@@ -61,8 +61,27 @@ export function StrategyConfigFields({
     };
   }, []);
 
+  // Normalize aliases (e.g. dual_ema_9_21 → dual_ema) once the registry list is known.
+  useEffect(() => {
+    if (strategies.length === 0) return;
+    const direct = strategies.find((s) => s.id === value.strategyId);
+    if (direct) return;
+    const viaAlias = strategies.find((s) => s.aliases?.includes(value.strategyId));
+    if (!viaAlias) return;
+    onChange({
+      strategyId: viaAlias.id,
+      strategyParams:
+        Object.keys(value.strategyParams).length > 0
+          ? value.strategyParams
+          : defaultParamsFor(viaAlias),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only reconcile alias ids
+  }, [strategies, value.strategyId]);
+
   const selected =
-    strategies.find((s) => s.id === value.strategyId) ?? strategies[0] ?? null;
+    strategies.find((s) => s.id === value.strategyId) ??
+    strategies.find((s) => s.aliases?.includes(value.strategyId)) ??
+    null;
 
   const clientError = useMemo(() => {
     if (!selected) return "No strategy available.";
@@ -134,11 +153,16 @@ export function StrategyConfigFields({
           ) : (
             <select
               data-testid="strategy-id"
-              data-strategy-id={selected.id}
-              value={selected.id}
+              data-strategy-id={value.strategyId}
+              name="strategyId"
+              value={value.strategyId}
               disabled={disabled}
               onChange={(e) => selectStrategy(e.target.value)}
             >
+              {/* Ensure current id remains selectable even if temporarily unknown */}
+              {!strategies.some((s) => s.id === value.strategyId) ? (
+                <option value={value.strategyId}>{value.strategyId}</option>
+              ) : null}
               {strategies.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.displayName}

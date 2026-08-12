@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 import {
   getSettings,
@@ -91,13 +91,18 @@ function emptyValues() {
 
 export function SettingsPanel({ onPersisted }: { onPersisted?: () => void }) {
   const [values, setValues] = useState(emptyValues);
-  const [strategy, setStrategy] = useState<StrategyConfigValue>(defaultStrategyConfig);
+  const [strategy, setStrategy] = useState<StrategyConfigValue>(() => defaultStrategyConfig());
   const [strategyError, setStrategyError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // Always save the latest draft (avoids stale closure if Save races a re-render).
+  const valuesRef = useRef(values);
+  const strategyRef = useRef(strategy);
+  valuesRef.current = values;
+  strategyRef.current = strategy;
 
   // Load once on mount. Parent keeps this panel mounted (hidden) so unsaved
   // drafts survive Auto Trading tab switches (FR-006).
@@ -126,14 +131,22 @@ export function SettingsPanel({ onPersisted }: { onPersisted?: () => void }) {
     setStatus(null);
   }
 
+  function handleStrategyChange(next: StrategyConfigValue) {
+    setStrategy(next);
+    setStrategyError(null);
+    setStatus(null);
+  }
+
   async function handleSave(event: FormEvent) {
     event.preventDefault();
     setError(null);
     setStatus(null);
+    const draftValues = valuesRef.current;
+    const draftStrategy = strategyRef.current;
     const nest = validateCapitalNesting(
-      values.startingCapital,
-      values.allocatedCapital,
-      values.maxPositionSize,
+      draftValues.startingCapital,
+      draftValues.allocatedCapital,
+      draftValues.maxPositionSize,
     );
     if (nest) {
       setError(nest);
@@ -143,18 +156,27 @@ export function SettingsPanel({ onPersisted }: { onPersisted?: () => void }) {
       setError(strategyError);
       return;
     }
-    if (values.maxTrades.trim() !== "") {
-      const n = Number(values.maxTrades);
+    if (draftValues.maxTrades.trim() !== "") {
+      const n = Number(draftValues.maxTrades);
       if (!Number.isInteger(n) || n < 1) {
         setError("Max trades must be an integer ≥ 1 when set.");
         return;
       }
     }
+    if (!draftStrategy.strategyId) {
+      setError("Choose a strategy Rule before saving.");
+      return;
+    }
     setBusy(true);
     try {
-      const saved = await putSettings(toWriteBody(values, strategy));
-      applySettingsToState(saved, setValues, setStrategy, setWarning);
-      setStatus("Settings saved. New Simulation, Backtest, and Comparison forms will use these defaults.");
+      const body = toWriteBody(draftValues, draftStrategy);
+      await putSettings(body);
+      // Re-read from server so the UI matches what was actually persisted (incl. Rule).
+      const confirmed = await getSettings();
+      applySettingsToState(confirmed, setValues, setStrategy, setWarning);
+      setStatus(
+        `Settings saved (Rule: ${confirmed.strategyId}). New Simulation, Backtest, and Comparison forms will use these defaults.`,
+      );
       onPersisted?.();
     } catch (err) {
       const message =
@@ -312,10 +334,11 @@ export function SettingsPanel({ onPersisted }: { onPersisted?: () => void }) {
       />
 
       <StrategyConfigFields
+        key={strategy.strategyId}
         variant="backtest"
         disabled={busy}
         value={strategy}
-        onChange={setStrategy}
+        onChange={handleStrategyChange}
         onValidationError={setStrategyError}
       />
 

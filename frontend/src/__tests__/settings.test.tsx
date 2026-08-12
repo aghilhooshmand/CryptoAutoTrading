@@ -191,6 +191,30 @@ describe("Settings panel", () => {
     });
   });
 
+  it("saves Rule (strategyId) and shows it after reload from GET", async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<SettingsPanel />);
+    await screen.findByTestId("settings-form");
+    await waitFor(() => {
+      expect(screen.getByTestId("strategy-id")).toHaveValue("dual_ema");
+    });
+    await user.selectOptions(screen.getByTestId("strategy-id"), "rsi");
+    expect(screen.getByTestId("strategy-id")).toHaveValue("rsi");
+    await user.click(screen.getByTestId("settings-save"));
+    await waitFor(() => {
+      expect(screen.getByTestId("settings-status")).toHaveTextContent(/Rule: rsi/i);
+    });
+    expect(screen.getByTestId("strategy-id")).toHaveValue("rsi");
+    const putCall = fetchMock.mock.calls.find(
+      (c) => String(c[0]).includes("/settings") && (c[1]?.method ?? "GET").toUpperCase() === "PUT",
+    );
+    expect(putCall).toBeTruthy();
+    const putBody = JSON.parse(String(putCall?.[1]?.body ?? "{}"));
+    expect(putBody.strategyId).toBe("rsi");
+  });
+
   it("resets strategy params when preferred strategy changes in draft", async () => {
     const user = userEvent.setup();
     render(<SettingsPanel />);
