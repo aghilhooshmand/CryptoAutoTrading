@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { SessionConfigForm } from "../features/simulation/SessionConfigForm";
@@ -118,14 +118,27 @@ describe("create form init from Settings", () => {
   });
 
   it("seeds Comparison shared fields and first leg only from Settings", async () => {
+    // Preferred dual_ema so leg 0 ≠ secondary RSI starter.
+    vi.stubGlobal(
+      "fetch",
+      mockApis({
+        ...distinctive,
+        strategyId: "dual_ema",
+        strategyParams: { fastPeriod: 9, slowPeriod: 21 },
+      }),
+    );
     render(<ComparisonConfigForm onSubmit={vi.fn()} />);
     await waitFor(() => {
       expect(screen.getByDisplayValue("eth_usdt")).toBeInTheDocument();
     });
-    // Leg strategy selects: first should become rsi from Settings; second stays product RSI starter
-    const comboboxes = screen.getAllByRole("combobox");
-    // timeframe + strategy selects — assert capital seeded
     expect(screen.getByDisplayValue("2500")).toBeInTheDocument();
-    void comboboxes;
+
+    await waitFor(() => {
+      expect(screen.getByTestId("comparison-leg-0")).toBeInTheDocument();
+    });
+    const leg0 = screen.getByTestId("comparison-leg-0");
+    const leg1 = screen.getByTestId("comparison-leg-1");
+    expect(within(leg0).getByTestId("strategy-id")).toHaveValue("dual_ema");
+    expect(within(leg1).getByTestId("strategy-id")).toHaveValue("rsi");
   });
 });

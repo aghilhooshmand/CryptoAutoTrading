@@ -191,6 +191,27 @@ describe("Settings panel", () => {
     });
   });
 
+  it("resets strategy params when preferred strategy changes in draft", async () => {
+    const user = userEvent.setup();
+    render(<SettingsPanel />);
+    await screen.findByTestId("settings-form");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("strategy-id")).toHaveValue("dual_ema");
+    });
+    const fast = screen.getByTestId("strategy-param-fastPeriod");
+    await user.clear(fast);
+    await user.type(fast, "11");
+    expect(screen.getByTestId("strategy-param-fastPeriod")).toHaveValue(11);
+
+    await user.selectOptions(screen.getByTestId("strategy-id"), "rsi");
+    await waitFor(() => {
+      expect(screen.getByTestId("strategy-id")).toHaveValue("rsi");
+    });
+    expect(screen.getByTestId("strategy-param-period")).toHaveValue(14);
+    expect(screen.queryByTestId("strategy-param-fastPeriod")).not.toBeInTheDocument();
+  });
+
   it("keeps Save and Reset usable at ~375px width", async () => {
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 375 });
     render(<SettingsPanel />);

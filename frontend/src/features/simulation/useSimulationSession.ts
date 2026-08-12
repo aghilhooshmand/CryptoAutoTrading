@@ -61,7 +61,7 @@ export function useSimulationSession() {
     return () => window.clearInterval(id);
   }, [poll]);
 
-  async function createAndStart(body: CreateSessionRequest) {
+  async function createAndStart(body: CreateSessionRequest): Promise<boolean> {
     setBusy(true);
     setError(null);
     try {
@@ -70,8 +70,10 @@ export function useSimulationSession() {
       setSession(started);
       setTrackedId(started.id);
       await loadJournals(started.id);
+      return true;
     } catch (err) {
       setError((err as Error).message);
+      return false;
     } finally {
       setBusy(false);
     }

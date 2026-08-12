@@ -22,6 +22,10 @@ type AutoTradingTab = "simulation" | "backtest" | "comparison" | "settings";
 
 export function AutoTradingPage() {
   const [tab, setTab] = useState<AutoTradingTab>("simulation");
+  // Bump after successful create so forms remount and re-seed from Settings (FR-004).
+  const [simFormKey, setSimFormKey] = useState(0);
+  const [backtestFormKey, setBacktestFormKey] = useState(0);
+  const [comparisonFormKey, setComparisonFormKey] = useState(0);
 
   const {
     session,
@@ -110,9 +114,13 @@ export function AutoTradingPage() {
         </p>
 
         <SessionConfigForm
+          key={simFormKey}
           disabled={configDisabled}
           onSubmit={(body) => {
-            void createAndStart(body);
+            void (async () => {
+              const ok = await createAndStart(body);
+              if (ok) setSimFormKey((k) => k + 1);
+            })();
           }}
           error={error}
         />
@@ -153,10 +161,18 @@ export function AutoTradingPage() {
         </p>
 
         <BacktestConfigForm
+          key={backtestFormKey}
           busy={backtest.busy}
           error={backtest.error}
           onSubmit={(body) => {
-            void backtest.runBacktest(body);
+            void (async () => {
+              try {
+                await backtest.runBacktest(body);
+                setBacktestFormKey((k) => k + 1);
+              } catch {
+                /* error already set on hook */
+              }
+            })();
           }}
         />
 
@@ -191,10 +207,18 @@ export function AutoTradingPage() {
         </p>
 
         <ComparisonConfigForm
+          key={comparisonFormKey}
           busy={comparison.busy}
           error={comparison.error}
           onSubmit={(body) => {
-            void comparison.runComparison(body);
+            void (async () => {
+              try {
+                await comparison.runComparison(body);
+                setComparisonFormKey((k) => k + 1);
+              } catch {
+                /* error already set on hook */
+              }
+            })();
           }}
         />
 

@@ -294,3 +294,15 @@ Task: "settingsFormInit.test.tsx"
 | **Parallel opportunities** | Yes — marked [P] across phases |
 
 **Format validation**: All tasks use `- [ ]`, Task IDs T001–T045, [P]/[USn] where required, and file paths in descriptions.
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: Close gaps found by `/speckit-converge` against spec/plan/tasks vs current code
+
+- [X] T046 After successful Simulation / Backtest / Comparison create (and any discard that clears the draft), clear the create-form draft and re-seed from `GET /settings` in `frontend/src/features/simulation/SessionConfigForm.tsx`, `frontend/src/features/backtest/BacktestConfigForm.tsx`, and `frontend/src/features/comparison/ComparisonConfigForm.tsx` (or remount via `key` from `frontend/src/pages/AutoTradingPage.tsx`) per FR-004 (partial)
+- [X] T047 [P] Add frontend test that switching preferred strategy in Settings resets params to registry defaults in `frontend/src/__tests__/settings.test.tsx` per FR-003 / T014 (missing)
+- [X] T048 [P] Strengthen Comparison form-init test to assert leg 0 uses Settings preferred strategy/params and leg 1+ uses product/registry starters in `frontend/src/__tests__/settingsFormInit.test.tsx` per FR-004 / T020 (partial)
+- [X] T049 [P] Fix orphan CSS declarations after `.settings-form` in `frontend/src/styles.css` (stray rules without a selector) per FR-011 / polish (unrequested)
+- [X] T050 [P] Extend history-immunity coverage to Simulation and/or Comparison create → change Settings → historical artifact unchanged in `backend/tests/contract/test_settings_history_immunity.py` per FR-005 / SC-003 / US3 (partial)

@@ -668,11 +668,6 @@ a {
   max-width: 40rem;
 }
 
-  margin: 0 0 1rem;
-  color: var(--muted);
-  line-height: 1.45;
-}
-
 .backtest-config,
 .backtest-results,
 .backtest-run-list,
