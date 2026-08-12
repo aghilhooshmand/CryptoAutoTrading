@@ -89,7 +89,7 @@ function emptyValues() {
   };
 }
 
-export function SettingsPanel() {
+export function SettingsPanel({ onPersisted }: { onPersisted?: () => void }) {
   const [values, setValues] = useState(emptyValues);
   const [strategy, setStrategy] = useState<StrategyConfigValue>(defaultStrategyConfig);
   const [strategyError, setStrategyError] = useState<string | null>(null);
@@ -154,9 +154,14 @@ export function SettingsPanel() {
     try {
       const saved = await putSettings(toWriteBody(values, strategy));
       applySettingsToState(saved, setValues, setStrategy, setWarning);
-      setStatus("Settings saved.");
+      setStatus("Settings saved. New Simulation, Backtest, and Comparison forms will use these defaults.");
+      onPersisted?.();
     } catch (err) {
-      setError((err as SettingsApiError).message ?? "Save failed");
+      const message =
+        err && typeof err === "object" && "message" in err && typeof (err as SettingsApiError).message === "string"
+          ? (err as SettingsApiError).message
+          : "Save failed";
+      setError(message);
     } finally {
       setBusy(false);
     }
@@ -174,8 +179,13 @@ export function SettingsPanel() {
       const saved = await resetSettings();
       applySettingsToState(saved, setValues, setStrategy, setWarning);
       setStatus("Settings reset to product starters.");
+      onPersisted?.();
     } catch (err) {
-      setError((err as SettingsApiError).message ?? "Reset failed");
+      const message =
+        err && typeof err === "object" && "message" in err && typeof (err as SettingsApiError).message === "string"
+          ? (err as SettingsApiError).message
+          : "Reset failed";
+      setError(message);
     } finally {
       setBusy(false);
     }
@@ -311,7 +321,7 @@ export function SettingsPanel() {
 
       <div className="sim-actions settings-actions">
         <button type="submit" data-testid="settings-save" disabled={busy}>
-          Save
+          {busy ? "Saving…" : "Save"}
         </button>
         <button
           type="button"
@@ -324,6 +334,16 @@ export function SettingsPanel() {
           Reset to starters
         </button>
       </div>
+      {status ? (
+        <p className="form-status" role="status" data-testid="settings-status-footer">
+          {status}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="form-error" role="alert" data-testid="settings-error-footer">
+          {error}
+        </p>
+      ) : null}
     </form>
   );
 }

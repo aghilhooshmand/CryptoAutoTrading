@@ -656,6 +656,10 @@ a {
 
 .form-status {
   color: #1a5c2e;
+  background: #e8f6ec;
+  border: 1px solid #9dcca8;
+  padding: 0.6rem 0.75rem;
+  border-radius: 4px;
   margin: 0.5rem 0;
 }
 

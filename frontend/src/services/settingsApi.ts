@@ -30,15 +30,42 @@ export interface SettingsApiError {
   message: string;
 }
 
+function settingsError(code: string, message: string): SettingsApiError {
+  return { code, message };
+}
+
 async function parseJson<T>(response: Response): Promise<T> {
-  const body = await response.json();
+  const text = await response.text();
+  let body: unknown = null;
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      throw settingsError(
+        "http_error",
+        response.ok
+          ? "Settings response was not valid JSON."
+          : `Settings request failed (${response.status}). Is the API running and Vite proxying /settings?`,
+      );
+    }
+  }
   if (!response.ok) {
-    const err = body?.detail?.error;
-    const error: SettingsApiError = {
-      code: err?.code ?? "http_error",
-      message: err?.message ?? response.statusText,
-    };
-    throw error;
+    const detail = (body as { detail?: unknown } | null)?.detail;
+    if (detail && typeof detail === "object" && !Array.isArray(detail)) {
+      const err = (detail as { error?: { code?: string; message?: string } }).error;
+      throw settingsError(
+        err?.code ?? "http_error",
+        err?.message ?? (response.statusText || "Settings request failed"),
+      );
+    }
+    if (Array.isArray(detail)) {
+      const first = detail[0] as { msg?: string } | undefined;
+      throw settingsError("invalid_config", first?.msg ?? "Invalid Settings payload");
+    }
+    throw settingsError(
+      "http_error",
+      typeof detail === "string" ? detail : response.statusText || `HTTP ${response.status}`,
+    );
   }
   return body as T;
 }
