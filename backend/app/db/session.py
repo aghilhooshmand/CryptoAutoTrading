@@ -47,6 +47,8 @@ def init_db() -> None:
     # SQLite create_all does not add columns to existing tables.
     _ensure_column(engine, "simulation_sessions", "strategy_params", "TEXT")
     _ensure_column(engine, "backtest_runs", "strategy_params", "TEXT")
+    _ensure_column(engine, "backtest_runs", "origin", "TEXT DEFAULT 'manual'")
+    _ensure_column(engine, "backtest_runs", "comparison_id", "TEXT")
 
 
 def _ensure_column(eng, table: str, column: str, coltype: str) -> None:

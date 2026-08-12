@@ -132,6 +132,7 @@ The operator optionally sets common historical risk limits (such as optional pro
 - **SC-004**: From a completed comparison, the operator can open each leg’s underlying backtest detail and verify journals exist for that leg; comparison-originated runs can be filtered/hidden from the default main backtest history without losing inspectability from the comparison.
 - **SC-005**: Invalid comparisons (fewer than two legs, more than five legs, bad params, unknown strategy, oversized or insufficient history) are blocked with a clear reason and do not produce a fabricated leaderboard.
 - **SC-006**: The comparison experience never shows an automatic “best/winner” designation based only on return; operators remain responsible for interpreting multiple metrics.
+- **SC-007**: Completing a multi-strategy comparison does not place real orders and does not require exchange trading credentials.
 - **SC-008**: After more than 10 completed comparisons exist, only the newest 10 remain available; after more than 5 failed comparisons exist, only the newest 5 failed remain available.
 
 ## Assumptions

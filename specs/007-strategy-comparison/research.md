@@ -39,11 +39,14 @@ list.
 ## Decision 3: Synchronous request; comparison-level concurrency lock
 
 **Decision**: `POST /comparisons` (or equivalent) blocks until all legs finish.
-Hold a comparison-level “in flight” lock (and/or allow multi-leg running under
-comparison ownership) so per-leg persistence does not trip Feature 004’s single
-`running` backtest conflict incorrectly. No polling, workers, or WebSockets.
+Hold a **comparison-level in-flight lock** (distinct from or wrapping Feature
+004’s single `running` backtest guard) so per-leg `BacktestRun` persistence
+does not incorrectly raise `backtest_already_running` mid-comparison. Concurrent
+second `POST /comparisons` while one is in flight → `409`. No polling, workers,
+or WebSockets.
 
-**Rationale**: Clarify Q3; Feature 004 sync precedent.
+**Rationale**: Clarify Q3; Feature 004 sync precedent; research/implement task
+coverage (orchestrator + contract tests).
 
 **Alternatives considered**:
 - Async comparison jobs — rejected for v1.

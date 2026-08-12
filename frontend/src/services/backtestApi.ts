@@ -42,6 +42,8 @@ export interface BacktestRun {
   slippageRate: string;
   strategyId: string;
   strategyParams?: Record<string, number | string>;
+  origin?: "manual" | "comparison";
+  comparisonId?: string | null;
   candleCount: number | null;
   createdAt: string | null;
   startedAt: string | null;
@@ -228,8 +230,13 @@ export async function createBacktestRun(
 export async function listBacktestRuns(
   limit = 20,
   signal?: AbortSignal,
+  options?: { includeComparisonOrigin?: boolean },
 ): Promise<{ runs: BacktestRun[] }> {
-  const response = await fetch(`/backtest/runs?limit=${limit}`, { signal });
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (options?.includeComparisonOrigin) {
+    params.set("includeComparisonOrigin", "true");
+  }
+  const response = await fetch(`/backtest/runs?${params.toString()}`, { signal });
   return parseJson(response);
 }
 

@@ -13,8 +13,11 @@ Local/unauthenticated. Synchronous create. No WebSockets.
 ## `POST /comparisons`
 
 Create and run a comparison. Returns only when status is `completed` or
-`failed` (or `400`/`409` pre-accept errors with **no** durable comparison row
-for validation/oversized rejects).
+`failed` (or `400`/`409` pre-accept / conflict errors with **no** durable
+comparison row for validation/oversized rejects).
+
+**Success / post-accept failure:** HTTP **`201`** with comparison body
+(`status: "completed"` or `status: "failed"`).
 
 ### Request body
 
@@ -88,9 +91,13 @@ start/end, capital nesting, fee/slippage, optional common risk limits).
 Notes:
 - `fillCount` is the comparison-facing name for engine `strategyFillCount`.
 - No `bestStrategyId`, `winner`, or equivalent field.
-- Failed comparison (`201` or `200` with `status: "failed"` — match Feature 004
-  pattern of persisting failed runs): include `errorCode` / `errorMessage`; do
-  not invent a partial metrics leaderboard.
+- **HTTP status (aligned with Feature 004 backtest create):**
+  - Pre-accept validation / oversized estimate → `400` with error body; **no** comparison row.
+  - After accept: always `201` with a durable comparison body whose `status` is `completed` or `failed`.
+  - Failed body MUST include `errorCode` / `errorMessage` and MUST NOT invent a partial metrics leaderboard.
+  - Another comparison already in flight → `409` (documented conflict).
+
+Wire `comparisonId` (JSON) ↔ `comparison_id` (persistence) explicitly in serializers.
 
 ---
 

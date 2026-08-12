@@ -111,6 +111,8 @@ class BacktestRunRow(Base):
     slippage_rate: Mapped[str] = mapped_column(String(64))
     strategy_id: Mapped[str] = mapped_column(String(64), default="dual_ema")
     strategy_params: Mapped[str | None] = mapped_column(Text, nullable=True)
+    origin: Mapped[str] = mapped_column(String(16), default="manual")
+    comparison_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     candle_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -118,6 +120,46 @@ class BacktestRunRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class StrategyComparisonRow(Base):
+    __tablename__ = "strategy_comparisons"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    status: Mapped[str] = mapped_column(String(16), default="running")
+    symbol: Mapped[str] = mapped_column(String(64))
+    timeframe: Mapped[str] = mapped_column(String(8))
+    start_time: Mapped[int] = mapped_column(Integer)
+    end_time: Mapped[int] = mapped_column(Integer)
+    starting_capital: Mapped[str] = mapped_column(String(64))
+    allocated_capital: Mapped[str] = mapped_column(String(64))
+    max_position_size: Mapped[str] = mapped_column(String(64))
+    target_net_profit_rate: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    max_session_loss_rate: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    target_net_profit_amount: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    max_session_loss_amount: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    max_trades: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    fee_rate: Mapped[str] = mapped_column(String(64))
+    slippage_rate: Mapped[str] = mapped_column(String(64))
+    candle_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    buy_and_hold_return_pct: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    buy_and_hold_net_pnl: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ComparisonLegRow(Base):
+    __tablename__ = "comparison_legs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    comparison_id: Mapped[str] = mapped_column(String(36), index=True)
+    ordinal: Mapped[int] = mapped_column(Integer)
+    strategy_id: Mapped[str] = mapped_column(String(64))
+    strategy_params: Mapped[str | None] = mapped_column(Text, nullable=True)
+    backtest_run_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    metrics_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class BacktestDecisionRow(Base):

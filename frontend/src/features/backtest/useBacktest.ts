@@ -19,11 +19,14 @@ export function useBacktest() {
   const [decisions, setDecisions] = useState<BacktestDecision[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [includeComparisonOrigin, setIncludeComparisonOrigin] = useState(false);
 
   const refreshList = useCallback(async () => {
-    const res = await listBacktestRuns(20);
+    const res = await listBacktestRuns(20, undefined, {
+      includeComparisonOrigin,
+    });
     setRuns(res.runs);
-  }, []);
+  }, [includeComparisonOrigin]);
 
   useEffect(() => {
     void refreshList().catch(() => {
@@ -103,6 +106,8 @@ export function useBacktest() {
     decisions,
     busy,
     error,
+    includeComparisonOrigin,
+    setIncludeComparisonOrigin,
     runBacktest,
     selectRun,
     removeRun,

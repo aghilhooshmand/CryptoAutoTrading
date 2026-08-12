@@ -12,8 +12,12 @@ import { BacktestResultsPanel } from "../features/backtest/BacktestResultsPanel"
 import { BacktestRunList } from "../features/backtest/BacktestRunList";
 import { BacktestTrades } from "../features/backtest/BacktestTrades";
 import { useBacktest } from "../features/backtest/useBacktest";
+import { ComparisonConfigForm } from "../features/comparison/ComparisonConfigForm";
+import { ComparisonList } from "../features/comparison/ComparisonList";
+import { ComparisonResultsTable } from "../features/comparison/ComparisonResultsTable";
+import { useComparison } from "../features/comparison/useComparison";
 
-type AutoTradingTab = "simulation" | "backtest";
+type AutoTradingTab = "simulation" | "backtest" | "comparison";
 
 export function AutoTradingPage() {
   const [tab, setTab] = useState<AutoTradingTab>("simulation");
@@ -31,6 +35,7 @@ export function AutoTradingPage() {
   } = useSimulationSession();
 
   const backtest = useBacktest();
+  const comparison = useComparison();
 
   return (
     <section className="page auto-trading-page" aria-labelledby="auto-trading-title">
@@ -65,6 +70,17 @@ export function AutoTradingPage() {
           onClick={() => setTab("backtest")}
         >
           Backtest
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="tab-comparison"
+          aria-selected={tab === "comparison"}
+          aria-controls="panel-comparison"
+          className={tab === "comparison" ? "is-active" : undefined}
+          onClick={() => setTab("comparison")}
+        >
+          Comparison
         </button>
       </div>
 
@@ -136,6 +152,8 @@ export function AutoTradingPage() {
         <BacktestRunList
           runs={backtest.runs}
           selectedId={backtest.selected?.id}
+          includeComparisonOrigin={backtest.includeComparisonOrigin}
+          onIncludeComparisonOriginChange={backtest.setIncludeComparisonOrigin}
           onSelect={(id) => {
             void backtest.selectRun(id);
           }}
@@ -145,6 +163,46 @@ export function AutoTradingPage() {
         />
         <BacktestTrades trades={backtest.trades} />
         <BacktestDecisions decisions={backtest.decisions} />
+      </div>
+
+      <div
+        id="panel-comparison"
+        role="tabpanel"
+        aria-labelledby="tab-comparison"
+        hidden={tab !== "comparison"}
+        className="auto-trading-panel"
+      >
+        <h2 className="auto-trading-panel-title">Strategy Comparison</h2>
+        <p className="auto-trading-lede">
+          Compare 2–5 strategies on one shared historical window. No real orders
+          are placed. Results do not designate a winner automatically.
+        </p>
+
+        <ComparisonConfigForm
+          busy={comparison.busy}
+          error={comparison.error}
+          onSubmit={(body) => {
+            void comparison.runComparison(body);
+          }}
+        />
+
+        <ComparisonResultsTable
+          comparison={comparison.selected}
+          onInspectLeg={(runId) => {
+            setTab("backtest");
+            void backtest.selectRun(runId);
+          }}
+        />
+        <ComparisonList
+          comparisons={comparison.comparisons}
+          selectedId={comparison.selected?.id}
+          onSelect={(id) => {
+            void comparison.selectComparison(id);
+          }}
+          onDelete={(id) => {
+            void comparison.removeComparison(id);
+          }}
+        />
       </div>
     </section>
   );

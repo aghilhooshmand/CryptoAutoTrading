@@ -208,6 +208,29 @@ async def create_and_run(db: Session, body: dict[str, Any], *, wire_shared: bool
         )
         return run_to_dict(db, run)
 
+    return complete_run_with_candles(
+        db,
+        run,
+        candles,
+        fields=fields,
+        strategy_params_obj=strategy_params_obj,
+        wire_shared=wire_shared,
+    )
+
+
+def complete_run_with_candles(
+    db: Session,
+    run: BacktestRunRow,
+    candles: list[Any],
+    *,
+    fields: dict[str, Any],
+    strategy_params_obj: dict[str, Any],
+    wire_shared: bool = True,
+) -> dict[str, Any]:
+    """Run Feature 004 engine on an existing running row with prefetched candles.
+
+    Used by comparison legs so the shared series is not re-fetched.
+    """
     summary = run_engine(
         db,
         run.id,
@@ -236,6 +259,31 @@ async def create_and_run(db: Session, body: dict[str, Any], *, wire_shared: bool
     return run_to_dict(db, run)
 
 
+def run_leg_with_prefetched_candles(
+    db: Session,
+    *,
+    fields: dict[str, Any],
+    strategy_params_obj: dict[str, Any],
+    candles: list[Any],
+    origin: str = "manual",
+    comparison_id: str | None = None,
+    wire_shared: bool = True,
+) -> dict[str, Any]:
+    """Create a backtest run and evaluate it on the given candle series (no fetch)."""
+    run_fields = dict(fields)
+    run_fields["origin"] = origin
+    run_fields["comparison_id"] = comparison_id
+    run = repo.create_running_run(db, run_fields)
+    return complete_run_with_candles(
+        db,
+        run,
+        candles,
+        fields=run_fields,
+        strategy_params_obj=strategy_params_obj,
+        wire_shared=wire_shared,
+    )
+
+
 def run_to_dict(db: Session, run: BacktestRunRow, *, include_summary: bool = True) -> dict[str, Any]:
     summary = None
     if include_summary and run.summary_json:
@@ -261,6 +309,8 @@ def run_to_dict(db: Session, run: BacktestRunRow, *, include_summary: bool = Tru
         "slippageRate": run.slippage_rate,
         "strategyId": display_strategy_id(run.strategy_id),
         "strategyParams": effective_params_for_row(run.strategy_id, run.strategy_params),
+        "origin": getattr(run, "origin", None) or "manual",
+        "comparisonId": getattr(run, "comparison_id", None),
         "candleCount": run.candle_count,
         "createdAt": run.created_at.isoformat().replace("+00:00", "Z") if run.created_at else None,
         "startedAt": run.started_at.isoformat().replace("+00:00", "Z") if run.started_at else None,
@@ -274,8 +324,15 @@ def run_to_dict(db: Session, run: BacktestRunRow, *, include_summary: bool = Tru
     return out
 
 
-def list_runs_dict(db: Session, limit: int = 20) -> dict[str, Any]:
-    rows = repo.list_runs(db, limit=limit)
+def list_runs_dict(
+    db: Session,
+    limit: int = 20,
+    *,
+    include_comparison_origin: bool = False,
+) -> dict[str, Any]:
+    rows = repo.list_runs(
+        db, limit=limit, include_comparison_origin=include_comparison_origin
+    )
     runs = []
     for r in rows:
         item = run_to_dict(db, r)

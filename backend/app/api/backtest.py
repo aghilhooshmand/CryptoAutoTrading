@@ -56,10 +56,15 @@ async def create_run(body: CreateBacktestBody) -> dict[str, Any]:
 
 
 @router.get("/runs")
-def list_runs(limit: int = Query(20, ge=1, le=50)) -> dict[str, Any]:
+def list_runs(
+    limit: int = Query(20, ge=1, le=50),
+    includeComparisonOrigin: bool = Query(False),
+) -> dict[str, Any]:
     db = db_session.SessionLocal()
     try:
-        return svc.list_runs_dict(db, limit=limit)
+        return svc.list_runs_dict(
+            db, limit=limit, include_comparison_origin=includeComparisonOrigin
+        )
     finally:
         db.close()
 

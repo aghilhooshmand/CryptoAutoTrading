@@ -4,6 +4,8 @@ import { formatRateAsPercent } from "../../services/backtestApi";
 interface Props {
   runs: BacktestRun[];
   selectedId?: string | null;
+  includeComparisonOrigin?: boolean;
+  onIncludeComparisonOriginChange?: (value: boolean) => void;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
 }
@@ -23,10 +25,27 @@ function formatShortDate(ms: number): string {
   });
 }
 
-export function BacktestRunList({ runs, selectedId, onSelect, onDelete }: Props) {
+export function BacktestRunList({
+  runs,
+  selectedId,
+  includeComparisonOrigin = false,
+  onIncludeComparisonOriginChange,
+  onSelect,
+  onDelete,
+}: Props) {
   return (
     <section className="backtest-run-list" aria-labelledby="backtest-runs-title">
       <h3 id="backtest-runs-title">Recent Backtests</h3>
+      {onIncludeComparisonOriginChange ? (
+        <label className="backtest-include-comparison">
+          <input
+            type="checkbox"
+            checked={includeComparisonOrigin}
+            onChange={(e) => onIncludeComparisonOriginChange(e.target.checked)}
+          />
+          Include comparison-originated runs
+        </label>
+      ) : null}
       {runs.length === 0 ? (
         <p className="hint">No saved runs yet.</p>
       ) : (
@@ -48,6 +67,8 @@ export function BacktestRunList({ runs, selectedId, onSelect, onDelete }: Props)
               r.summary != null
                 ? [ret !== "—" ? ret : null, dd].filter(Boolean).join(" · ")
                 : "";
+            const originMark =
+              r.origin === "comparison" ? " · comparison" : "";
             return (
               <li
                 key={r.id}
@@ -68,6 +89,7 @@ export function BacktestRunList({ runs, selectedId, onSelect, onDelete }: Props)
                   </span>
                   <span className="backtest-run-meta">
                     {r.strategyId}
+                    {originMark}
                     {r.status === "completed" && meta
                       ? ` · ${meta}`
                       : r.status === "failed"

@@ -647,12 +647,55 @@ a {
 
 .backtest-config,
 .backtest-results,
-.backtest-run-list {
+.backtest-run-list,
+.comparison-results {
   margin-top: 1.15rem;
   border: 1px solid var(--line);
   border-radius: 0.75rem;
   padding: 0.85rem;
   background: #fff;
+}
+
+.comparison-leg {
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+}
+
+.comparison-leg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.comparison-table-wrap {
+  overflow-x: auto;
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.comparison-table th,
+.comparison-table td {
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.backtest-include-comparison {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .backtest-fieldset {

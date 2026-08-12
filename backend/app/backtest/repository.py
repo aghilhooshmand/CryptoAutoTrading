@@ -22,12 +22,15 @@ def _utc_now() -> datetime:
 
 def create_running_run(db: Session, fields: dict[str, Any]) -> BacktestRunRow:
     now = _utc_now()
+    payload = dict(fields)
+    payload.setdefault("origin", "manual")
+    payload.setdefault("comparison_id", None)
     row = BacktestRunRow(
         id=str(uuid.uuid4()),
         status="running",
         created_at=now,
         started_at=now,
-        **fields,
+        **payload,
     )
     db.add(row)
     db.commit()
@@ -122,15 +125,20 @@ def get_run(db: Session, run_id: str) -> BacktestRunRow | None:
     return db.get(BacktestRunRow, run_id)
 
 
-def list_runs(db: Session, *, limit: int = 20) -> list[BacktestRunRow]:
+def list_runs(
+    db: Session,
+    *,
+    limit: int = 20,
+    include_comparison_origin: bool = False,
+) -> list[BacktestRunRow]:
     limit = max(1, min(limit, 50))
-    return list(
-        db.scalars(
-            select(BacktestRunRow)
-            .order_by(BacktestRunRow.created_at.desc(), BacktestRunRow.id.desc())
-            .limit(limit)
-        ).all()
+    stmt = select(BacktestRunRow).order_by(
+        BacktestRunRow.created_at.desc(), BacktestRunRow.id.desc()
     )
+    if not include_comparison_origin:
+        # Default history hides comparison-originated legs (Feature 007).
+        stmt = stmt.where(BacktestRunRow.origin != "comparison")
+    return list(db.scalars(stmt.limit(limit)).all())
 
 
 def list_trades(db: Session, run_id: str) -> list[BacktestTradeRow]:

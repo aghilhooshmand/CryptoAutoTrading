@@ -11,7 +11,9 @@ Trading page (offline evaluation, no real orders). Feature
 `005-strategy-framework` makes strategies selectable (registry + Dual EMA
 canonical id `dual_ema`, editable periods defaulting to 9/21) for Simulation
 and Backtest. Feature `006-additional-strategies` adds RSI, MACD, Bollinger
-Bands, and Breakout on the same registry (five strategies total). Real-money
+Bands, and Breakout on the same registry (five strategies total). Feature
+`007-strategy-comparison` adds fair multi-strategy comparison under Auto
+Trading (shared candles, 2–5 legs, no automatic winner). Real-money
 trading, sentiment, and auth remain out of scope.
 
 ## Prerequisites
@@ -60,8 +62,8 @@ npm run dev
 
 Frontend URL: `http://127.0.0.1:5173`
 
-Vite proxies `/health`, `/market`, `/simulation`, `/backtest`, and `/strategies`
-to the backend.
+Vite proxies `/health`, `/market`, `/simulation`, `/backtest`, `/strategies`,
+and `/comparisons` to the backend.
 Open the frontend URL and use Dashboard **Refresh** to load XT public market data
 (manual refresh is required; auto-refresh is optional polish and not required).
 
@@ -119,6 +121,22 @@ curl -sS http://127.0.0.1:8000/strategies
 ```
 
 Expected: five registered strategies when Feature 006 is complete.
+
+## Strategy comparison (Feature 007)
+
+Compare **2–5** registered strategies on one shared historical window under
+**Auto Trading → Comparison**. One candle fetch; each leg is a normal backtest
+run marked `origin=comparison` (hidden from default backtest history). No
+automatic “best/winner” label. Retention: **10** completed + **5** failed
+comparisons (FIFO).
+
+```bash
+# open http://127.0.0.1:5173/auto-trading → Comparison tab
+curl -sS http://127.0.0.1:8000/comparisons
+```
+
+Feature 007 validation guide:
+[`specs/007-strategy-comparison/quickstart.md`](specs/007-strategy-comparison/quickstart.md)
 
 ## Backend health
 

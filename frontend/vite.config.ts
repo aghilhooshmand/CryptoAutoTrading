@@ -11,6 +11,7 @@ export default defineConfig({
       "/simulation": "http://127.0.0.1:8000",
       "/backtest": "http://127.0.0.1:8000",
       "/strategies": "http://127.0.0.1:8000",
+      "/comparisons": "http://127.0.0.1:8000",
     },
   },
 });
