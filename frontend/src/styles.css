@@ -837,7 +837,40 @@ a {
   gap: 0.75rem;
 }
 
-.cost-rate-fields label {
+.cost-rate-mode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+}
+
+.cost-rate-mode__label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.cost-rate-mode__option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.cost-rate-mode__option input {
+  min-height: auto;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  accent-color: var(--accent);
+}
+
+.cost-rate-fields .cost-rate-pair label {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
@@ -846,7 +879,7 @@ a {
   color: var(--ink);
 }
 
-.cost-rate-fields input {
+.cost-rate-fields .cost-rate-pair input {
   min-height: 2.5rem;
   padding: 0.4rem 0.6rem;
   border: 1px solid var(--line);
@@ -857,7 +890,6 @@ a {
 
 .cost-rate-basis {
   margin: 0;
-  grid-column: 1 / -1;
 }
 
 .cost-rate-pair {

@@ -47,7 +47,7 @@ describe("simulation info tooltips", () => {
     render(<SessionConfigForm onSubmit={vi.fn()} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId("sim-fee")).toHaveValue("0.002");
+      expect(screen.getByTestId("sim-fee")).toHaveValue("0.2");
     });
 
     expect(screen.queryByRole("button", { name: "About Starting capital" })).not.toBeInTheDocument();
@@ -65,6 +65,8 @@ describe("simulation info tooltips", () => {
     expect(allocatedTip).toHaveAttribute("aria-expanded", "true");
 
     expect(screen.getByText(/XT Spot VIP0 0\.20%/i)).toBeTruthy();
+    expect(screen.getByTestId("cost-mode-percent")).toBeChecked();
+    await user.click(screen.getByTestId("cost-mode-usdt"));
     expect(screen.getByTestId("sim-fee-usdt")).toHaveValue("1");
     void user;
   });
