@@ -240,5 +240,5 @@ Treat **runnable Dual EMA selection across sim + backtest** as Phases 1–4 thro
 
 **Purpose**: Close remaining test gaps vs Success Criteria after Feature 005 implement (code paths already present).
 
-- [ ] T041 Strengthen Dual EMA continuity tests with a fixed closed-candle fixture and locked BUY/SELL/HOLD sequence for default 9/21 in `backend/tests/unit/test_dual_ema_continuity.py` per SC-003 / FR-009 (partial)
-- [ ] T042 Add an assertion that strategy evaluation does not mutate cash/positions (Controller→Risk→Execution remains the only balance path) under `backend/tests/` per SC-004 / FR-002 (partial)
+- [X] T041 Strengthen Dual EMA continuity tests with a fixed closed-candle fixture and locked BUY/SELL/HOLD sequence for default 9/21 in `backend/tests/unit/test_dual_ema_continuity.py` per SC-003 / FR-009 (partial)
+- [X] T042 Add an assertion that strategy evaluation does not mutate cash/positions (Controller→Risk→Execution remains the only balance path) under `backend/tests/` per SC-004 / FR-002 (partial)
