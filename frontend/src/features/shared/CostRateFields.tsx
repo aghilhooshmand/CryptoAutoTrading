@@ -53,7 +53,7 @@ export function CostRateFields({
 
   return (
     <div className="cost-rate-fields">
-      <p className="hint cost-rate-basis">
+      <p className="field-hint cost-rate-basis">
         USDT amounts convert against <strong>max position</strong> (per-trade
         notional). Fee default: {XT_SPOT_FEE_LABEL} (changeable for your VIP /
         XT token discount).
@@ -70,7 +70,7 @@ export function CostRateFields({
             onChange={(e) => onFeeRateChange(e.target.value)}
             aria-describedby="cost-fee-hint"
           />
-          <span id="cost-fee-hint" className="hint">
+          <span id="cost-fee-hint" className="field-hint">
             {rateToPercentPointsLabel(feeRate)} of fill notional
           </span>
         </label>
@@ -89,7 +89,7 @@ export function CostRateFields({
             }}
             placeholder="e.g. 2"
           />
-          <span className="hint">≈ fee on a full max-position fill</span>
+          <span className="field-hint">≈ fee on a full max-position fill</span>
         </label>
       </div>
 
@@ -103,7 +103,7 @@ export function CostRateFields({
             disabled={disabled}
             onChange={(e) => onSlippageRateChange(e.target.value)}
           />
-          <span className="hint">
+          <span className="field-hint">
             {rateToPercentPointsLabel(slippageRate)} adverse fill model (not an
             XT schedule fee)
           </span>
@@ -123,7 +123,7 @@ export function CostRateFields({
             }}
             placeholder="e.g. 0.5"
           />
-          <span className="hint">≈ cost on a full max-position fill</span>
+          <span className="field-hint">≈ cost on a full max-position fill</span>
         </label>
       </div>
     </div>

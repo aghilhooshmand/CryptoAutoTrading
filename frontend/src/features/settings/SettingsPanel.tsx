@@ -326,16 +326,19 @@ export function SettingsPanel({ onPersisted }: { onPersisted?: () => void }) {
             onChange={(e) => setField("maxTrades", e.target.value)}
           />
         </label>
+        <div className="sim-cost-fields">
+          <CostRateFields
+            maxPositionSize={values.maxPositionSize}
+            feeRate={values.feeRate}
+            slippageRate={values.slippageRate}
+            disabled={busy}
+            onFeeRateChange={(v) => setField("feeRate", v)}
+            onSlippageRateChange={(v) => setField("slippageRate", v)}
+            feeTestId="settings-fee"
+            slippageTestId="settings-slippage"
+          />
+        </div>
       </div>
-
-      <CostRateFields
-        maxPositionSize={values.maxPositionSize}
-        feeRate={values.feeRate}
-        slippageRate={values.slippageRate}
-        disabled={busy}
-        onFeeRateChange={(v) => setField("feeRate", v)}
-        onSlippageRateChange={(v) => setField("slippageRate", v)}
-      />
 
       <StrategyConfigFields
         variant="backtest"
