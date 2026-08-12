@@ -72,8 +72,8 @@ Effective params example:
 | Display name | Bollinger Bands |
 | Aliases | none |
 | `period` | integer, default `20`, minimum `2` |
-| `stdDev` | `decimal_string`, default `"2.0"`, must be &gt; 0 |
-| Cross-field | none |
+| `stdDev` | `decimal_string`, default `"2.0"`, `minimum` 0 with **`exclusive_minimum`** (must be &gt; 0) |
+| Cross-field | none (exclusive min is field-level; catalog MAY also list `std_dev_gt_zero` constraint for clarity) |
 | `min_history_candles` (`S`) | `period` |
 | Warm-up | HOLD while count &lt; `S + 1` |
 | Signal | Recovery crossover through lower (BUY) / upper (SELL) band |
@@ -127,7 +127,7 @@ Effective params example:
 |----------|--------|-------|
 | RSI | period ≥ 2; 1 ≤ oversold, overbought ≤ 99 | oversold &lt; overbought |
 | MACD | fast ≥ 1; slow ≥ 2; signal ≥ 1 | fast &lt; slow |
-| Bollinger | period ≥ 2; stdDev &gt; 0 | — |
+| Bollinger | period ≥ 2; stdDev &gt; 0 (`exclusive_minimum`) | optional catalog constraint `std_dev_gt_zero` |
 | Breakout | lookback ≥ 2 | — |
 
 Invalid → create rejected with clear constraint message (same Feature 005

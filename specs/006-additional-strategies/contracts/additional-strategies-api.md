@@ -126,17 +126,26 @@ correctness; recommended stable order for UX/tests:
       "type": "decimal_string",
       "label": "Std deviations",
       "default": "2.0",
-      "minimum": 0
+      "minimum": 0,
+      "exclusiveMinimum": true
     }
   ],
-  "constraints": []
+  "constraints": [
+    {
+      "code": "std_dev_gt_zero",
+      "message": "Std deviations must be greater than 0.",
+      "fields": ["stdDev"]
+    }
+  ]
 }
 ```
 
 Notes for `stdDev`:
 - Type is `decimal_string`; default `"2.0"`.
-- Server MUST reject values ≤ 0 (bounds message). UI `minimum: 0` is advisory;
-  exclusive lower bound is enforced server-side.
+- Bound is **exclusive**: `exclusiveMinimum: true` with `minimum: 0` means value MUST be **strictly greater than 0**.
+- Do **not** treat `minimum: 0` as inclusive (≥ 0). Server and client MUST reject `"0"` and negatives with a clear `invalid_strategy_params` / UI message (`must be > 0`).
+- Effective params MUST preserve decimal strings such as `"2.0"`, `"1.5"`, `"0.5"` (not coerced to JSON integers).
+- The `std_dev_gt_zero` constraint documents the same rule for operators; field-level `exclusiveMinimum` is authoritative for validation.
 
 #### Breakout
 

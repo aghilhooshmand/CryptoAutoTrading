@@ -49,6 +49,10 @@
 
 - [ ] T003 Implement Decimal helpers (EMA with Dual-EMA-compatible SMA seed + k=2/(n+1), SMA, population stdev, Wilder RSI series) in `backend/app/strategy/indicators.py` per research.md Decision 2–3
 - [ ] T004 [P] Unit tests for indicator helpers (EMA seed parity vs Dual EMA style, SMA, population σ, Wilder RSI warm-up Nones) in `backend/tests/unit/test_strategy_indicators.py`
+- [X] T041 Extend `ParamDef` / `coerce_and_bounds` for `decimal_string` (parse Decimal, reject malformed, bounds + `exclusive_minimum`) in `backend/app/strategy/params.py`; expose `exclusiveMinimum` in `backend/app/strategy/registry.py` `to_api_list`
+- [X] T042 [P] Unit tests for decimal_string preserve/reject/exclusive min in `backend/tests/unit/test_strategy_params.py`
+- [X] T043 Frontend: `StrategyParamValue` number|string; decimal_string inputs preserve strings in payloads; client validates integers vs decimals + `exclusiveMinimum` in `frontend/src/services/strategiesApi.ts` and `frontend/src/features/strategy/StrategyConfigFields.tsx`; widen create types in `frontend/src/services/simulationApi.ts` and `frontend/src/services/backtestApi.ts`
+- [X] T044 [P] Client constraint `oversold_lt_overbought` + decimal_string / exclusive-min tests in `frontend/src/__tests__/strategyConfig.test.tsx`
 - [ ] T005 Update `backend/app/strategy/__init__.py` (and `backend/app/main.py` if needed) so new strategy modules can be imported for auto-registration without changing Dual EMA registration
 - [ ] T006 Run existing Dual EMA continuity baseline: `pytest backend/tests/unit/test_dual_ema_continuity.py -q` must pass before adding strategies (FR-013 / SC-005 gate)
 
@@ -72,7 +76,7 @@
 - [ ] T009 [US1] Implement and register RSI strategy (Wilder RSI, recovery crossover, `min_history_candles` = `period`) in `backend/app/strategy/rsi.py` per data-model.md / FR-001–FR-002
 - [ ] T010 [US1] Import `rsi` for auto-registration from `backend/app/strategy/__init__.py` (and `backend/app/main.py` if required)
 - [ ] T011 [P] [US1] Add RSI schema to `FALLBACK_STRATEGIES` in `frontend/src/services/strategiesApi.ts` per `contracts/additional-strategies-api.md`
-- [ ] T012 [P] [US1] Extend frontend strategy selector coverage for RSI defaults / oversold&lt;overbought message in `frontend/src/__tests__/strategyConfig.test.tsx`
+- [ ] T012 [P] [US1] Extend frontend strategy selector coverage for RSI defaults; assert oversold&lt;overbought uses client constraint `oversold_lt_overbought` (message: “Oversold threshold must be less than overbought threshold.”) in `frontend/src/__tests__/strategyConfig.test.tsx` (framework validation landed in T044; wire RSI into FALLBACK / selector here)
 - [ ] T013 [US1] Run T006–T008 and T012; fix until passing (Dual EMA continuity still green)
 
 **Checkpoint**: RSI selectable end-to-end; MVP delivers second registered strategy
@@ -115,10 +119,10 @@
 
 ### Implementation for User Story 3
 
-- [ ] T023 [US3] Implement and register Bollinger Bands strategy in `backend/app/strategy/bollinger.py` per FR-005–FR-006 / research Decision 5
+- [ ] T023 [US3] Implement and register Bollinger Bands strategy (`stdDev` ParamDef with `exclusive_minimum=True`, `minimum=0`) in `backend/app/strategy/bollinger.py` per FR-005–FR-006 / research Decision 5 / T041
 - [ ] T024 [US3] Import `bollinger` for auto-registration from `backend/app/strategy/__init__.py` (and `backend/app/main.py` if required)
-- [ ] T025 [P] [US3] Add Bollinger schema (`stdDev` as `decimal_string`) to `FALLBACK_STRATEGIES` in `frontend/src/services/strategiesApi.ts`
-- [ ] T026 [P] [US3] Extend frontend tests for Bollinger defaults and `decimal_string` `stdDev` field rendering in `frontend/src/__tests__/strategyConfig.test.tsx` / `frontend/src/features/strategy/StrategyConfigFields.tsx` (fix only if dynamic decimal input is incomplete)
+- [ ] T025 [P] [US3] Add Bollinger schema (`stdDev` as `decimal_string` with `exclusiveMinimum: true`, `minimum: 0`, optional `std_dev_gt_zero` constraint) to `FALLBACK_STRATEGIES` in `frontend/src/services/strategiesApi.ts` per `contracts/additional-strategies-api.md`
+- [ ] T026 [P] [US3] **Required**: Frontend tests that Bollinger `stdDev` renders as `decimal_string`, client rejects `0` via exclusive minimum, and create payloads preserve strings such as `"2.0"` / `"1.5"` in `frontend/src/__tests__/strategyConfig.test.tsx` (uses T043 framework; must not coerce through `Number.isInteger`)
 - [ ] T027 [US3] Run T021–T022 and T026; fix until passing
 
 **Checkpoint**: Mean-reversion Bollinger recovery strategy selectable
@@ -178,7 +182,7 @@
 
 - **US1 RSI (P1)**: After Phase 2 — no dependency on other new strategies — **MVP**
 - **US2 MACD (P1)**: After Phase 2 — independent of RSI (shares `indicators.py` only)
-- **US3 Bollinger (P2)**: After Phase 2 — independent; may need `StrategyConfigFields` decimal_string polish (T026)
+- **US3 Bollinger (P2)**: After Phase 2 — depends on T041–T044 decimal_string framework; T026 is mandatory
 - **US4 Breakout (P2)**: After Phase 2 — independent
 
 ### Within Each User Story

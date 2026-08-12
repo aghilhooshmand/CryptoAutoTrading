@@ -85,7 +85,9 @@ framework rule aligned with Dual EMA’s `S` / `S+1` contract.
 **Decision**: Middle = SMA(period); σ = population stdev of the same window
 (divide by `period`, not `period-1`); bands = middle ± stdDev × σ. BUY when
 close crosses from &lt; lower to ≥ lower; SELL when from &gt; upper to ≤ upper;
-else HOLD. `S = period`. Persist `stdDev` as `decimal_string` (e.g. `"2.0"`).
+else HOLD. `S = period`. Persist `stdDev` as `decimal_string` (e.g. `"2.0"`)
+with `ParamDef.exclusive_minimum=True` and `minimum=0` (strictly &gt; 0; never
+treat 0 as valid).
 
 **Rationale**: Spec assumptions + clarify Q2. `ParamDef` already supports
 `decimal_string`.

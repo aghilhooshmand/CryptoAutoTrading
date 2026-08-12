@@ -30,7 +30,7 @@ export interface SimulationSession {
   symbol: string;
   timeframe: string;
   strategyId: string;
-  strategyParams?: Record<string, number>;
+  strategyParams?: Record<string, number | string>;
   startingCapital: string;
   allocatedCapital: string;
   maxPositionSize: string;
@@ -70,7 +70,7 @@ export interface CreateSessionRequest {
   feeRate?: string;
   slippageRate?: string;
   strategyId: string;
-  strategyParams?: Record<string, number>;
+  strategyParams?: Record<string, number | string>;
 }
 
 export interface DecisionItem {

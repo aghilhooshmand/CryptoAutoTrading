@@ -5,12 +5,13 @@ import {
   defaultParamsFor,
   listStrategies,
   type StrategyInfo,
+  type StrategyParamValue,
   validateStrategyParamsClient,
 } from "../../services/strategiesApi";
 
 export interface StrategyConfigValue {
   strategyId: string;
-  strategyParams: Record<string, number>;
+  strategyParams: Record<string, StrategyParamValue>;
 }
 
 interface Props {
@@ -52,7 +53,7 @@ export function StrategyConfigFields({
       })
       .catch(() => {
         if (!cancelled) {
-          setLoadError("Using built-in Dual EMA defaults (strategy list unavailable).");
+          setLoadError("Using built-in strategy defaults (strategy list unavailable).");
         }
       });
     return () => {
@@ -75,21 +76,22 @@ export function StrategyConfigFields({
   function selectStrategy(id: string) {
     const strat = strategies.find((s) => s.id === id);
     if (!strat) return;
-    const defaults = defaultParamsFor(strat);
-    const params: Record<string, number> = {};
-    for (const [k, v] of Object.entries(defaults)) {
-      params[k] = Number(v);
-    }
-    onChange({ strategyId: id, strategyParams: params });
+    onChange({ strategyId: id, strategyParams: defaultParamsFor(strat) });
   }
 
-  function setParam(name: string, raw: string) {
-    const n = Number(raw);
+  function setParam(name: string, raw: string, type: StrategyInfo["parameters"][0]["type"]) {
+    let next: StrategyParamValue;
+    if (type === "decimal_string" || type === "string") {
+      next = raw;
+    } else {
+      const n = Number(raw);
+      next = Number.isFinite(n) ? n : (value.strategyParams[name] ?? 0);
+    }
     onChange({
       ...value,
       strategyParams: {
         ...value.strategyParams,
-        [name]: Number.isFinite(n) ? n : (value.strategyParams[name] ?? 0),
+        [name]: next,
       },
     });
   }
@@ -146,21 +148,27 @@ export function StrategyConfigFields({
           )}
         </div>
 
-        {selected.parameters.map((p) => (
-          <label key={p.name}>
-            <span className="strategy-config__label">{paramLabel(p.name, p.label)}</span>
-            <input
-              type="number"
-              data-testid={`strategy-param-${p.name}`}
-              value={value.strategyParams[p.name] ?? p.default}
-              min={p.minimum}
-              max={p.maximum}
-              step={1}
-              disabled={disabled}
-              onChange={(e) => setParam(p.name, e.target.value)}
-            />
-          </label>
-        ))}
+        {selected.parameters.map((p) => {
+          const current = value.strategyParams[p.name] ?? p.default;
+          const isDecimal = p.type === "decimal_string";
+          return (
+            <label key={p.name}>
+              <span className="strategy-config__label">{paramLabel(p.name, p.label)}</span>
+              <input
+                type={isDecimal ? "text" : "number"}
+                inputMode={isDecimal ? "decimal" : "numeric"}
+                data-testid={`strategy-param-${p.name}`}
+                data-param-type={p.type}
+                value={current}
+                min={isDecimal ? undefined : p.minimum}
+                max={isDecimal ? undefined : p.maximum}
+                step={isDecimal ? "any" : 1}
+                disabled={disabled}
+                onChange={(e) => setParam(p.name, e.target.value, p.type)}
+              />
+            </label>
+          );
+        })}
       </div>
 
       {clientError ? (
@@ -174,12 +182,8 @@ export function StrategyConfigFields({
 
 export function defaultStrategyConfig(): StrategyConfigValue {
   const s = FALLBACK_STRATEGIES[0];
-  const defaults = defaultParamsFor(s);
   return {
     strategyId: s.id,
-    strategyParams: {
-      fastPeriod: Number(defaults.fastPeriod),
-      slowPeriod: Number(defaults.slowPeriod),
-    },
+    strategyParams: defaultParamsFor(s),
   };
 }

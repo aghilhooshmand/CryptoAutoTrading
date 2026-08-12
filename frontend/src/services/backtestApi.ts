@@ -41,7 +41,7 @@ export interface BacktestRun {
   feeRate: string;
   slippageRate: string;
   strategyId: string;
-  strategyParams?: Record<string, number>;
+  strategyParams?: Record<string, number | string>;
   candleCount: number | null;
   createdAt: string | null;
   startedAt: string | null;
@@ -65,7 +65,7 @@ export interface CreateBacktestRequest {
   feeRate?: string;
   slippageRate?: string;
   strategyId: string;
-  strategyParams?: Record<string, number>;
+  strategyParams?: Record<string, number | string>;
 }
 
 export interface BacktestTrade {

@@ -117,6 +117,11 @@ def to_api_list() -> list[dict[str, Any]]:
                         "default": p.default,
                         **({"minimum": p.minimum} if p.minimum is not None else {}),
                         **({"maximum": p.maximum} if p.maximum is not None else {}),
+                        **(
+                            {"exclusiveMinimum": True}
+                            if p.exclusive_minimum
+                            else {}
+                        ),
                     }
                     for p in entry.parameters
                 ],

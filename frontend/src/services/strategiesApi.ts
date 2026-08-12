@@ -2,13 +2,17 @@
 
 export type StrategyParamType = "integer" | "decimal_string" | "string";
 
+export type StrategyParamValue = number | string;
+
 export interface StrategyParamDef {
   name: string;
   type: StrategyParamType;
   label: string;
-  default: number | string;
+  default: StrategyParamValue;
   minimum?: number;
   maximum?: number;
+  /** When true with ``minimum``, value must be strictly greater than minimum. */
+  exclusiveMinimum?: boolean;
 }
 
 export interface StrategyConstraint {
@@ -70,36 +74,83 @@ export async function listStrategies(): Promise<StrategyInfo[]> {
   return data.strategies ?? [];
 }
 
-export function defaultParamsFor(strategy: StrategyInfo): Record<string, number | string> {
-  const out: Record<string, number | string> = {};
+export function defaultParamsFor(strategy: StrategyInfo): Record<string, StrategyParamValue> {
+  const out: Record<string, StrategyParamValue> = {};
   for (const p of strategy.parameters) {
     out[p.name] = p.default;
   }
   return out;
 }
 
-export function validateStrategyParamsClient(
-  strategy: StrategyInfo,
-  params: Record<string, number | string>,
+function validateOneParam(
+  p: StrategyParamDef,
+  raw: StrategyParamValue | undefined,
 ): string | null {
-  for (const p of strategy.parameters) {
-    const raw = params[p.name];
-    const n = Number(raw);
-    if (!Number.isInteger(n)) {
-      return `${p.label} must be an integer.`;
+  if (raw === undefined || raw === null || raw === "") {
+    return `${p.label} is required.`;
+  }
+  if (p.type === "decimal_string") {
+    const text = String(raw).trim();
+    const n = Number(text);
+    if (!Number.isFinite(n) || text === "") {
+      return `${p.label} must be a decimal number.`;
     }
-    if (p.minimum != null && n < p.minimum) {
-      return `${p.label} must be ≥ ${p.minimum}.`;
+    if (p.minimum != null) {
+      if (p.exclusiveMinimum) {
+        if (!(n > p.minimum)) {
+          return `${p.label} must be > ${p.minimum}.`;
+        }
+      } else if (n < p.minimum) {
+        return `${p.label} must be ≥ ${p.minimum}.`;
+      }
     }
     if (p.maximum != null && n > p.maximum) {
       return `${p.label} must be ≤ ${p.maximum}.`;
     }
+    return null;
+  }
+  if (p.type === "integer") {
+    const n = Number(raw);
+    if (!Number.isInteger(n)) {
+      return `${p.label} must be an integer.`;
+    }
+    if (p.minimum != null) {
+      if (p.exclusiveMinimum) {
+        if (!(n > p.minimum)) {
+          return `${p.label} must be > ${p.minimum}.`;
+        }
+      } else if (n < p.minimum) {
+        return `${p.label} must be ≥ ${p.minimum}.`;
+      }
+    }
+    if (p.maximum != null && n > p.maximum) {
+      return `${p.label} must be ≤ ${p.maximum}.`;
+    }
+    return null;
+  }
+  return null;
+}
+
+export function validateStrategyParamsClient(
+  strategy: StrategyInfo,
+  params: Record<string, StrategyParamValue>,
+): string | null {
+  for (const p of strategy.parameters) {
+    const err = validateOneParam(p, params[p.name]);
+    if (err) return err;
   }
   for (const c of strategy.constraints) {
     if (c.code === "fast_lt_slow") {
       const fast = Number(params.fastPeriod);
       const slow = Number(params.slowPeriod);
       if (!(fast < slow)) {
+        return c.message;
+      }
+    }
+    if (c.code === "oversold_lt_overbought") {
+      const oversold = Number(params.oversold);
+      const overbought = Number(params.overbought);
+      if (!(oversold < overbought)) {
         return c.message;
       }
     }
