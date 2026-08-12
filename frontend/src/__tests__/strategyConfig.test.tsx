@@ -28,8 +28,12 @@ describe("strategy config fields", () => {
   it("defaults Dual EMA periods to 9 and 21", async () => {
     render(<Harness />);
     await waitFor(() => {
-      expect(screen.getByTestId("strategy-id")).toHaveValue("dual_ema");
+      expect(screen.getByTestId("strategy-id")).toHaveAttribute(
+        "data-strategy-id",
+        "dual_ema",
+      );
     });
+    expect(screen.getByTestId("strategy-id")).toHaveTextContent("Dual EMA");
     expect(screen.getByTestId("strategy-param-fastPeriod")).toHaveValue(9);
     expect(screen.getByTestId("strategy-param-slowPeriod")).toHaveValue(21);
   });

@@ -160,6 +160,7 @@ export function SessionConfigForm({
         value={strategy}
         onChange={setStrategy}
         onValidationError={setStrategyError}
+        variant="simulation"
       />
 
       <div className="sim-grid">

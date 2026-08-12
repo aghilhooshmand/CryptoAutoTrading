@@ -1069,3 +1069,96 @@ a {
     width: min(18rem, calc(100vw - 2rem));
   }
 }
+
+/* Strategy selector (Feature 005) — sits inside Simulation / Backtest forms */
+.strategy-config {
+  margin: 0 0 1rem;
+}
+
+.strategy-config--simulation {
+  padding-bottom: 0.85rem;
+  margin-bottom: 0.85rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.strategy-config--backtest {
+  margin-bottom: 1rem;
+}
+
+.strategy-config__head {
+  margin-bottom: 0.65rem;
+}
+
+.strategy-config__title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.strategy-config__subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.strategy-config__grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .strategy-config__grid {
+    grid-template-columns: 1.2fr 1fr 1fr;
+    align-items: start;
+  }
+}
+
+.strategy-config__grid label,
+.strategy-config__strategy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.strategy-config__label {
+  display: block;
+}
+
+.strategy-config__grid input,
+.strategy-config__grid select {
+  min-height: 2.5rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  font: inherit;
+  font-weight: 500;
+  background: #fff;
+}
+
+.strategy-config__pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+  background: color-mix(in srgb, var(--accent) 8%, #fff);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.95rem;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.strategy-config__error {
+  margin: 0.55rem 0 0;
+}

@@ -134,6 +134,7 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
         value={strategy}
         onChange={setStrategy}
         onValidationError={setStrategyError}
+        variant="backtest"
       />
 
       <fieldset className="backtest-fieldset" disabled={locked}>
