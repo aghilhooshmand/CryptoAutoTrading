@@ -233,3 +233,12 @@ Treat **runnable Dual EMA selection across sim + backtest** as Phases 1–4 thro
 - Lifecycle: READ ok / START-RESUME forbidden for unknown / NEW create forbidden for unknown
 - Propose commits only; do not auto-commit unless asked
 - Avoid: second Dual EMA fork, rule engine, mid-run strategy swap, fourth nav, real money
+
+---
+
+## Phase 7: Convergence
+
+**Purpose**: Close remaining test gaps vs Success Criteria after Feature 005 implement (code paths already present).
+
+- [ ] T041 Strengthen Dual EMA continuity tests with a fixed closed-candle fixture and locked BUY/SELL/HOLD sequence for default 9/21 in `backend/tests/unit/test_dual_ema_continuity.py` per SC-003 / FR-009 (partial)
+- [ ] T042 Add an assertion that strategy evaluation does not mutate cash/positions (Controller→Risk→Execution remains the only balance path) under `backend/tests/` per SC-004 / FR-002 (partial)
