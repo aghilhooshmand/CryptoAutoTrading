@@ -267,3 +267,14 @@ Task: "Implement backend/app/strategy/breakout.py"
 - No new DB columns, routers, or hard-coded strategy field components
 - Each story independently testable once its module is registered
 - Stop at any checkpoint to validate without waiting for later stories
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: Close remaining gaps between Feature 006 artifacts and the current codebase after `/speckit-implement`
+
+- [X] T045 Align Bollinger Bands recovery inequalities in `backend/app/strategy/bollinger.py` to FR-006 / clarify Q2 / research Decision 5 (`prior close < prior lower` and `current close ≥ current lower` for BUY; symmetric `>` / `≤` for SELL) — current `<=`/`>` (and SELL `>=`/`<`) contradicts the specified recovery crossover and never matches strict FR-006 on population-σ band windows (contradicts)
+- [X] T046 [P] Add golden coverage for Bollinger SELL recovery and HOLD while outside without recovering in `backend/tests/unit/test_bollinger_strategy.py` per US3/AC2–AC3 / SC-003 (partial)
+- [X] T047 [P] Add golden coverage for RSI recovery SELL (cross downward out of overbought) in `backend/tests/unit/test_rsi_strategy.py` per FR-002 / US1/AC2 / SC-003 (partial)
+- [X] T048 [P] Add golden coverage for Breakout SELL on every new lookback low in `backend/tests/unit/test_breakout_strategy.py` per US4/AC2 / SC-003 (partial)

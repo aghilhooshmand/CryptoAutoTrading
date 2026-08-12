@@ -10,7 +10,7 @@ from app.strategy.base import CandleClose, SignalSide
 from app.strategy.breakout import BreakoutStrategy
 from app.strategy.registry import validate_and_materialize
 
-_FIXTURE = (
+_BUY_FIXTURE = (
     *["100"] * 12,
     "101",
     "102",
@@ -22,28 +22,48 @@ _FIXTURE = (
 )
 
 # Every new high after lookback=10 → consecutive BUYs (first at index 12)
-_EXPECTED_TAIL = ("HOLD", "BUY", "BUY", "BUY", "BUY", "BUY", "BUY", "BUY")
+_BUY_EXPECTED_TAIL = ("HOLD", "BUY", "BUY", "BUY", "BUY", "BUY", "BUY", "BUY")
+
+_SELL_FIXTURE = (
+    *["100"] * 12,
+    "99",
+    "98",
+    "97",
+    "96",
+)
+
+_SELL_EXPECTED_TAIL = ("HOLD", "SELL", "SELL", "SELL", "SELL")
 
 
-def _closes(n: int) -> list[CandleClose]:
+def _closes(prices: tuple[str, ...], n: int) -> list[CandleClose]:
     return [
         CandleClose(open_time=i * 60_000, close=Decimal(p))
-        for i, p in enumerate(_FIXTURE[:n])
+        for i, p in enumerate(prices[:n])
     ]
 
 
 def test_min_history_is_lookback():
     s = BreakoutStrategy(lookback=10)
     assert s.min_history_candles() == 10
-    assert s.evaluate(_closes(10)).reason_code == "warmup"
+    assert s.evaluate(_closes(_BUY_FIXTURE, 10)).reason_code == "warmup"
 
 
 def test_every_new_extreme_emits_buy():
     s = BreakoutStrategy(lookback=10)
     tail = tuple(
-        s.evaluate(_closes(n)).side.value for n in range(len(_FIXTURE) - 7, len(_FIXTURE) + 1)
+        s.evaluate(_closes(_BUY_FIXTURE, n)).side.value
+        for n in range(len(_BUY_FIXTURE) - 7, len(_BUY_FIXTURE) + 1)
     )
-    assert tail == _EXPECTED_TAIL
+    assert tail == _BUY_EXPECTED_TAIL
+
+
+def test_every_new_extreme_emits_sell():
+    s = BreakoutStrategy(lookback=10)
+    tail = tuple(
+        s.evaluate(_closes(_SELL_FIXTURE, n)).side.value
+        for n in range(len(_SELL_FIXTURE) - 4, len(_SELL_FIXTURE) + 1)
+    )
+    assert tail == _SELL_EXPECTED_TAIL
 
 
 def test_hold_inside_range():

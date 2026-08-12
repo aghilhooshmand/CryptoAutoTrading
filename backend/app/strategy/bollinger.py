@@ -53,12 +53,13 @@ class BollingerBandsStrategy:
         upper1 = m1 + self.std_dev * s1
         c0, c1 = values[i - 1], values[i]
 
-        # Population σ with k=2: the prior close in the band window cannot sit
-        # strictly below the prior lower band; recovery is detected when the
-        # prior close was at/below the prior lower band and current is above.
-        if c0 <= lower0 and c1 > lower1:
+        # FR-006 recovery crossover: from strictly below lower to at/above;
+        # from strictly above upper to at/below. With population σ and k=2,
+        # period must be > 5 for a window member to sit strictly outside
+        # mean±2σ (bound is sqrt(n-1)); defaults use period 20.
+        if c0 < lower0 and c1 >= lower1:
             side = SignalSide.BUY
-        elif c0 >= upper0 and c1 < upper1:
+        elif c0 > upper0 and c1 <= upper1:
             side = SignalSide.SELL
         else:
             side = SignalSide.HOLD
