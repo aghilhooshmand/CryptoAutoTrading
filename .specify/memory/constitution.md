@@ -244,14 +244,33 @@ justifies restructuring.
 
 ---
 
-## XIV. Responsive UX
+## XIV. Operator UI and Responsive UX
+
+User-facing features MUST present a clean, modern, consistent operator UI.
 
 Primary operator workflows MUST remain usable on desktop and approximately
 375px phone-width screens.
 
-Trading-critical controls MUST NOT depend on hover-only interaction.
+Forms and controls MUST use clear labels and units. Fields whose meaning is
+not obvious MUST provide short contextual help that is usable by touch, click,
+or keyboard focus — not hover only.
 
-Important risk, execution, and real-money state MUST be clearly distinguishable.
+Forms MUST provide clear validation feedback. Long-running or consequential
+actions MUST provide appropriate loading, success, and failure feedback, and
+MUST prevent accidental duplicate submission where relevant.
+
+Destructive or important irreversible actions MUST require confirmation.
+
+Important operating modes such as Simulation and Real Money MUST be clearly
+distinguishable. Real-money capability and warnings MUST be more prominent than
+ordinary navigation.
+
+New UI SHOULD reuse existing project patterns and shared controls rather than
+introducing inconsistent one-off variants.
+
+Detailed form, feedback, and consistency defaults belong in
+`docs/UI_UX_STANDARDS.md`. Feature specifications document only
+feature-specific UI behavior or intentional exceptions.
 
 ---
 

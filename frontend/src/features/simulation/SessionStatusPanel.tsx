@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import type { SimulationSession } from "../../services/simulationApi";
 import { rateToPercentLabel } from "../../services/simulationApi";
-import { InfoTooltip } from "./InfoTooltip";
+import { InfoTooltip } from "../shared/InfoTooltip";
 import { SimulationBadge } from "./SimulationBadge";
 
 function Term({

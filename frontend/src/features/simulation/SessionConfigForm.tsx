@@ -14,7 +14,7 @@ import {
   defaultStrategyConfig,
   type StrategyConfigValue,
 } from "../strategy/StrategyConfigFields";
-import { InfoTooltip } from "./InfoTooltip";
+import { InfoTooltip } from "../shared/InfoTooltip";
 
 export interface SessionConfigValues {
   symbol: string;

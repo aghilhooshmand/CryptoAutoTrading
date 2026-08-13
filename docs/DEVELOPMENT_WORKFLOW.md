@@ -9,7 +9,9 @@ It complements:
 
 - `.specify/memory/constitution.md` — project-wide rules and architectural
   constraints.
-- `core/roadmap.md` — feature sequence, dependencies, and status.
+- `docs/ROADMAP.md` — feature sequence, dependencies, and status.
+- `docs/UI_UX_STANDARDS.md` — normal operator UI defaults for user-facing
+  features.
 - `specs/NNN-feature-name/` — detailed requirements and design for each feature.
 
 The objective is to keep development specification-driven, testable,
@@ -100,6 +102,29 @@ reflected in the relevant specification documents.
 
 ---
 
+## 1.4 UI / UX Standards
+
+Location:
+
+```text
+docs/UI_UX_STANDARDS.md
+```
+
+This document defines normal operator UI defaults (forms, actions, feedback,
+responsive behavior, consistency, trading-safety presentation, accessibility
+basics).
+
+Any feature that includes user-facing UI MUST be reviewed against
+`docs/UI_UX_STANDARDS.md` before the feature can be marked DONE.
+
+Feature specifications MUST NOT copy the full global UX checklist. They
+document only feature-specific UI behavior or intentional exceptions.
+
+Constitution principle XIV remains the permanent UI rule set; this document
+supplies practical defaults under that principle.
+
+---
+
 # 2. Feature Status Lifecycle
 
 Every roadmap feature uses one of these states:
@@ -137,7 +162,10 @@ A feature may be marked DONE only when:
 3. specification analysis/convergence has no unresolved blocking issue;
 4. quickstart or required smoke tests pass;
 5. documentation reflects implemented behavior;
-6. roadmap impact has been reviewed.
+6. roadmap impact has been reviewed;
+7. if the feature includes user-facing UI, it has been reviewed against
+   `docs/UI_UX_STANDARDS.md` (feature specs list only feature-specific UX or
+   exceptions, not a copy of the global standards).
 
 ---
 
@@ -219,6 +247,10 @@ It should define:
 - assumptions;
 - scope;
 - explicit non-goals.
+
+For user-facing features, do **not** copy `docs/UI_UX_STANDARDS.md` into the
+spec. Inherit those defaults; document only feature-specific UI behavior or
+intentional exceptions.
 
 For trading features, explicitly identify where the feature sits in:
 
@@ -995,6 +1027,7 @@ Before marking any material feature DONE:
 [ ] Trading-critical tests pass
 [ ] Quickstart/smoke passes
 [ ] Convergence passes
+[ ] User-facing UI reviewed against docs/UI_UX_STANDARDS.md (if applicable)
 [ ] Documentation updated
 [ ] Roadmap reviewed
 [ ] Feature marked DONE

@@ -25,8 +25,8 @@ function supportsHover(): boolean {
 }
 
 /**
- * Compact help icon for non-obvious Auto Trading labels.
- * Desktop: hover + keyboard focus. Mobile: tap. UI-only — no trading side effects.
+ * Shared field help for non-obvious labels.
+ * Usable by click/tap and keyboard focus; hover is optional enhancement only.
  */
 export function InfoTooltip({ label, text, testId }: Props) {
   const tipId = useId();
