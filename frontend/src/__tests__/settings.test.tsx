@@ -299,6 +299,29 @@ describe("Auto Trading Settings tab", () => {
     await user.click(screen.getByRole("tab", { name: "Settings" }));
     expect(screen.getByTestId("settings-symbol")).toHaveValue("sol_usdt");
   });
+
+  it("Settings Save does not overwrite an in-progress Simulation draft", async () => {
+    const user = userEvent.setup();
+    render(<AutoTradingPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId("sim-starting")).toBeInTheDocument();
+    });
+    await user.clear(screen.getByTestId("sim-starting"));
+    await user.type(screen.getByTestId("sim-starting"), "111");
+    expect(screen.getByTestId("sim-starting")).toHaveValue("111");
+
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
+    await screen.findByTestId("settings-form");
+    await user.clear(screen.getByTestId("settings-symbol"));
+    await user.type(screen.getByTestId("settings-symbol"), "sol_usdt");
+    await user.click(screen.getByTestId("settings-save"));
+    await waitFor(() => {
+      expect(screen.getByTestId("settings-status")).toHaveTextContent(/Settings saved/i);
+    });
+
+    await user.click(screen.getByRole("tab", { name: "Simulation" }));
+    expect(screen.getByTestId("sim-starting")).toHaveValue("111");
+  });
 });
 
 describe("settings side effects", () => {

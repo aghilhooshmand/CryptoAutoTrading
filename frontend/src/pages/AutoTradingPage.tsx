@@ -42,12 +42,6 @@ export function AutoTradingPage() {
   const backtest = useBacktest();
   const comparison = useComparison();
 
-  const bumpCreateForms = () => {
-    setSimFormKey((k) => k + 1);
-    setBacktestFormKey((k) => k + 1);
-    setComparisonFormKey((k) => k + 1);
-  };
-
   return (
     <section className="page auto-trading-page" aria-labelledby="auto-trading-title">
       <header className="sim-page-header">
@@ -255,7 +249,7 @@ export function AutoTradingPage() {
         className="auto-trading-panel"
       >
         <h2 className="auto-trading-panel-title">Settings</h2>
-        <SettingsPanel onPersisted={bumpCreateForms} />
+        <SettingsPanel />
       </div>
     </section>
   );

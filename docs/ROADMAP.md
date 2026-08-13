@@ -272,7 +272,7 @@ Execution Abstraction
 
 | ID | Feature | Status |
 |---|---|---|
-| 008 | Trading & Experiment Defaults | IN PROGRESS |
+| 008 | Trading & Experiment Defaults | DONE |
 | 009 | Portfolio & Capital Allocation Core | PLANNED |
 | 010 | Advanced Risk Management | PLANNED |
 | 011 | Execution Abstraction | PLANNED |
@@ -334,7 +334,7 @@ Persisted Effective Configuration
 
 Changing Settings MUST NOT rewrite historical configurations.
 
-Status: `IN PROGRESS`
+Status: `DONE`
 
 ---
 
@@ -1247,26 +1247,26 @@ Current completed foundation:
 004 → DONE
 005 → DONE
 006 → DONE
+007 → DONE
+008 → DONE
 ```
 
 Current active milestone:
 
 ```text
-007 → Strategy Comparison
+008 → Trading & Experiment Defaults (DONE)
 ```
 
-Next planned milestone after Feature 007 completes:
+Next planned milestone:
 
 ```text
-008 → Trading & Experiment Defaults
+009 → Portfolio & Capital Allocation Core
 ```
 
 The near-term objective is therefore:
 
 ```text
-finish strategy evaluation
-        ↓
-centralize defaults
+centralize defaults (complete)
         ↓
 formalize portfolio/capital
         ↓

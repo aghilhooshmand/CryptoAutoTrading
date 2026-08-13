@@ -92,7 +92,7 @@ function emptyValues() {
   };
 }
 
-export function SettingsPanel({ onPersisted }: { onPersisted?: () => void }) {
+export function SettingsPanel() {
   const [values, setValues] = useState(emptyValues);
   const [strategy, setStrategy] = useState<StrategyConfigValue>(() => defaultStrategyConfig());
   const [preferredStrategy, setPreferredStrategy] = useState<StrategyConfigValue | null>(null);
@@ -181,7 +181,6 @@ export function SettingsPanel({ onPersisted }: { onPersisted?: () => void }) {
       setStatus(
         `Settings saved (Rule: ${confirmed.strategyId}). New Simulation, Backtest, and Comparison forms will use these defaults.`,
       );
-      onPersisted?.();
     } catch (err) {
       const message =
         err && typeof err === "object" && "message" in err && typeof (err as SettingsApiError).message === "string"
@@ -205,7 +204,6 @@ export function SettingsPanel({ onPersisted }: { onPersisted?: () => void }) {
       const saved = await resetSettings();
       applySettingsToState(saved, setValues, setStrategy, setPreferredStrategy, setWarning);
       setStatus("Settings reset to product starters.");
-      onPersisted?.();
     } catch (err) {
       const message =
         err && typeof err === "object" && "message" in err && typeof (err as SettingsApiError).message === "string"
