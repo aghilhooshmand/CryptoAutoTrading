@@ -13,8 +13,11 @@ canonical id `dual_ema`, editable periods defaulting to 9/21) for Simulation
 and Backtest. Feature `006-additional-strategies` adds RSI, MACD, Bollinger
 Bands, and Breakout on the same registry (five strategies total). Feature
 `007-strategy-comparison` adds fair multi-strategy comparison under Auto
-Trading (shared candles, 2–5 legs, no automatic winner). Real-money
-trading, sentiment, and auth remain out of scope.
+Trading (shared candles, 2–5 legs, no automatic winner). Feature
+`008-trading-experiment-defaults` centralizes reusable operator defaults.
+Feature `009-portfolio-capital-allocation` adds the **Simulation Portfolio**
+(fund USDT, fill-driven holdings, public valuation, compact capital
+reservation). Real-money trading, sentiment, and auth remain out of scope.
 
 ## Prerequisites
 
