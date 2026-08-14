@@ -342,39 +342,45 @@ Status: `DONE`
 
 ### Goal
 
-Create one authoritative model for capital and allocations.
+Create one authoritative portfolio/accounting model: exchange-style
+**holdings** (assets, quantities, valuation, P&L) plus explicit **capital
+reservation/allocation**. Not two separate products.
 
 Required for:
 
 - ordinary trading;
+- operator inspection of what is owned and what it is worth;
 - multiple concurrent strategies;
 - Torque capital splitting;
-- real-money account state.
+- later Simulation and real-money account state mapped into the same domain.
 
 Concepts may include:
 
 ```text
 Portfolio
-├── cash
-├── reserved capital
+├── holdings (asset, quantity, cost basis, value, weight, P&L)
+├── total equity / portfolio value
+├── quote cash (USDT holding)
 ├── available capital
+├── reserved capital
+├── deployed capital
 ├── allocations
-├── positions
-└── portfolio equity
+└── positions (pipeline; distinct from holdings)
 ```
 
-Example future Torque requirement:
+Example reservation (quote cash):
 
 ```text
-€500
-
-€250 → RSI
-€250 → MACD
+500 USDT
+├── 250 reserved → program A
+├── 150 reserved → program B
+└── 100 available
 ```
 
-The strategies do not own that money.
+The strategies do not own that money or the holdings.
 
-Feature 009 owns the capital-allocation model.
+Feature 012 maps XT private balances into this same domain later; Feature 009
+must not call XT private APIs.
 
 Status: `IN PROGRESS`
 
