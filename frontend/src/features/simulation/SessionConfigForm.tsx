@@ -6,6 +6,7 @@ import {
   rateToPercentLabel,
   validateCapitalNesting,
 } from "../../services/simulationApi";
+import { getPortfolio, type PortfolioAllocation } from "../../services/portfolioApi";
 import { getSettings } from "../../services/settingsApi";
 import { settingsToSharedSeed } from "../settings/mapSettingsToForm";
 import { COST_DEFAULTS, CostRateFields } from "../shared/CostRateFields";
@@ -28,6 +29,10 @@ export interface SessionConfigValues {
   durationSeconds: string;
   feeRate: string;
   slippageRate: string;
+  allocationId: string;
+  portfolioMaxLossRate: string;
+  portfolioMaxLossAmount: string;
+  perSymbolMaxWeight: string;
 }
 
 interface Props {
@@ -49,6 +54,10 @@ const DEFAULTS: SessionConfigValues = {
   durationSeconds: "3600",
   feeRate: COST_DEFAULTS.feeRate,
   slippageRate: COST_DEFAULTS.slippageRate,
+  allocationId: "",
+  portfolioMaxLossRate: "",
+  portfolioMaxLossAmount: "",
+  perSymbolMaxWeight: "",
 };
 
 function FieldLabel({
@@ -87,13 +96,15 @@ export function SessionConfigForm({
   const [strategyError, setStrategyError] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [seeded, setSeeded] = useState(false);
+  const [portfolioAvailable, setPortfolioAvailable] = useState<string | null>(null);
+  const [allocations, setAllocations] = useState<PortfolioAllocation[]>([]);
 
   // Fresh open only: seed once on mount. Parent keeps form mounted across tabs.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const settings = await getSettings();
+        const [settings, portfolio] = await Promise.all([getSettings(), getPortfolio()]);
         if (cancelled || seeded) return;
         const seed = settingsToSharedSeed(settings);
         setValues((prev) => ({
@@ -108,10 +119,15 @@ export function SessionConfigForm({
           maxTrades: seed.maxTrades,
           feeRate: seed.feeRate,
           slippageRate: seed.slippageRate,
-          // durationSeconds stays a Simulation-only local default
+          allocationId: seed.preferredAllocationId,
+          portfolioMaxLossRate: seed.portfolioMaxLossRate,
+          portfolioMaxLossAmount: seed.portfolioMaxLossAmount,
+          perSymbolMaxWeight: seed.perSymbolMaxWeight,
         }));
         setStrategy(seed.strategy);
         setPreferredStrategy(seed.strategy);
+        setPortfolioAvailable(portfolio.available);
+        setAllocations(portfolio.allocations ?? []);
         setSeeded(true);
       } catch {
         if (!cancelled) setSeeded(true);
@@ -147,6 +163,16 @@ export function SessionConfigForm({
       setLocalError(nest);
       return;
     }
+    if (portfolioAvailable != null) {
+      const allocated = Number(values.allocatedCapital);
+      const available = Number(portfolioAvailable);
+      if (Number.isFinite(allocated) && Number.isFinite(available) && allocated > available) {
+        setLocalError(
+          `Allocated capital (${values.allocatedCapital}) exceeds Portfolio available USDT (${portfolioAvailable}).`,
+        );
+        return;
+      }
+    }
     if (!values.targetNetProfitRate.trim() || !values.maxSessionLossRate.trim()) {
       setLocalError("Target net profit rate and max session loss rate are required for Simulation.");
       return;
@@ -160,6 +186,13 @@ export function SessionConfigForm({
     if (!Number.isInteger(duration) || duration < 1) {
       setLocalError("Duration must be an integer ≥ 1 second.");
       return;
+    }
+    if (values.perSymbolMaxWeight.trim()) {
+      const w = Number(values.perSymbolMaxWeight);
+      if (!(w > 0 && w <= 1)) {
+        setLocalError("Per-symbol max weight must be > 0 and ≤ 1 when set.");
+        return;
+      }
     }
     if (strategyError) {
       setLocalError(strategyError);
@@ -180,6 +213,10 @@ export function SessionConfigForm({
       slippageRate: values.slippageRate || undefined,
       strategyId: strategy.strategyId,
       strategyParams: strategy.strategyParams,
+      allocationId: values.allocationId.trim() || null,
+      portfolioMaxLossRate: values.portfolioMaxLossRate.trim() || null,
+      portfolioMaxLossAmount: values.portfolioMaxLossAmount.trim() || null,
+      perSymbolMaxWeight: values.perSymbolMaxWeight.trim() || null,
     });
   }
 
@@ -195,7 +232,9 @@ export function SessionConfigForm({
       <h2 id="simulation-config-title">Configure session</h2>
       <p className="note">
         Simulation only — real-money trading is unavailable. Profit and loss are
-        rates of allocated capital; amounts update live.
+        rates of allocated capital; amounts update live. Allocated capital cannot
+        exceed Portfolio available USDT
+        {portfolioAvailable != null ? ` (currently ${portfolioAvailable})` : ""}.
       </p>
 
       <StrategyConfigFields
@@ -254,7 +293,7 @@ export function SessionConfigForm({
         <label>
           <FieldLabel
             tipLabel="Allocated capital"
-            tipText="How much of starting capital this session is allowed to use. Cannot be higher than starting capital."
+            tipText="How much of starting capital this session is allowed to use. Cannot be higher than starting capital or Portfolio available USDT."
             tipTestId="tip-allocated"
           >
             Allocated capital (USDT)
@@ -267,6 +306,33 @@ export function SessionConfigForm({
             onChange={(e) => setField("allocatedCapital", e.target.value)}
             required
           />
+          {portfolioAvailable != null ? (
+            <span className="field-hint" data-testid="sim-portfolio-available">
+              Portfolio available: {portfolioAvailable} USDT
+            </span>
+          ) : null}
+        </label>
+        <label>
+          <FieldLabel
+            tipLabel="Bind allocation"
+            tipText="Optional. When bound, BUYs are limited by this allocation’s reserved size minus what this session has already deployed."
+            tipTestId="tip-allocation"
+          >
+            Bind allocation (optional)
+          </FieldLabel>
+          <select
+            data-testid="sim-allocation"
+            value={values.allocationId}
+            disabled={disabled}
+            onChange={(e) => setField("allocationId", e.target.value)}
+          >
+            <option value="">None</option>
+            {allocations.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.label} ({a.reservedSize} USDT)
+              </option>
+            ))}
+          </select>
         </label>
         <label>
           <FieldLabel
@@ -324,6 +390,57 @@ export function SessionConfigForm({
           <span className="field-hint" data-testid="sim-loss-derived">
             {rateToPercentLabel(values.maxSessionLossRate)} ≈ {lossAmount ?? "—"} USDT
           </span>
+        </label>
+        <label>
+          <FieldLabel
+            tipLabel="Portfolio max-loss rate"
+            tipText="Optional. Stops the session when Portfolio loss from the start baseline reaches this fraction of the baseline metric."
+            tipTestId="tip-portfolio-loss-rate"
+          >
+            Portfolio max-loss rate (optional)
+          </FieldLabel>
+          <input
+            data-testid="sim-portfolio-loss-rate"
+            inputMode="decimal"
+            value={values.portfolioMaxLossRate}
+            disabled={disabled}
+            placeholder="unset"
+            onChange={(e) => setField("portfolioMaxLossRate", e.target.value)}
+          />
+        </label>
+        <label>
+          <FieldLabel
+            tipLabel="Portfolio max-loss amount"
+            tipText="Optional absolute USDT Portfolio loss bound from the start baseline."
+            tipTestId="tip-portfolio-loss-amount"
+          >
+            Portfolio max-loss amount (optional)
+          </FieldLabel>
+          <input
+            data-testid="sim-portfolio-loss-amount"
+            inputMode="decimal"
+            value={values.portfolioMaxLossAmount}
+            disabled={disabled}
+            placeholder="unset"
+            onChange={(e) => setField("portfolioMaxLossAmount", e.target.value)}
+          />
+        </label>
+        <label>
+          <FieldLabel
+            tipLabel="Per-symbol max weight"
+            tipText="Optional. Maximum Portfolio weight of the traded base asset after a BUY (0.2 = 20%). Quote USDT is uncapped."
+            tipTestId="tip-per-symbol"
+          >
+            Per-symbol max weight (optional)
+          </FieldLabel>
+          <input
+            data-testid="sim-per-symbol-weight"
+            inputMode="decimal"
+            value={values.perSymbolMaxWeight}
+            disabled={disabled}
+            placeholder="unset"
+            onChange={(e) => setField("perSymbolMaxWeight", e.target.value)}
+          />
         </label>
         <label>
           <FieldLabel

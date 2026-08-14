@@ -25,4 +25,8 @@ def product_starter_defaults() -> dict[str, Any]:
         "maxTrades": None,
         "strategyId": "dual_ema",
         "strategyParams": dict(DEFAULT_DUAL_EMA_PARAMS),
+        "portfolioMaxLossRate": None,
+        "portfolioMaxLossAmount": None,
+        "perSymbolMaxWeight": None,
+        "preferredAllocationId": None,
     }

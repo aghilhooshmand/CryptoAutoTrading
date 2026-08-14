@@ -15,6 +15,10 @@ export interface OperatorSettings {
   maxTrades: number | null;
   strategyId: string;
   strategyParams: Record<string, number | string>;
+  portfolioMaxLossRate: string | null;
+  portfolioMaxLossAmount: string | null;
+  perSymbolMaxWeight: string | null;
+  preferredAllocationId: string | null;
   updatedAt: string | null;
   source: SettingsSource;
   warning: string | null;

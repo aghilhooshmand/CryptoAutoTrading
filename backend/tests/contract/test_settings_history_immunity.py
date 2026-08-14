@@ -60,6 +60,7 @@ def client(tmp_path, monkeypatch):
         with patch("app.simulation.pipeline.get_market_data_service", return_value=mock_sim):
             with patch("app.simulation.worker.ensure_worker_running"):
                 with TestClient(app) as c:
+                    c.put("/portfolio/funding", json={"cash": "100000"})
                     yield c
 
 

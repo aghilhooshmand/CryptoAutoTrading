@@ -31,6 +31,25 @@ describe("simulation info tooltips", () => {
         if (url.includes("/settings")) {
           return new Response(JSON.stringify(seededSettings), { status: 200 });
         }
+        if (url.includes("/portfolio")) {
+          return new Response(
+            JSON.stringify({
+              cash: "10000",
+              reserved: "0",
+              available: "10000",
+              deployed: "0",
+              equity: "10000",
+              equityComplete: true,
+              unvaluedAssets: [],
+              positions: [],
+              holdings: [],
+              allocations: [],
+              updatedAt: null,
+              warning: null,
+            }),
+            { status: 200 },
+          );
+        }
         if (url.includes("/strategies")) {
           return new Response(JSON.stringify({ strategies: [] }), { status: 200 });
         }

@@ -274,7 +274,7 @@ Execution Abstraction
 |---|---|---|
 | 008 | Trading & Experiment Defaults | DONE |
 | 009 | Portfolio & Capital Allocation Core | DONE |
-| 010 | Advanced Risk Management | PLANNED |
+| 010 | Advanced Risk Management | IN PROGRESS |
 | 011 | Execution Abstraction | PLANNED |
 
 ---
@@ -397,7 +397,7 @@ Potential areas:
 
 Exact rules must be specified before implementation.
 
-Status: `PLANNED`
+Status: `IN PROGRESS`
 
 ---
 

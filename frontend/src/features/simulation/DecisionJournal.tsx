@@ -32,7 +32,11 @@ export function DecisionJournal({ items }: Props) {
                   <td>{item.createdAt}</td>
                   <td>{item.signal}</td>
                   <td>{item.outcome}</td>
-                  <td>{item.reasonCode ?? item.reasonMessage ?? "—"}</td>
+                  <td>
+                    {item.reasonCode || item.reasonMessage
+                      ? [item.reasonCode, item.reasonMessage].filter(Boolean).join(" — ")
+                      : "—"}
+                  </td>
                   <td>
                     {item.fastEma ?? "—"} / {item.slowEma ?? "—"}
                   </td>

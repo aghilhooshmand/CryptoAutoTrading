@@ -21,6 +21,9 @@ from app.simulation.accounting import (
 from app.simulation.clock import Clock, SystemClock
 from app.simulation.execution.port import ExecutionIntent, SimulationExecutionEngine
 from app.simulation.money import DEFAULT_FEE_RATE, DEFAULT_SLIPPAGE_RATE, as_str, d
+from app.portfolio import repository as portfolio_repo
+from app.simulation.control import reasons as risk_reasons
+from app.simulation.portfolio_risk import freeze_portfolio_loss_baseline, portfolio_available_amount
 from app.simulation.state_machine import SessionState, transition
 from app.strategy.params import StrategyParamError
 from app.strategy.registry import UnknownStrategyError, is_known_strategy_id, validate_and_materialize
@@ -82,6 +85,58 @@ def create_session(db: Session, body: dict, clock: Clock | None = None) -> Simul
 
     _validate_capital(starting, allocated, max_pos)
 
+    # Feature 010: allocated must fit Portfolio available at create.
+    try:
+        available = portfolio_available_amount(db)
+    except Exception as exc:  # noqa: BLE001
+        raise SessionError(
+            risk_reasons.INSUFFICIENT_PORTFOLIO_AVAILABLE,
+            risk_reasons.message_for(risk_reasons.INSUFFICIENT_PORTFOLIO_AVAILABLE),
+            400,
+        ) from exc
+    if allocated > available:
+        raise SessionError(
+            risk_reasons.INSUFFICIENT_PORTFOLIO_AVAILABLE,
+            risk_reasons.message_for(risk_reasons.INSUFFICIENT_PORTFOLIO_AVAILABLE),
+            400,
+        )
+
+    allocation_id = body.get("allocationId")
+    if allocation_id is not None and allocation_id != "":
+        allocation_id = str(allocation_id)
+        alloc = portfolio_repo.get_allocation(db, allocation_id)
+        if alloc is None:
+            raise SessionError("not_found", "Allocation not found", 400)
+    else:
+        allocation_id = None
+
+    portfolio_max_loss_rate = None
+    portfolio_max_loss_amount = None
+    if body.get("portfolioMaxLossRate") not in (None, ""):
+        try:
+            portfolio_max_loss_rate = as_str(d(body["portfolioMaxLossRate"]))
+            if d(portfolio_max_loss_rate) <= 0:
+                raise SessionError("invalid_config", "portfolioMaxLossRate must be > 0")
+        except (ValueError, TypeError) as exc:
+            raise SessionError("invalid_config", f"Invalid portfolioMaxLossRate: {exc}") from exc
+    if body.get("portfolioMaxLossAmount") not in (None, ""):
+        try:
+            portfolio_max_loss_amount = as_str(d(body["portfolioMaxLossAmount"]))
+            if d(portfolio_max_loss_amount) <= 0:
+                raise SessionError("invalid_config", "portfolioMaxLossAmount must be > 0")
+        except (ValueError, TypeError) as exc:
+            raise SessionError("invalid_config", f"Invalid portfolioMaxLossAmount: {exc}") from exc
+
+    per_symbol_max_weight = None
+    if body.get("perSymbolMaxWeight") not in (None, ""):
+        try:
+            w = d(body["perSymbolMaxWeight"])
+            if not (Decimal("0") < w <= Decimal("1")):
+                raise SessionError("invalid_config", "perSymbolMaxWeight must be > 0 and ≤ 1")
+            per_symbol_max_weight = as_str(w)
+        except (ValueError, TypeError) as exc:
+            raise SessionError("invalid_config", f"Invalid perSymbolMaxWeight: {exc}") from exc
+
     symbol = str(body["symbol"])
     timeframe = str(body["timeframe"])
     if timeframe not in ALLOWED_INTERVALS:
@@ -131,6 +186,10 @@ def create_session(db: Session, body: dict, clock: Clock | None = None) -> Simul
         cumulative_slippage_cost="0",
         cumulative_gross_realized="0",
         position_flatten_status="n/a",
+        allocation_id=allocation_id,
+        portfolio_max_loss_rate=portfolio_max_loss_rate,
+        portfolio_max_loss_amount=portfolio_max_loss_amount,
+        per_symbol_max_weight=per_symbol_max_weight,
         created_at=now,
         updated_at=now,
     )
@@ -179,6 +238,26 @@ async def start_session_async(
             400,
         )
 
+    # Feature 010: re-check Portfolio available at start; freeze max-loss baseline.
+    try:
+        available = portfolio_available_amount(db)
+    except Exception as exc:  # noqa: BLE001
+        raise SessionError(
+            risk_reasons.INSUFFICIENT_PORTFOLIO_AVAILABLE,
+            risk_reasons.message_for(risk_reasons.INSUFFICIENT_PORTFOLIO_AVAILABLE),
+            400,
+        ) from exc
+    if d(row.allocated_capital) > available:
+        raise SessionError(
+            risk_reasons.INSUFFICIENT_PORTFOLIO_AVAILABLE,
+            risk_reasons.message_for(risk_reasons.INSUFFICIENT_PORTFOLIO_AVAILABLE),
+            400,
+        )
+    if row.allocation_id:
+        alloc = portfolio_repo.get_allocation(db, row.allocation_id)
+        if alloc is None:
+            raise SessionError("not_found", "Bound allocation no longer exists", 400)
+
     try:
         await get_market_data_service().get_quote(row.symbol)
     except Exception as exc:  # noqa: BLE001
@@ -189,6 +268,7 @@ async def start_session_async(
     row.state = SessionState.RUNNING.value
     row.started_at = now
     row.updated_at = now
+    freeze_portfolio_loss_baseline(db, row)
     db.commit()
     db.refresh(row)
     from app.simulation.worker import ensure_worker_running
@@ -469,6 +549,12 @@ async def session_to_dict(row: SimulationSessionRow) -> dict:
         "durationSeconds": row.duration_seconds,
         "feeRate": row.fee_rate,
         "slippageRate": row.slippage_rate,
+        "allocationId": row.allocation_id,
+        "portfolioMaxLossRate": row.portfolio_max_loss_rate,
+        "portfolioMaxLossAmount": row.portfolio_max_loss_amount,
+        "portfolioLossBaselineKind": row.portfolio_loss_baseline_kind,
+        "portfolioLossBaselineValue": row.portfolio_loss_baseline_value,
+        "perSymbolMaxWeight": row.per_symbol_max_weight,
         "cash": row.cash,
         "positionSide": row.position_side,
         "positionQty": row.position_qty,

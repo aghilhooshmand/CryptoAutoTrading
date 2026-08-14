@@ -21,6 +21,10 @@ const distinctive: OperatorSettings = {
   maxTrades: null,
   strategyId: "rsi",
   strategyParams: { period: 14, overbought: 70, oversold: 30 },
+  portfolioMaxLossRate: null,
+  portfolioMaxLossAmount: null,
+  perSymbolMaxWeight: null,
+  preferredAllocationId: null,
   updatedAt: "2026-08-12T00:00:00Z",
   source: "saved",
   warning: null,
@@ -31,6 +35,25 @@ function mockApis(settings: OperatorSettings = distinctive) {
     const url = String(input);
     if (url.includes("/settings")) {
       return new Response(JSON.stringify(settings), { status: 200 });
+    }
+    if (url.includes("/portfolio")) {
+      return new Response(
+        JSON.stringify({
+          cash: "10000",
+          reserved: "0",
+          available: "10000",
+          deployed: "0",
+          equity: "10000",
+          equityComplete: true,
+          unvaluedAssets: [],
+          positions: [],
+          holdings: [],
+          allocations: [],
+          updatedAt: null,
+          warning: null,
+        }),
+        { status: 200 },
+      );
     }
     if (url.includes("/strategies")) {
       return new Response(

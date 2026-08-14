@@ -30,6 +30,10 @@ function toWriteBody(
     targetNetProfitRate: string;
     maxSessionLossRate: string;
     maxTrades: string;
+    portfolioMaxLossRate: string;
+    portfolioMaxLossAmount: string;
+    perSymbolMaxWeight: string;
+    preferredAllocationId: string;
   },
   strategy: StrategyConfigValue,
 ): SettingsWriteBody {
@@ -46,6 +50,13 @@ function toWriteBody(
     maxTrades: values.maxTrades.trim() === "" ? null : Number(values.maxTrades),
     strategyId: strategy.strategyId,
     strategyParams: strategy.strategyParams,
+    portfolioMaxLossRate:
+      values.portfolioMaxLossRate.trim() === "" ? null : values.portfolioMaxLossRate,
+    portfolioMaxLossAmount:
+      values.portfolioMaxLossAmount.trim() === "" ? null : values.portfolioMaxLossAmount,
+    perSymbolMaxWeight: values.perSymbolMaxWeight.trim() === "" ? null : values.perSymbolMaxWeight,
+    preferredAllocationId:
+      values.preferredAllocationId.trim() === "" ? null : values.preferredAllocationId,
   };
 }
 
@@ -67,6 +78,10 @@ function applySettingsToState(
     targetNetProfitRate: data.targetNetProfitRate ?? "",
     maxSessionLossRate: data.maxSessionLossRate ?? "",
     maxTrades: data.maxTrades == null ? "" : String(data.maxTrades),
+    portfolioMaxLossRate: data.portfolioMaxLossRate ?? "",
+    portfolioMaxLossAmount: data.portfolioMaxLossAmount ?? "",
+    perSymbolMaxWeight: data.perSymbolMaxWeight ?? "",
+    preferredAllocationId: data.preferredAllocationId ?? "",
   });
   const nextStrategy = {
     strategyId: data.strategyId,
@@ -89,6 +104,10 @@ function emptyValues() {
     targetNetProfitRate: "",
     maxSessionLossRate: "",
     maxTrades: "",
+    portfolioMaxLossRate: "",
+    portfolioMaxLossAmount: "",
+    perSymbolMaxWeight: "",
+    preferredAllocationId: "",
   };
 }
 
@@ -322,6 +341,46 @@ export function SettingsPanel() {
             disabled={busy}
             placeholder="unset"
             onChange={(e) => setField("maxTrades", e.target.value)}
+          />
+        </label>
+        <label>
+          Portfolio max-loss rate (optional)
+          <input
+            data-testid="settings-portfolio-loss-rate"
+            value={values.portfolioMaxLossRate}
+            disabled={busy}
+            placeholder="unset"
+            onChange={(e) => setField("portfolioMaxLossRate", e.target.value)}
+          />
+        </label>
+        <label>
+          Portfolio max-loss amount (optional)
+          <input
+            data-testid="settings-portfolio-loss-amount"
+            value={values.portfolioMaxLossAmount}
+            disabled={busy}
+            placeholder="unset"
+            onChange={(e) => setField("portfolioMaxLossAmount", e.target.value)}
+          />
+        </label>
+        <label>
+          Per-symbol max weight (optional)
+          <input
+            data-testid="settings-per-symbol-weight"
+            value={values.perSymbolMaxWeight}
+            disabled={busy}
+            placeholder="unset"
+            onChange={(e) => setField("perSymbolMaxWeight", e.target.value)}
+          />
+        </label>
+        <label>
+          Preferred allocation id (optional)
+          <input
+            data-testid="settings-preferred-allocation"
+            value={values.preferredAllocationId}
+            disabled={busy}
+            placeholder="unset"
+            onChange={(e) => setField("preferredAllocationId", e.target.value)}
           />
         </label>
         <div className="sim-cost-fields">

@@ -54,6 +54,21 @@ def _optional_rate(raw: Any) -> str | None:
     return as_str(value)
 
 
+def _optional_weight(raw: Any) -> str | None:
+    if raw is None or raw == "":
+        return None
+    value = d(raw)
+    if not (Decimal("0") < value <= Decimal("1")):
+        raise SettingsError("invalid_config", "perSymbolMaxWeight must be > 0 and ≤ 1 when set")
+    return as_str(value)
+
+
+def _optional_allocation_id(raw: Any) -> str | None:
+    if raw is None or raw == "":
+        return None
+    return str(raw)
+
+
 def _optional_max_trades(raw: Any) -> int | None:
     if raw is None or raw == "":
         return None
@@ -95,6 +110,10 @@ def _validate_body(body: dict[str, Any]) -> dict[str, Any]:
         target = _optional_rate(body.get("targetNetProfitRate"))
         loss = _optional_rate(body.get("maxSessionLossRate"))
         max_trades = _optional_max_trades(body.get("maxTrades"))
+        portfolio_max_loss_rate = _optional_rate(body.get("portfolioMaxLossRate"))
+        portfolio_max_loss_amount = _optional_rate(body.get("portfolioMaxLossAmount"))
+        per_symbol_max_weight = _optional_weight(body.get("perSymbolMaxWeight"))
+        preferred_allocation_id = _optional_allocation_id(body.get("preferredAllocationId"))
     except (ValueError, TypeError) as exc:
         raise SettingsError("invalid_config", f"Invalid optional risk fields: {exc}") from exc
 
@@ -121,6 +140,10 @@ def _validate_body(body: dict[str, Any]) -> dict[str, Any]:
         "max_trades": max_trades,
         "strategy_id": canonical_id,
         "strategy_params": effective_params,
+        "portfolio_max_loss_rate": portfolio_max_loss_rate,
+        "portfolio_max_loss_amount": portfolio_max_loss_amount,
+        "per_symbol_max_weight": per_symbol_max_weight,
+        "preferred_allocation_id": preferred_allocation_id,
     }
 
 
@@ -138,6 +161,10 @@ def _payload(
     max_trades: int | None,
     strategy_id: str,
     strategy_params: dict[str, Any],
+    portfolio_max_loss_rate: str | None = None,
+    portfolio_max_loss_amount: str | None = None,
+    per_symbol_max_weight: str | None = None,
+    preferred_allocation_id: str | None = None,
     source: str,
     updated_at: str | None,
     warning: str | None = None,
@@ -155,6 +182,10 @@ def _payload(
         "maxTrades": max_trades,
         "strategyId": strategy_id,
         "strategyParams": strategy_params,
+        "portfolioMaxLossRate": portfolio_max_loss_rate,
+        "portfolioMaxLossAmount": portfolio_max_loss_amount,
+        "perSymbolMaxWeight": per_symbol_max_weight,
+        "preferredAllocationId": preferred_allocation_id,
         "updatedAt": updated_at,
         "source": source,
         "warning": warning,
@@ -176,6 +207,10 @@ def _starters_response(*, warning: str | None = None) -> dict[str, Any]:
         max_trades=body["maxTrades"],
         strategy_id=body["strategyId"],
         strategy_params=dict(body["strategyParams"]),
+        portfolio_max_loss_rate=body.get("portfolioMaxLossRate"),
+        portfolio_max_loss_amount=body.get("portfolioMaxLossAmount"),
+        per_symbol_max_weight=body.get("perSymbolMaxWeight"),
+        preferred_allocation_id=body.get("preferredAllocationId"),
         source="starters",
         updated_at=None,
         warning=warning,
@@ -196,6 +231,10 @@ def _validated_to_payload(validated: dict[str, Any], *, source: str, updated_at:
         max_trades=validated["max_trades"],
         strategy_id=validated["strategy_id"],
         strategy_params=dict(validated["strategy_params"]),
+        portfolio_max_loss_rate=validated.get("portfolio_max_loss_rate"),
+        portfolio_max_loss_amount=validated.get("portfolio_max_loss_amount"),
+        per_symbol_max_weight=validated.get("per_symbol_max_weight"),
+        preferred_allocation_id=validated.get("preferred_allocation_id"),
         source=source,
         updated_at=updated_at,
         warning=None,
@@ -218,6 +257,10 @@ def _validate_stored_row(row: Any) -> dict[str, Any]:
             "maxTrades": row.max_trades,
             "strategyId": row.strategy_id,
             "strategyParams": params,
+            "portfolioMaxLossRate": getattr(row, "portfolio_max_loss_rate", None),
+            "portfolioMaxLossAmount": getattr(row, "portfolio_max_loss_amount", None),
+            "perSymbolMaxWeight": getattr(row, "per_symbol_max_weight", None),
+            "preferredAllocationId": getattr(row, "preferred_allocation_id", None),
         }
     )
 
@@ -257,6 +300,10 @@ def put_settings(db: Session, body: dict[str, Any]) -> dict[str, Any]:
         max_trades=validated["max_trades"],
         strategy_id=validated["strategy_id"],
         strategy_params=validated["strategy_params"],
+        portfolio_max_loss_rate=validated.get("portfolio_max_loss_rate"),
+        portfolio_max_loss_amount=validated.get("portfolio_max_loss_amount"),
+        per_symbol_max_weight=validated.get("per_symbol_max_weight"),
+        preferred_allocation_id=validated.get("preferred_allocation_id"),
     )
     return _validated_to_payload(validated, source="saved", updated_at=_iso(row.updated_at))
 

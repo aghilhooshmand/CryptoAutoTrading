@@ -169,7 +169,9 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
         db.commit()
         return
 
-    rctx = RiskContext(
+    from app.simulation.portfolio_risk import apply_portfolio_context
+
+    rctx_kwargs = dict(
         position_side=row.position_side,
         cash=d(row.cash),
         qty=d(row.position_qty),
@@ -183,6 +185,8 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
         mark_price=mark,
         mark_safe=safe,
     )
+    apply_portfolio_context(rctx_kwargs, db=db, row=row)
+    rctx = RiskContext(**rctx_kwargs)
     risk_dec = risk.review(signal, rctx)
     if not risk_dec.approved:
         add_decision(

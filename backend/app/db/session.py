@@ -50,6 +50,23 @@ def init_db() -> None:
     _ensure_column(engine, "backtest_runs", "origin", "TEXT DEFAULT 'manual'")
     _ensure_column(engine, "backtest_runs", "comparison_id", "TEXT")
     _ensure_column(engine, "portfolio", "fill_apply_warning", "TEXT")
+    # Feature 010 session risk fields
+    for col, typ in (
+        ("allocation_id", "TEXT"),
+        ("portfolio_max_loss_rate", "TEXT"),
+        ("portfolio_max_loss_amount", "TEXT"),
+        ("portfolio_loss_baseline_kind", "TEXT"),
+        ("portfolio_loss_baseline_value", "TEXT"),
+        ("per_symbol_max_weight", "TEXT"),
+    ):
+        _ensure_column(engine, "simulation_sessions", col, typ)
+    for col, typ in (
+        ("portfolio_max_loss_rate", "TEXT"),
+        ("portfolio_max_loss_amount", "TEXT"),
+        ("per_symbol_max_weight", "TEXT"),
+        ("preferred_allocation_id", "TEXT"),
+    ):
+        _ensure_column(engine, "operator_defaults", col, typ)
     # Feature 009: leftover portfolio.cash → usdt holding; provenance rewrite.
     from app.portfolio.repository import migrate_cash_to_usdt, migrate_provenance
 

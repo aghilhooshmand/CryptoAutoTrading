@@ -26,6 +26,10 @@ class SettingsBody(BaseModel):
     maxTrades: Optional[int] = None
     strategyId: str
     strategyParams: Optional[dict[str, Any]] = Field(default=None)
+    portfolioMaxLossRate: Optional[str] = None
+    portfolioMaxLossAmount: Optional[str] = None
+    perSymbolMaxWeight: Optional[str] = None
+    preferredAllocationId: Optional[str] = None
 
 
 def _raise(err: svc.SettingsError) -> None:

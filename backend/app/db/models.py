@@ -54,6 +54,13 @@ class SimulationSessionRow(Base):
     unsafe_quote_streak: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # Feature 010 — effective portfolio-aware risk (nullable)
+    allocation_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    portfolio_max_loss_rate: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    portfolio_max_loss_amount: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    portfolio_loss_baseline_kind: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    portfolio_loss_baseline_value: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    per_symbol_max_weight: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class DecisionJournalRow(Base):
@@ -181,6 +188,11 @@ class OperatorDefaultsRow(Base):
     strategy_id: Mapped[str] = mapped_column(String(64))
     strategy_params: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # Feature 010 optional defaults
+    portfolio_max_loss_rate: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    portfolio_max_loss_amount: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    per_symbol_max_weight: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    preferred_allocation_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
 
 class BacktestDecisionRow(Base):

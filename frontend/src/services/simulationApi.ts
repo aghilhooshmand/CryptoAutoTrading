@@ -71,6 +71,10 @@ export interface CreateSessionRequest {
   slippageRate?: string;
   strategyId: string;
   strategyParams?: Record<string, number | string>;
+  allocationId?: string | null;
+  portfolioMaxLossRate?: string | null;
+  portfolioMaxLossAmount?: string | null;
+  perSymbolMaxWeight?: string | null;
 }
 
 export interface DecisionItem {

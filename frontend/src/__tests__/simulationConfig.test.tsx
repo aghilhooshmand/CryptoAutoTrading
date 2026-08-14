@@ -21,8 +21,27 @@ const seededSettings = {
   maxTrades: 20,
   strategyId: "dual_ema",
   strategyParams: { fastPeriod: 9, slowPeriod: 21 },
+  portfolioMaxLossRate: null,
+  portfolioMaxLossAmount: null,
+  perSymbolMaxWeight: null,
+  preferredAllocationId: null,
   updatedAt: null,
   source: "saved" as const,
+  warning: null,
+};
+
+const emptyPortfolio = {
+  cash: "10000",
+  reserved: "0",
+  available: "10000",
+  deployed: "0",
+  equity: "10000",
+  equityComplete: true,
+  unvaluedAssets: [],
+  positions: [],
+  holdings: [],
+  allocations: [],
+  updatedAt: null,
   warning: null,
 };
 
@@ -34,6 +53,9 @@ describe("simulation config validation", () => {
         const url = String(input);
         if (url.includes("/settings")) {
           return new Response(JSON.stringify(seededSettings), { status: 200 });
+        }
+        if (url.includes("/portfolio")) {
+          return new Response(JSON.stringify(emptyPortfolio), { status: 200 });
         }
         if (url.includes("/strategies")) {
           return new Response(JSON.stringify({ strategies: [] }), { status: 200 });

@@ -10,6 +10,9 @@ from sqlalchemy.orm import Session
 from app.db.models import PortfolioAllocationRow, PortfolioHoldingRow, SimulationSessionRow
 from app.portfolio import identity, repository as repo
 from app.portfolio.valuation import QuoteView, usdt_quote
+from app.simulation.control import reasons as risk_reasons
+from app.simulation.money import d
+from app.simulation.state_machine import SessionState
 
 QUOTE_ASSET = identity.QUOTE_ASSET
 SIMULATION = "simulation"
@@ -21,6 +24,28 @@ FILL_APPLY_QTY = (
     "Simulation Portfolio could not apply the last fill: insufficient holding quantity."
 )
 ACTIVE_SESSION_STATES = ("RUNNING", "STOPPING")
+
+
+def _sessions_bound_to_allocation(db: Session, allocation_id: str) -> list[SimulationSessionRow]:
+    active = (
+        SessionState.CONFIGURED.value,
+        SessionState.RUNNING.value,
+        SessionState.STOPPING.value,
+    )
+    return (
+        db.query(SimulationSessionRow)
+        .filter(
+            SimulationSessionRow.allocation_id == allocation_id,
+            SimulationSessionRow.state.in_(active),
+        )
+        .all()
+    )
+
+
+def _binding_deployed(row: SimulationSessionRow) -> Decimal:
+    if row.position_side == "long" and row.cost_basis:
+        return d(row.cost_basis)
+    return Decimal("0")
 
 
 class PortfolioError(Exception):
@@ -606,6 +631,15 @@ def _apply_resize_allocation(db: Session, allocation_id: str, reserved_size: str
     if size <= 0:
         raise PortfolioError("invalid_config", "Reserved size must be greater than zero")
 
+    bound = _sessions_bound_to_allocation(db, allocation_id)
+    if bound:
+        max_deployed = max((_binding_deployed(s) for s in bound), default=Decimal("0"))
+        if size < max_deployed:
+            raise PortfolioError(
+                risk_reasons.ALLOCATION_RESIZE_BLOCKED,
+                risk_reasons.message_for(risk_reasons.ALLOCATION_RESIZE_BLOCKED),
+            )
+
     repo.ensure_portfolio(db)
     repo.migrate_cash_to_usdt(db)
     cash = quote_cash_amount(db)
@@ -633,6 +667,11 @@ def resize_allocation(
 
 
 def _apply_release_allocation(db: Session, allocation_id: str) -> None:
+    if _sessions_bound_to_allocation(db, allocation_id):
+        raise PortfolioError(
+            risk_reasons.ALLOCATION_RELEASE_BLOCKED,
+            risk_reasons.message_for(risk_reasons.ALLOCATION_RELEASE_BLOCKED),
+        )
     if not repo.delete_allocation(db, allocation_id):
         raise PortfolioError("not_found", "Allocation not found", http_status=404)
 

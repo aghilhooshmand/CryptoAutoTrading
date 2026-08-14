@@ -27,8 +27,31 @@ function mockFetch() {
           maxTrades: null,
           strategyId: "dual_ema",
           strategyParams: { fastPeriod: 9, slowPeriod: 21 },
+          portfolioMaxLossRate: null,
+          portfolioMaxLossAmount: null,
+          perSymbolMaxWeight: null,
+          preferredAllocationId: null,
           updatedAt: null,
           source: "starters",
+          warning: null,
+        }),
+      };
+    }
+    if (url.includes("/portfolio")) {
+      return {
+        ok: true,
+        json: async () => ({
+          cash: "10000",
+          reserved: "0",
+          available: "10000",
+          deployed: "0",
+          equity: "10000",
+          equityComplete: true,
+          unvaluedAssets: [],
+          positions: [],
+          holdings: [],
+          allocations: [],
+          updatedAt: null,
           warning: null,
         }),
       };

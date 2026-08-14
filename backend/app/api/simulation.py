@@ -29,6 +29,10 @@ class CreateSessionBody(BaseModel):
     slippageRate: Optional[str] = None
     strategyId: Optional[str] = None
     strategyParams: Optional[dict[str, Any]] = None
+    allocationId: Optional[str] = None
+    portfolioMaxLossRate: Optional[str] = None
+    portfolioMaxLossAmount: Optional[str] = None
+    perSymbolMaxWeight: Optional[str] = None
 
 
 def _raise(err: svc.SessionError) -> None:

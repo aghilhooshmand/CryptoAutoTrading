@@ -18,6 +18,10 @@ export interface SharedFormSeed {
   targetNetProfitRate: string;
   maxSessionLossRate: string;
   maxTrades: string;
+  portfolioMaxLossRate: string;
+  portfolioMaxLossAmount: string;
+  perSymbolMaxWeight: string;
+  preferredAllocationId: string;
   strategy: StrategyConfigValue;
 }
 
@@ -43,6 +47,10 @@ export function settingsToSharedSeed(settings: OperatorSettings): SharedFormSeed
     targetNetProfitRate: optionalRateToInput(settings.targetNetProfitRate),
     maxSessionLossRate: optionalRateToInput(settings.maxSessionLossRate),
     maxTrades: optionalMaxTradesToInput(settings.maxTrades),
+    portfolioMaxLossRate: optionalRateToInput(settings.portfolioMaxLossRate),
+    portfolioMaxLossAmount: optionalRateToInput(settings.portfolioMaxLossAmount),
+    perSymbolMaxWeight: optionalRateToInput(settings.perSymbolMaxWeight),
+    preferredAllocationId: settings.preferredAllocationId ?? "",
     strategy: {
       strategyId: settings.strategyId || "dual_ema",
       strategyParams: { ...(settings.strategyParams || defaultStrategyConfig().strategyParams) },
