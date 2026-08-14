@@ -186,3 +186,10 @@ T044–T052 foundation (remove operator holdings API + fill-apply domain)
 | **US4** | T069–T072 |
 | **US5** | T073–T076 |
 | **Setup + Foundational + Polish** | T044–T052, T077–T083 |
+
+---
+
+## Phase 9: Convergence
+
+- [X] T086 Show per-holding return % when cost basis and value exist, and show average cost and realized P&L when known, on the holdings table and ~375px cards in `frontend/src/features/portfolio/HoldingsPanel.tsx`; keep USDT unrealized/return omitted per FR-001b / US5/AC1 (partial)
+

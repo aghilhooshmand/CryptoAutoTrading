@@ -265,6 +265,9 @@ describe("Portfolio page", () => {
       expect(screen.getByTestId("holding-qty-usdt")).toHaveTextContent("1000");
       expect(screen.getByTestId("metric-total-pnl")).toHaveTextContent("0 USDT");
       expect(screen.getByTestId("metric-total-return")).toHaveTextContent("0.00%");
+      expect(screen.getByTestId("holding-avg-usdt")).toHaveTextContent("1 USDT");
+      expect(screen.getByTestId("holding-unrealized-usdt")).toHaveTextContent("—");
+      expect(screen.getByTestId("holding-return-usdt")).toHaveTextContent("—");
     });
   });
 
@@ -450,6 +453,15 @@ describe("Portfolio page", () => {
       expect(screen.getByTestId("metric-equity")).toHaveTextContent(/partial/i);
       expect(screen.getByTestId("holding-price-btc")).toHaveTextContent(/stale/i);
       expect(screen.getByTestId("holding-price-eth")).toHaveTextContent(/unavailable/i);
+      expect(screen.getByTestId("holding-avg-btc")).toHaveTextContent("80000 USDT");
+      expect(screen.getByTestId("holding-realized-btc")).toHaveTextContent("0 USDT");
+      expect(screen.getByTestId("holding-unrealized-btc")).toHaveTextContent("50 USDT");
+      expect(screen.getByTestId("holding-return-btc")).toHaveTextContent("12.50%");
+      expect(screen.getByTestId("holding-avg-eth")).toHaveTextContent("—");
+      expect(screen.getByTestId("holding-unrealized-eth")).toHaveTextContent("—");
+      expect(screen.getByTestId("holding-return-eth")).toHaveTextContent("—");
+      expect(screen.getByTestId("holding-unrealized-usdt")).toHaveTextContent("—");
+      expect(screen.getByTestId("holding-return-usdt")).toHaveTextContent("—");
       expect(screen.getByTestId("metric-total-pnl")).toHaveTextContent("—");
       expect(screen.getByTestId("metric-total-return")).toHaveTextContent("—");
       expect(screen.getByTestId("allocation-visual")).toBeInTheDocument();

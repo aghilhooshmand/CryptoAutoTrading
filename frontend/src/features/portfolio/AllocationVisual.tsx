@@ -1,5 +1,5 @@
 import type { PortfolioHolding } from "../../services/portfolioApi";
-import { formatUsdt, formatWeight } from "./capitalDisplay";
+import { formatUsdt, formatWeight, formatReturn } from "./capitalDisplay";
 
 const SLICE_COLORS = ["#2563eb", "#0f766e", "#c2410c", "#7c3aed", "#b45309", "#0369a1"];
 
@@ -62,8 +62,22 @@ export function holdingPriceLabel(holding: PortfolioHolding): string {
   return `${holding.price} USDT${stale}`;
 }
 
-export function holdingPnlLabel(holding: PortfolioHolding): string {
+export function holdingAvgCostLabel(holding: PortfolioHolding): string {
+  if (holding.averageCost == null || holding.averageCost === "") return "—";
+  return formatUsdt(holding.averageCost);
+}
+
+export function holdingRealizedLabel(holding: PortfolioHolding): string {
+  return formatUsdt(holding.realizedPnl);
+}
+
+export function holdingUnrealizedLabel(holding: PortfolioHolding): string {
   if (holding.asset === "usdt") return "—";
   if (holding.unrealizedPnl == null) return "—";
   return formatUsdt(holding.unrealizedPnl);
+}
+
+export function holdingReturnLabel(holding: PortfolioHolding): string {
+  if (holding.asset === "usdt") return "—";
+  return formatReturn(holding.return);
 }

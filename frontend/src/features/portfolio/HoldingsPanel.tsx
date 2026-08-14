@@ -1,6 +1,12 @@
 import type { PortfolioHolding, PortfolioSnapshot } from "../../services/portfolioApi";
 import { formatProvenance, formatUsdt, formatWeight } from "./capitalDisplay";
-import { holdingPnlLabel, holdingPriceLabel } from "./AllocationVisual";
+import {
+  holdingAvgCostLabel,
+  holdingPriceLabel,
+  holdingRealizedLabel,
+  holdingReturnLabel,
+  holdingUnrealizedLabel,
+} from "./AllocationVisual";
 
 interface Props {
   snapshot: PortfolioSnapshot;
@@ -24,8 +30,20 @@ function HoldingCard({ holding }: { holding: PortfolioHolding }) {
           <dd>{formatUsdt(holding.marketValue)}</dd>
         </div>
         <div>
-          <dt>P&amp;L</dt>
-          <dd>{holdingPnlLabel(holding)}</dd>
+          <dt>Avg cost</dt>
+          <dd>{holdingAvgCostLabel(holding)}</dd>
+        </div>
+        <div>
+          <dt>Realized</dt>
+          <dd>{holdingRealizedLabel(holding)}</dd>
+        </div>
+        <div>
+          <dt>Unrealized</dt>
+          <dd>{holdingUnrealizedLabel(holding)}</dd>
+        </div>
+        <div>
+          <dt>Return</dt>
+          <dd>{holdingReturnLabel(holding)}</dd>
         </div>
         <div>
           <dt>Weight</dt>
@@ -50,14 +68,17 @@ export function HoldingsPanel({ snapshot }: Props) {
               <th>Quantity</th>
               <th>Price</th>
               <th>Value</th>
-              <th>P&amp;L</th>
+              <th>Avg cost</th>
+              <th>Realized</th>
+              <th>Unrealized</th>
+              <th>Return</th>
               <th>Weight</th>
             </tr>
           </thead>
           <tbody>
             {snapshot.holdings.length === 0 ? (
               <tr>
-                <td colSpan={6} className="note">
+                <td colSpan={9} className="note">
                   No holdings yet. Fund simulation USDT to start.
                 </td>
               </tr>
@@ -70,7 +91,14 @@ export function HoldingsPanel({ snapshot }: Props) {
                   <td data-testid={`holding-value-${holding.asset}`}>
                     {formatUsdt(holding.marketValue)}
                   </td>
-                  <td>{holdingPnlLabel(holding)}</td>
+                  <td data-testid={`holding-avg-${holding.asset}`}>{holdingAvgCostLabel(holding)}</td>
+                  <td data-testid={`holding-realized-${holding.asset}`}>
+                    {holdingRealizedLabel(holding)}
+                  </td>
+                  <td data-testid={`holding-unrealized-${holding.asset}`}>
+                    {holdingUnrealizedLabel(holding)}
+                  </td>
+                  <td data-testid={`holding-return-${holding.asset}`}>{holdingReturnLabel(holding)}</td>
                   <td data-testid={`holding-weight-${holding.asset}`}>
                     {formatWeight(holding.weight)}
                   </td>
