@@ -1,5 +1,5 @@
 # Tasks: Portfolio & Capital Allocation Core
-
+     
 **Input**: Design documents from `/specs/009-portfolio-capital-allocation/`
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/, quickstart.md
