@@ -41,11 +41,35 @@ def _allocation_dict(row: PortfolioAllocationRow) -> dict[str, Any]:
     }
 
 
+CORRUPT_ALLOCATION_MSG = (
+    "Stored allocation capital is corrupt; refusing to invent balances."
+)
+CORRUPT_PORTFOLIO_MSG = "Stored portfolio capital is corrupt; refusing to invent balances."
+CORRUPT_MUTATION_MSG = (
+    "Stored allocation capital is corrupt; release or repair allocations "
+    "before changing funding or reservations."
+)
+
+
 def _safe_money(raw: str, field: str) -> Decimal | None:
     try:
         return identity.parse_money(raw)
     except identity.CapitalIdentityError:
         return None
+
+
+def _parse_cash_or_error(raw: str) -> Decimal:
+    try:
+        return identity.parse_money(raw)
+    except identity.CapitalIdentityError as exc:
+        raise PortfolioError("invalid_config", CORRUPT_PORTFOLIO_MSG) from exc
+
+
+def _sum_reserved_or_error(sizes: list[str]) -> Decimal:
+    try:
+        return identity.sum_reserved(sizes)
+    except identity.CapitalIdentityError as exc:
+        raise PortfolioError("invalid_config", CORRUPT_MUTATION_MSG) from exc
 
 
 def build_snapshot(db: Session) -> dict[str, Any]:
@@ -56,7 +80,6 @@ def build_snapshot(db: Session) -> dict[str, Any]:
     warning: str | None = None
     if row is None:
         cash = Decimal("0")
-        deployed = Decimal("0")
         realized = Decimal("0")
         unrealized = Decimal("0")
         updated_at = None
@@ -66,40 +89,46 @@ def build_snapshot(db: Session) -> dict[str, Any]:
         realized_v = _safe_money(row.realized_pnl, "realizedPnl")
         unrealized_v = _safe_money(row.unrealized_pnl, "unrealizedPnl")
         if None in (cash_v, deployed_v, realized_v, unrealized_v):
-            warning = "Stored portfolio capital is corrupt; refusing to invent balances."
+            warning = CORRUPT_PORTFOLIO_MSG
             cash = Decimal("0")
-            deployed = Decimal("0")
             realized = Decimal("0")
             unrealized = Decimal("0")
         else:
             cash = cash_v  # type: ignore[assignment]
-            deployed = deployed_v  # type: ignore[assignment]
             realized = realized_v  # type: ignore[assignment]
             unrealized = unrealized_v  # type: ignore[assignment]
         updated_at = row.updated_at
 
     reserved_sizes: list[str] = []
     allocation_out: list[dict[str, Any]] = []
+    allocation_corrupt = False
     for a in allocations:
+        # Keep corrupt rows visible so the operator can inspect/release them.
+        allocation_out.append(_allocation_dict(a))
         size_v = _safe_money(a.reserved_size, "reservedSize")
         if size_v is None:
-            warning = warning or "Stored allocation capital is corrupt; refusing to invent balances."
+            allocation_corrupt = True
             continue
         reserved_sizes.append(a.reserved_size)
-        allocation_out.append(_allocation_dict(a))
 
-    try:
-        reserved = identity.sum_reserved(reserved_sizes) if reserved_sizes else Decimal("0")
-        if warning is None:
-            available = identity.assert_invariants(cash, reserved)
-        else:
-            available = identity.available_from(cash, reserved)
-            if available < 0:
-                available = Decimal("0")
-    except identity.CapitalIdentityError as exc:
-        warning = warning or exc.message
-        reserved = identity.sum_reserved(reserved_sizes) if reserved_sizes else Decimal("0")
+    if allocation_corrupt:
+        # Do not understate reserved by summing only valid rows — that invents available.
+        warning = warning or CORRUPT_ALLOCATION_MSG
+        reserved = Decimal("0")
         available = Decimal("0")
+    else:
+        try:
+            reserved = identity.sum_reserved(reserved_sizes) if reserved_sizes else Decimal("0")
+            if warning is None:
+                available = identity.assert_invariants(cash, reserved)
+            else:
+                available = identity.available_from(cash, reserved)
+                if available < 0:
+                    available = Decimal("0")
+        except identity.CapitalIdentityError as exc:
+            warning = warning or exc.message
+            reserved = identity.sum_reserved(reserved_sizes) if reserved_sizes else Decimal("0")
+            available = Decimal("0")
 
     # Feature 009: deployed always 0, positions empty, equity flat = cash
     return {
@@ -127,7 +156,7 @@ def set_funding(db: Session, cash_raw: str) -> dict[str, Any]:
 
     repo.ensure_portfolio(db)
     allocations = repo.list_allocations(db)
-    reserved = identity.sum_reserved([a.reserved_size for a in allocations])
+    reserved = _sum_reserved_or_error([a.reserved_size for a in allocations])
     try:
         identity.assert_invariants(cash, reserved)
     except identity.CapitalIdentityError as exc:
@@ -159,9 +188,9 @@ def create_allocation(
         raise PortfolioError("invalid_config", "Reserved size must be greater than zero")
 
     portfolio = repo.ensure_portfolio(db)
-    cash = identity.parse_money(portfolio.cash)
+    cash = _parse_cash_or_error(portfolio.cash)
     existing = repo.list_allocations(db)
-    reserved = identity.sum_reserved([a.reserved_size for a in existing]) + size
+    reserved = _sum_reserved_or_error([a.reserved_size for a in existing]) + size
     try:
         identity.assert_invariants(cash, reserved)
     except identity.CapitalIdentityError as exc:
@@ -193,9 +222,9 @@ def resize_allocation(db: Session, allocation_id: str, reserved_size: str) -> di
         raise PortfolioError("invalid_config", "Reserved size must be greater than zero")
 
     portfolio = repo.ensure_portfolio(db)
-    cash = identity.parse_money(portfolio.cash)
+    cash = _parse_cash_or_error(portfolio.cash)
     others = [a for a in repo.list_allocations(db) if a.id != allocation_id]
-    reserved = identity.sum_reserved([a.reserved_size for a in others]) + size
+    reserved = _sum_reserved_or_error([a.reserved_size for a in others]) + size
     try:
         identity.assert_invariants(cash, reserved)
     except identity.CapitalIdentityError as exc:

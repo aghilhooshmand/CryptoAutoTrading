@@ -170,3 +170,56 @@ def test_persistence_across_get(client):
     assert len(again["allocations"]) == 1
     assert again["allocations"][0]["label"] == "Keep"
     _assert_invariants(again)
+
+
+def test_corrupt_allocation_get_and_mutations(client):
+    """Corrupt reservedSize must not invent available; mutations return 400."""
+    from datetime import datetime, timezone
+
+    from app.db import session as db_session
+    from app.db.models import PortfolioAllocationRow
+
+    client.put("/portfolio/funding", json={"cash": "1000"})
+    client.post(
+        "/portfolio/allocations",
+        json={"label": "ok", "reservedSize": "200"},
+    )
+
+    db = db_session.SessionLocal()
+    try:
+        now = datetime.now(timezone.utc)
+        db.add(
+            PortfolioAllocationRow(
+                id="22222222-2222-2222-2222-222222222222",
+                portfolio_id=1,
+                label="bad",
+                reserved_size="not-a-number",
+                target_ref=None,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    snap = client.get("/portfolio").json()
+    assert snap["warning"] is not None
+    assert snap["available"] == "0"
+    assert snap["reserved"] == "0"
+    assert snap["cash"] == "1000"
+    assert len(snap["allocations"]) == 2
+
+    fund = client.put("/portfolio/funding", json={"cash": "1000"})
+    assert fund.status_code == 400
+    assert fund.json()["detail"]["error"]["code"] == "invalid_config"
+
+    create = client.post(
+        "/portfolio/allocations",
+        json={"label": "more", "reservedSize": "10"},
+    )
+    assert create.status_code == 400
+
+    again = client.get("/portfolio").json()
+    assert again["cash"] == "1000"
+    assert len(again["allocations"]) == 2

@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 
 import { PortfolioPage } from "../pages/PortfolioPage";
+import { allocationsDoNotAffectEquity } from "../features/portfolio/capitalDisplay";
 import type { PortfolioAllocation, PortfolioSnapshot } from "../services/portfolioApi";
 
 function emptySnapshot(overrides?: Partial<PortfolioSnapshot>): PortfolioSnapshot {
@@ -233,6 +234,36 @@ describe("Portfolio page", () => {
     expect(within(card as HTMLElement).getByText(/Reserved: 250 USDT/)).toBeInTheDocument();
     expect(within(card as HTMLElement).getByText(/no activity/i)).toBeInTheDocument();
     expect(within(card as HTMLElement).getByText(/id /)).toBeInTheDocument();
+    expect(
+      allocationsDoNotAffectEquity({
+        cash: "1000",
+        reserved: "250",
+        available: "750",
+        deployed: "0",
+        realizedPnl: "0",
+        unrealizedPnl: "0",
+        equity: "1000",
+        positions: [],
+        allocations: [],
+        updatedAt: null,
+        warning: null,
+      }),
+    ).toBe(true);
+    expect(
+      allocationsDoNotAffectEquity({
+        cash: "1000",
+        reserved: "250",
+        available: "750",
+        deployed: "0",
+        realizedPnl: "0",
+        unrealizedPnl: "0",
+        equity: "1250",
+        positions: [],
+        allocations: [],
+        updatedAt: null,
+        warning: null,
+      }),
+    ).toBe(false);
 
     await user.clear(screen.getByTestId("alloc-label-input"));
     await user.type(screen.getByTestId("alloc-label-input"), "Too much");

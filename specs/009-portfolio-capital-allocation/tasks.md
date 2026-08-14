@@ -264,3 +264,13 @@ T023 portfolioApi allocation clients
 | **Parallel opportunities** | Yes — marked [P] across phases |
 
 **Format validation**: All tasks use `- [ ]`, Task IDs T001–T042, [P]/[USn] where required, and file paths in descriptions.
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: Close gaps found by `/speckit-converge` against spec, plan, and constitution (post-implement assessment).
+
+- [X] T043 CRITICAL: Harden `GET` / `build_snapshot` fail-closed path in `backend/app/portfolio/service.py` so a corrupt allocation `reservedSize` cannot invent available capital (today corrupt rows are skipped from the reserved sum while cash stays intact → inflated `available`); keep a clear `warning` and safe posture per edge-case fail-closed / FR-003 / Constitution I / Constitution VIII (`contradicts`)
+- [X] T044 CRITICAL: Map corrupt/unparseable reserved sizes during funding and allocation create/resize in `backend/app/portfolio/service.py` to `PortfolioError` (clear `400` message) instead of uncaught `CapitalIdentityError` (`500`); leave prior persisted state unchanged; add unit/contract coverage in `backend/tests/unit/test_portfolio_service.py` and/or `backend/tests/contract/test_portfolio_api.py` per FR-008 / Constitution VIII (`partial`)
+- [X] T045 [P] Review unused `allocationsDoNotAffectEquity` in `frontend/src/features/portfolio/capitalDisplay.ts` (and export in `index.ts`): wire into US3/display tests or remove dead helper per T030 / FR-005 (`unrequested`)
