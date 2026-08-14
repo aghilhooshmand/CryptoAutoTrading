@@ -273,7 +273,7 @@ Execution Abstraction
 | ID | Feature | Status |
 |---|---|---|
 | 008 | Trading & Experiment Defaults | DONE |
-| 009 | Portfolio & Capital Allocation Core | PLANNED |
+| 009 | Portfolio & Capital Allocation Core | IN PROGRESS |
 | 010 | Advanced Risk Management | PLANNED |
 | 011 | Execution Abstraction | PLANNED |
 
@@ -376,7 +376,7 @@ The strategies do not own that money.
 
 Feature 009 owns the capital-allocation model.
 
-Status: `PLANNED`
+Status: `IN PROGRESS`
 
 ---
 
@@ -1254,20 +1254,18 @@ Current completed foundation:
 Current active milestone:
 
 ```text
-008 → Trading & Experiment Defaults (DONE)
+009 → Portfolio & Capital Allocation Core
 ```
 
 Next planned milestone:
 
 ```text
-009 → Portfolio & Capital Allocation Core
+010 → Advanced Risk Management
 ```
 
 The near-term objective is therefore:
 
 ```text
-centralize defaults (complete)
-        ↓
 formalize portfolio/capital
         ↓
 strengthen risk

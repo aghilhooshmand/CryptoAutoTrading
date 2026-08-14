@@ -216,3 +216,30 @@ class BacktestTradeRow(Base):
     is_end_of_run_flatten: Mapped[bool] = mapped_column(Boolean, default=False)
     is_forced_close: Mapped[bool] = mapped_column(Boolean, default=False)
     round_trip_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+
+
+class PortfolioRow(Base):
+    """Singleton local portfolio capital (Feature 009). Fixed id=1."""
+
+    __tablename__ = "portfolio"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cash: Mapped[str] = mapped_column(String(64))
+    deployed: Mapped[str] = mapped_column(String(64), default="0")
+    realized_pnl: Mapped[str] = mapped_column(String(64), default="0")
+    unrealized_pnl: Mapped[str] = mapped_column(String(64), default="0")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class PortfolioAllocationRow(Base):
+    """Capital reservation under the singleton portfolio (Feature 009)."""
+
+    __tablename__ = "portfolio_allocations"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    portfolio_id: Mapped[int] = mapped_column(Integer, index=True, default=1)
+    label: Mapped[str] = mapped_column(String(128))
+    reserved_size: Mapped[str] = mapped_column(String(64))
+    target_ref: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

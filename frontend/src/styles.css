@@ -600,6 +600,120 @@ a {
   background: #fff;
 }
 
+.portfolio-capital,
+.portfolio-allocations {
+  margin-top: 1rem;
+}
+
+.portfolio-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+}
+
+.portfolio-metrics > div {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--panel) 80%, #fff);
+}
+
+.portfolio-metrics dt {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.portfolio-metrics dd {
+  margin: 0.35rem 0 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.portfolio-funding,
+.allocation-create {
+  display: grid;
+  gap: 0.65rem;
+  max-width: 24rem;
+  margin-top: 0.75rem;
+}
+
+.portfolio-funding label,
+.allocation-create label,
+.allocation-card__actions label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.portfolio-funding input,
+.allocation-create input,
+.allocation-card__actions input {
+  min-height: 2.5rem;
+  padding: 0.4rem 0.55rem;
+  font: inherit;
+}
+
+.portfolio-funding button,
+.allocation-create button,
+.allocation-card__actions button {
+  min-height: 2.75rem;
+  min-width: 7rem;
+}
+
+.allocation-list {
+  list-style: none;
+  margin: 0.75rem 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.allocation-card {
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  background: #fff;
+}
+
+.allocation-card__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: baseline;
+  margin-bottom: 0.35rem;
+}
+
+.allocation-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: end;
+  margin-top: 0.65rem;
+}
+
+.allocation-card__actions button.danger {
+  color: #7a1f1f;
+  border-color: #d4a0a0;
+}
+
+@media (max-width: 420px) {
+  .portfolio-funding button,
+  .allocation-create button,
+  .allocation-card__actions button {
+    width: 100%;
+  }
+
+  .allocation-card__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 /* Auto Trading — Simulation / Backtest tabs */
 .auto-trading-tabs {
   display: flex;
