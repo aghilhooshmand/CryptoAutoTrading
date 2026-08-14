@@ -18,20 +18,21 @@ function usdtHolding(quantity: string): PortfolioHolding {
     marketValue: quantity,
     weight: "1",
     realizedPnl: "0",
-    unrealizedPnl: "0",
-    return: "0",
-    provenance: "local_manual",
+    unrealizedPnl: null,
+    return: null,
+    provenance: "simulation",
     createdAt: "2026-08-14T12:00:00.000Z",
     updatedAt: "2026-08-14T12:00:00.000Z",
   };
 }
 
 function bookTotals(holdings: PortfolioHolding[]): Pick<PortfolioSnapshot, "totalPnl" | "totalReturn"> {
-  if (holdings.some((h) => h.unrealizedPnl == null)) {
+  const others = holdings.filter((h) => h.asset !== "usdt");
+  if (others.some((h) => h.unrealizedPnl == null)) {
     return { totalPnl: null, totalReturn: null };
   }
   const realized = holdings.reduce((sum, h) => sum + Number(h.realizedPnl), 0);
-  const unrealized = holdings.reduce((sum, h) => sum + Number(h.unrealizedPnl), 0);
+  const unrealized = others.reduce((sum, h) => sum + Number(h.unrealizedPnl), 0);
   const totalPnl = realized + unrealized;
   const cost = holdings.reduce((sum, h) => {
     if (h.averageCost == null) return sum;
@@ -46,7 +47,8 @@ function bookTotals(holdings: PortfolioHolding[]): Pick<PortfolioSnapshot, "tota
 function emptySnapshot(overrides?: Partial<PortfolioSnapshot>): PortfolioSnapshot {
   return {
     quoteCurrency: "usdt",
-    bookProvenance: "local_manual",
+    bookProvenance: "simulation",
+    mode: "simulation",
     cash: "0",
     reserved: "0",
     available: "0",
@@ -109,19 +111,13 @@ function mockPortfolioFetch(initial?: PortfolioSnapshot) {
         available: String(cash - reserved),
         equity: String(body.cash),
         equityComplete: (snap.unvaluedAssets ?? []).length === 0,
-        holdings: Number(body.cash) === 0
-          ? snap.holdings.filter((h) => h.asset !== "usdt")
-          : [
-              usdtHolding(String(body.cash)),
-              ...snap.holdings.filter((h) => h.asset !== "usdt"),
-            ],
+        holdings:
+          Number(body.cash) === 0
+            ? snap.holdings.filter((h) => h.asset !== "usdt")
+            : [usdtHolding(String(body.cash)), ...snap.holdings.filter((h) => h.asset !== "usdt")],
         updatedAt: "2026-08-14T12:00:00.000Z",
       };
-      // Recalc equity from valued holdings when other assets exist
-      const valued = snap.holdings.reduce(
-        (s, h) => s + Number(h.marketValue ?? 0),
-        0,
-      );
+      const valued = snap.holdings.reduce((s, h) => s + Number(h.marketValue ?? 0), 0);
       snap = { ...snap, equity: String(valued), ...bookTotals(snap.holdings) };
       return new Response(JSON.stringify(snap), { status: 200 });
     }
@@ -205,74 +201,6 @@ function mockPortfolioFetch(initial?: PortfolioSnapshot) {
       return new Response(JSON.stringify(snap), { status: 200 });
     }
 
-    if (url.includes("/portfolio/holdings") && method === "PUT") {
-      const body = JSON.parse(String(init?.body ?? "{}")) as {
-        asset: string;
-        quantity: string;
-        averageCost?: string | null;
-      };
-      const asset = (body.asset ?? "").toLowerCase();
-      if (asset === "usdt" || asset === "notacoin" || !(Number(body.quantity) > 0)) {
-        return new Response(
-          JSON.stringify({
-            detail: { error: { code: "invalid_config", message: "Unsupported or invalid holding" } },
-          }),
-          { status: 400 },
-        );
-      }
-      const qty = body.quantity;
-      const price = asset === "btc" ? "90000" : "3000";
-      const value = String(Number(qty) * Number(price));
-      const holding: PortfolioHolding = {
-        id: "22222222-2222-2222-2222-000000000002",
-        asset,
-        quantity: qty,
-        averageCost: body.averageCost ?? null,
-        price,
-        priceStatus: "fresh",
-        marketValue: value,
-        weight: null,
-        realizedPnl: "0",
-        unrealizedPnl:
-          body.averageCost != null && body.averageCost !== ""
-            ? String(Number(value) - Number(qty) * Number(body.averageCost))
-            : null,
-        return: null,
-        provenance: "local_manual",
-        createdAt: "2026-08-14T12:00:00.000Z",
-        updatedAt: "2026-08-14T12:00:00.000Z",
-      };
-      const others = snap.holdings.filter((h) => h.asset !== asset);
-      const holdings = [...others, holding];
-      const equity = holdings.reduce((s, h) => s + Number(h.marketValue ?? 0), 0);
-      snap = {
-        ...snap,
-        holdings,
-        equity: String(equity),
-        equityComplete: true,
-        unvaluedAssets: [],
-        ...bookTotals(holdings),
-      };
-      return new Response(JSON.stringify(snap), { status: 200 });
-    }
-
-    const holdingDelete = url.match(/\/portfolio\/holdings\/([^/?]+)$/);
-    if (holdingDelete && method === "DELETE") {
-      const asset = decodeURIComponent(holdingDelete[1]).toLowerCase();
-      if (asset === "usdt") {
-        return new Response(
-          JSON.stringify({
-            detail: { error: { code: "invalid_config", message: "Use funding to set USDT quote cash" } },
-          }),
-          { status: 400 },
-        );
-      }
-      const holdings = snap.holdings.filter((h) => h.asset !== asset);
-      const equity = holdings.reduce((s, h) => s + Number(h.marketValue ?? 0), 0);
-      snap = { ...snap, holdings, equity: String(equity), ...bookTotals(holdings) };
-      return new Response(JSON.stringify(snap), { status: 200 });
-    }
-
     if (url.includes("/portfolio") && method === "GET") {
       return new Response(JSON.stringify(snap), { status: 200 });
     }
@@ -300,13 +228,15 @@ describe("Portfolio page", () => {
     vi.restoreAllMocks();
   });
 
-  it("loads snapshot and funds cash with labels/units", async () => {
+  it("loads snapshot and funds simulation USDT without a holdings form", async () => {
     const user = userEvent.setup();
     renderPortfolio();
 
     await waitFor(() => {
       expect(screen.getByTestId("metric-cash")).toHaveTextContent("0 USDT");
     });
+    expect(screen.getByRole("heading", { name: "Simulation Portfolio" })).toBeInTheDocument();
+    expect(screen.getByTestId("simulation-badge")).toHaveTextContent("SIMULATION");
     expect(screen.getByTestId("metric-available")).toHaveTextContent("USDT");
     expect(screen.getByTestId("metric-reserved")).toHaveTextContent("USDT");
     expect(screen.getByTestId("metric-deployed")).toHaveTextContent("0 USDT");
@@ -315,8 +245,14 @@ describe("Portfolio page", () => {
     expect(screen.getByTestId("help-deployed")).toBeInTheDocument();
     expect(screen.getByTestId("help-equity")).toBeInTheDocument();
     expect(screen.getByTestId("help-cash")).toBeInTheDocument();
-    expect(screen.getByTestId("portfolio-positions")).toHaveTextContent("No open positions");
+    expect(screen.getByTestId("portfolio-positions")).toHaveTextContent("No open simulation positions");
     expect(screen.getByTestId("holdings-table")).toBeInTheDocument();
+    expect(screen.getByTestId("allocation-visual")).toBeInTheDocument();
+    expect(screen.getByTestId("holdings-cards")).toBeInTheDocument();
+    expect(screen.queryByTestId("holdings-form")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("holding-asset-input")).not.toBeInTheDocument();
+    expect(screen.queryByText(/local\/manual holdings book/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/not real-money brokerage funding/i)).not.toBeInTheDocument();
 
     await user.clear(screen.getByTestId("funding-cash-input"));
     await user.type(screen.getByTestId("funding-cash-input"), "1000");
@@ -327,13 +263,12 @@ describe("Portfolio page", () => {
       expect(screen.getByTestId("metric-available")).toHaveTextContent("1000 USDT");
       expect(screen.getByTestId("funding-status")).toHaveTextContent("Funding saved");
       expect(screen.getByTestId("holding-qty-usdt")).toHaveTextContent("1000");
-      expect(screen.getByTestId("holding-provenance-usdt")).toHaveTextContent(/local\/manual/i);
       expect(screen.getByTestId("metric-total-pnl")).toHaveTextContent("0 USDT");
       expect(screen.getByTestId("metric-total-return")).toHaveTextContent("0.00%");
     });
   });
 
-  it("creates, rejects overspend, confirms release, and blocks double submit", async () => {
+  it("creates, rejects overspend, confirms release from compact allocations", async () => {
     vi.stubGlobal(
       "fetch",
       mockPortfolioFetch(
@@ -351,6 +286,7 @@ describe("Portfolio page", () => {
     renderPortfolio();
 
     await waitFor(() => expect(screen.getByTestId("metric-cash")).toHaveTextContent("1000"));
+    await user.click(screen.getByTestId("allocation-toggle"));
 
     await user.type(screen.getByTestId("alloc-label-input"), "RSI sleeve");
     await user.type(screen.getByTestId("alloc-size-input"), "250");
@@ -365,8 +301,6 @@ describe("Portfolio page", () => {
     const card = screen.getByText("RSI sleeve").closest("li");
     expect(card).toBeTruthy();
     expect(within(card as HTMLElement).getByText(/Reserved: 250 USDT/)).toBeInTheDocument();
-    expect(within(card as HTMLElement).getByText(/no activity/i)).toBeInTheDocument();
-    expect(within(card as HTMLElement).getByText(/id /)).toBeInTheDocument();
     expect(
       allocationsDoNotAffectEquity({
         cash: "1000",
@@ -387,26 +321,6 @@ describe("Portfolio page", () => {
         warning: null,
       }),
     ).toBe(true);
-    expect(
-      allocationsDoNotAffectEquity({
-        cash: "1000",
-        reserved: "250",
-        available: "750",
-        deployed: "0",
-        realizedPnl: "0",
-        unrealizedPnl: "0",
-        totalPnl: "0",
-        totalReturn: "0",
-        equity: "1250",
-        equityComplete: true,
-        unvaluedAssets: [],
-        positions: [],
-        holdings: [],
-        allocations: [],
-        updatedAt: null,
-        warning: null,
-      }),
-    ).toBe(false);
 
     await user.clear(screen.getByTestId("alloc-label-input"));
     await user.type(screen.getByTestId("alloc-label-input"), "Too much");
@@ -481,60 +395,20 @@ describe("Portfolio page", () => {
     });
   });
 
-  it("records a local BTC holding and confirms remove", async () => {
-    vi.stubGlobal(
-      "fetch",
-      mockPortfolioFetch(
-        emptySnapshot({
-          cash: "500",
-          available: "500",
-          equity: "500",
-          equityComplete: true,
-          holdings: [usdtHolding("500")],
-        }),
-      ),
-    );
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
-    const user = userEvent.setup();
-    renderPortfolio();
-
-    await waitFor(() => expect(screen.getByTestId("metric-cash")).toHaveTextContent("500"));
-
-    await user.clear(screen.getByTestId("holding-asset-input"));
-    await user.type(screen.getByTestId("holding-asset-input"), "btc");
-    await user.type(screen.getByTestId("holding-qty-input"), "0.005");
-    await user.type(screen.getByTestId("holding-avg-input"), "80000");
-    await user.click(screen.getByTestId("holding-submit"));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("holding-row-btc")).toBeInTheDocument();
-      expect(screen.getByTestId("holding-qty-btc")).toHaveTextContent("0.005");
-      expect(screen.getByTestId("holding-value-btc")).toHaveTextContent("USDT");
-      expect(screen.getByTestId("holding-provenance-btc")).toHaveTextContent(/local\/manual/i);
-      expect(screen.getByTestId("metric-equity")).toHaveTextContent("950");
-    });
-
-    await user.click(screen.getByTestId("holding-delete-btc"));
-    expect(confirmSpy).toHaveBeenCalled();
-    await waitFor(() => {
-      expect(screen.queryByTestId("holding-row-btc")).not.toBeInTheDocument();
-    });
-  });
-
   it("labels partial equity and stale prices; has no history charts", async () => {
     vi.stubGlobal(
       "fetch",
       mockPortfolioFetch(
         emptySnapshot({
-          cash: "500",
-          available: "500",
-          equity: "500",
+          cash: "600",
+          available: "600",
+          equity: "1050",
           equityComplete: false,
           unvaluedAssets: ["eth"],
           totalPnl: null,
           totalReturn: null,
           holdings: [
-            usdtHolding("500"),
+            { ...usdtHolding("600"), weight: "0.5714" },
             {
               id: "22222222-2222-2222-2222-000000000002",
               asset: "btc",
@@ -543,11 +417,11 @@ describe("Portfolio page", () => {
               price: "90000",
               priceStatus: "stale",
               marketValue: "450",
-              weight: "0.4737",
+              weight: "0.4286",
               realizedPnl: "0",
               unrealizedPnl: "50",
               return: "0.125",
-              provenance: "local_manual",
+              provenance: "simulation",
               createdAt: "2026-08-14T12:00:00.000Z",
               updatedAt: "2026-08-14T12:00:00.000Z",
             },
@@ -563,7 +437,7 @@ describe("Portfolio page", () => {
               realizedPnl: "0",
               unrealizedPnl: null,
               return: null,
-              provenance: "local_manual",
+              provenance: "simulation",
               createdAt: "2026-08-14T12:00:00.000Z",
               updatedAt: "2026-08-14T12:00:00.000Z",
             },
@@ -578,13 +452,14 @@ describe("Portfolio page", () => {
       expect(screen.getByTestId("holding-price-eth")).toHaveTextContent(/unavailable/i);
       expect(screen.getByTestId("metric-total-pnl")).toHaveTextContent("—");
       expect(screen.getByTestId("metric-total-return")).toHaveTextContent("—");
+      expect(screen.getByTestId("allocation-visual")).toBeInTheDocument();
     });
     expect(screen.queryByText(/drawdown/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/value over time/i)).not.toBeInTheDocument();
     expect(screen.queryByTestId("portfolio-history")).not.toBeInTheDocument();
   });
 
-  it("keeps allocation inspect within one holdings book", async () => {
+  it("keeps allocation inspect secondary to holdings", async () => {
     const btc: PortfolioHolding = {
       id: "22222222-2222-2222-2222-000000000002",
       asset: "btc",
@@ -593,11 +468,11 @@ describe("Portfolio page", () => {
       price: "90000",
       priceStatus: "fresh",
       marketValue: "450",
-      weight: "0.3103",
+      weight: "0.4286",
       realizedPnl: "0",
       unrealizedPnl: null,
       return: null,
-      provenance: "local_manual",
+      provenance: "simulation",
       createdAt: "2026-08-14T12:00:00.000Z",
       updatedAt: "2026-08-14T12:00:00.000Z",
     };
@@ -605,12 +480,12 @@ describe("Portfolio page", () => {
       "fetch",
       mockPortfolioFetch(
         emptySnapshot({
-          cash: "1000",
+          cash: "600",
           reserved: "250",
-          available: "750",
-          equity: "1450",
+          available: "350",
+          equity: "1050",
           equityComplete: true,
-          holdings: [usdtHolding("1000"), btc],
+          holdings: [{ ...usdtHolding("600"), weight: "0.5714" }, btc],
           allocations: [
             {
               id: "11111111-1111-1111-1111-111111111111",
@@ -631,27 +506,7 @@ describe("Portfolio page", () => {
     expect(screen.getByTestId("allocation-reserved-11111111-1111-1111-1111-111111111111")).toHaveTextContent(
       "250 USDT",
     );
-    expect(screen.getByText(/Parent portfolio available: 750 USDT/)).toBeInTheDocument();
     expect(screen.getByTestId("holding-qty-btc")).toHaveTextContent("0.005");
-    expect(
-      allocationsDoNotAffectEquity({
-        cash: "1000",
-        reserved: "250",
-        available: "750",
-        deployed: "0",
-        realizedPnl: "0",
-        unrealizedPnl: "0",
-        totalPnl: "50",
-        totalReturn: "0.05555556",
-        equity: "1450",
-        equityComplete: true,
-        unvaluedAssets: [],
-        positions: [],
-        holdings: [usdtHolding("1000"), btc],
-        allocations: [],
-        updatedAt: null,
-        warning: null,
-      }),
-    ).toBe(true);
+    expect(screen.getByRole("heading", { name: "Simulation Portfolio" })).toBeInTheDocument();
   });
 });

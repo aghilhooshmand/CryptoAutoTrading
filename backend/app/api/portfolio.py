@@ -19,12 +19,6 @@ class FundingBody(BaseModel):
     cash: str
 
 
-class UpsertHoldingBody(BaseModel):
-    asset: str
-    quantity: str
-    averageCost: Optional[str] = None
-
-
 class CreateAllocationBody(BaseModel):
     label: str
     reservedSize: str
@@ -68,24 +62,6 @@ async def get_portfolio() -> dict[str, Any]:
 @router.put("/funding")
 async def put_funding(body: FundingBody) -> dict[str, Any]:
     return await _mutate(lambda db: svc._apply_funding(db, body.cash), "funding")
-
-
-@router.put("/holdings")
-async def put_holding(body: UpsertHoldingBody) -> dict[str, Any]:
-    return await _mutate(
-        lambda db: svc._apply_upsert_holding(
-            db,
-            asset=body.asset,
-            quantity_raw=body.quantity,
-            average_cost_raw=body.averageCost,
-        ),
-        "holding_upsert",
-    )
-
-
-@router.delete("/holdings/{asset}")
-async def delete_holding(asset: str) -> dict[str, Any]:
-    return await _mutate(lambda db: svc._apply_delete_holding(db, asset), "holding_delete")
 
 
 @router.post("/allocations", status_code=201)

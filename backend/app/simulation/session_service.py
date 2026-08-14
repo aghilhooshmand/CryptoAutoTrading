@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -28,6 +29,9 @@ from app.strategy.serialize import (
     dumps_params,
     effective_params_for_row,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class SessionError(Exception):
@@ -253,6 +257,19 @@ def _apply_fill(
     )
     db.add(trade)
     row.updated_at = now
+    try:
+        from app.portfolio import service as portfolio_svc
+
+        portfolio_svc.try_apply_simulation_fill(
+            db,
+            symbol=row.symbol,
+            side=side,
+            qty=qty,
+            cash_delta=fill.cash_delta,
+            fill_price=fill.fill_price,
+        )
+    except Exception:
+        logger.exception("Simulation Portfolio fill apply failed; session journals kept")
     return trade
 
 

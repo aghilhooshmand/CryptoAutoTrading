@@ -15,7 +15,7 @@ QUOTE_ASSET = identity.QUOTE_ASSET
 QUOTE_PRICE = Decimal("1")
 STALE_AFTER_SECONDS = 60
 
-# Feature 002 USDT-quoted bases the operator may record locally in 009.
+# Feature 002 USDT-quoted bases commonly held after simulated fills.
 SUPPORTED_NON_QUOTE_ASSETS = frozenset(
     {
         "btc",

@@ -53,8 +53,6 @@ def _assert_invariants(data: dict) -> None:
     available = float(data["available"])
     assert abs(available - (cash - reserved)) < 1e-9
     assert sum(float(a["reservedSize"]) for a in data["allocations"]) == pytest.approx(reserved)
-    assert data["deployed"] == "0"
-    assert data["positions"] == []
     usdt = next((h for h in data.get("holdings", []) if h["asset"] == "usdt"), None)
     if usdt is not None:
         assert usdt["quantity"] == data["cash"]
@@ -80,7 +78,8 @@ def test_get_unfunded_empty(client):
     assert data["holdings"] == []
     assert data["equityComplete"] is True
     assert data["warning"] is None
-    assert data["bookProvenance"] == "local_manual"
+    assert data["bookProvenance"] == "simulation"
+    assert data["mode"] == "simulation"
     assert data["totalPnl"] == "0"
     assert data["totalReturn"] is None
     _assert_invariants(data)
@@ -96,7 +95,11 @@ def test_put_funding_valid(client):
     assert data["equityComplete"] is True
     usdt = next(h for h in data["holdings"] if h["asset"] == "usdt")
     assert usdt["quantity"] == "1000"
-    assert usdt["provenance"] == "local_manual"
+    assert usdt["provenance"] == "simulation"
+    assert usdt["unrealizedPnl"] is None
+    assert usdt["return"] is None
+    assert data["bookProvenance"] == "simulation"
+    assert data["mode"] == "simulation"
     assert data["totalPnl"] == "0"
     assert data["totalReturn"] == "0"
     _assert_invariants(data)
@@ -118,40 +121,38 @@ def test_put_funding_invalid_rejected(client):
     assert client.get("/portfolio").json()["cash"] == "100"
 
 
-def test_holdings_crud_and_invariants(client):
+def test_holdings_operator_upsert_removed(client):
     client.put("/portfolio/funding", json={"cash": "500"})
     r = client.put(
         "/portfolio/holdings",
         json={"asset": "btc", "quantity": "0.005", "averageCost": "80000"},
     )
-    assert r.status_code == 200
-    data = r.json()
-    assert data["cash"] == "500"
-    assert data["equity"] == "950"
-    btc = next(h for h in data["holdings"] if h["asset"] == "btc")
-    assert btc["quantity"] == "0.005"
-    assert btc["provenance"] == "local_manual"
-    assert btc["marketValue"] == "450"
-    assert btc["unrealizedPnl"] == "50"
-    assert data["totalPnl"] == "50"
-    assert data["totalReturn"] is not None
-    _assert_invariants(data)
+    assert r.status_code == 404
+    d = client.delete("/portfolio/holdings/btc")
+    assert d.status_code == 404
+    snap = client.get("/portfolio").json()
+    assert [h["asset"] for h in snap["holdings"]] == ["usdt"]
+    assert snap["bookProvenance"] == "simulation"
+    _assert_invariants(snap)
 
-    rejected = client.put("/portfolio/holdings", json={"asset": "usdt", "quantity": "10"})
-    assert rejected.status_code == 400
-    assert client.get("/portfolio").json()["cash"] == "500"
 
-    unknown = client.put("/portfolio/holdings", json={"asset": "notacoin", "quantity": "1"})
-    assert unknown.status_code == 400
-    assert unknown.json()["detail"]["error"]["code"] == "invalid_config"
-    after_unknown = client.get("/portfolio").json()
-    assert [h["asset"] for h in after_unknown["holdings"]] == ["usdt", "btc"]
+def _apply_btc_fill(client, *, qty="0.005", cash_delta="-400", price="80000"):
+    from app.db import session as db_session
+    from app.portfolio import service as svc
 
-    deleted = client.delete("/portfolio/holdings/btc")
-    assert deleted.status_code == 200
-    assets = [h["asset"] for h in deleted.json()["holdings"]]
-    assert assets == ["usdt"]
-    _assert_invariants(deleted.json())
+    db = db_session.SessionLocal()
+    try:
+        svc.apply_simulation_fill(
+            db,
+            asset="btc",
+            side="BUY",
+            qty=qty,
+            cash_delta=cash_delta,
+            fill_price=price,
+        )
+    finally:
+        db.close()
+    return client.get("/portfolio").json()
 
 
 def test_allocations_crud_and_invariants(client):
@@ -202,7 +203,8 @@ def test_allocations_crud_and_invariants(client):
 
 def test_allocations_leave_holdings_unchanged(client):
     client.put("/portfolio/funding", json={"cash": "1000"})
-    client.put("/portfolio/holdings", json={"asset": "btc", "quantity": "0.005"})
+    data = _apply_btc_fill(client)
+    assert next(h for h in data["holdings"] if h["asset"] == "btc")["quantity"] == "0.005"
     r = client.post(
         "/portfolio/allocations",
         json={"label": "A", "reservedSize": "250", "targetRef": "rsi"},
@@ -211,7 +213,7 @@ def test_allocations_leave_holdings_unchanged(client):
     data = r.json()
     btc = next(h for h in data["holdings"] if h["asset"] == "btc")
     assert btc["quantity"] == "0.005"
-    assert data["cash"] == "1000"
+    assert data["cash"] == "600"
     assert data["reserved"] == "250"
     _assert_invariants(data)
 
@@ -254,7 +256,7 @@ def test_unknown_allocation_404(client):
 
 def test_persistence_across_get(client):
     client.put("/portfolio/funding", json={"cash": "1000"})
-    client.put("/portfolio/holdings", json={"asset": "btc", "quantity": "0.005", "averageCost": "80000"})
+    _apply_btc_fill(client)
     client.post(
         "/portfolio/allocations",
         json={"label": "Keep", "reservedSize": "300", "targetRef": "macd"},
@@ -267,7 +269,7 @@ def test_persistence_across_get(client):
         == 400
     )
     again = client.get("/portfolio").json()
-    assert again["cash"] == "1000"
+    assert again["cash"] == "600"
     assert again["reserved"] == "300"
     assert len(again["allocations"]) == 1
     assert again["allocations"][0]["label"] == "Keep"
@@ -306,12 +308,12 @@ def test_missing_quote_marks_equity_incomplete(client, monkeypatch):
         return out
 
     monkeypatch.setattr("app.api.portfolio.fetch_quotes", missing)
-    client.put("/portfolio/funding", json={"cash": "500"})
-    client.put("/portfolio/holdings", json={"asset": "btc", "quantity": "0.005"})
+    client.put("/portfolio/funding", json={"cash": "1000"})
+    _apply_btc_fill(client)
     snap = client.get("/portfolio").json()
     assert snap["equityComplete"] is False
     assert "btc" in snap["unvaluedAssets"]
-    assert snap["equity"] == "500"
+    assert snap["equity"] == "600"
     assert snap["totalPnl"] is None
     assert snap["totalReturn"] is None
 
@@ -330,12 +332,12 @@ def test_stale_quote_included(client, monkeypatch):
         return out
 
     monkeypatch.setattr("app.api.portfolio.fetch_quotes", stale)
-    client.put("/portfolio/funding", json={"cash": "500"})
-    client.put("/portfolio/holdings", json={"asset": "btc", "quantity": "0.005"})
+    client.put("/portfolio/funding", json={"cash": "1000"})
+    _apply_btc_fill(client)
     snap = client.get("/portfolio").json()
     btc = next(h for h in snap["holdings"] if h["asset"] == "btc")
     assert btc["priceStatus"] == "stale"
-    assert snap["equity"] == "950"
+    assert snap["equity"] == "1050"
     assert snap["equityComplete"] is True
 
 

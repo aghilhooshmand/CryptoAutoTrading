@@ -49,12 +49,14 @@ def init_db() -> None:
     _ensure_column(engine, "backtest_runs", "strategy_params", "TEXT")
     _ensure_column(engine, "backtest_runs", "origin", "TEXT DEFAULT 'manual'")
     _ensure_column(engine, "backtest_runs", "comparison_id", "TEXT")
-    # Feature 009: leftover portfolio.cash → usdt holding (once).
-    from app.portfolio.repository import migrate_cash_to_usdt
+    _ensure_column(engine, "portfolio", "fill_apply_warning", "TEXT")
+    # Feature 009: leftover portfolio.cash → usdt holding; provenance rewrite.
+    from app.portfolio.repository import migrate_cash_to_usdt, migrate_provenance
 
     db = SessionLocal()
     try:
         migrate_cash_to_usdt(db)
+        migrate_provenance(db)
         db.commit()
     finally:
         db.close()

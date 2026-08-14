@@ -231,6 +231,7 @@ class PortfolioRow(Base):
     deployed: Mapped[str] = mapped_column(String(64), default="0")
     realized_pnl: Mapped[str] = mapped_column(String(64), default="0")
     unrealized_pnl: Mapped[str] = mapped_column(String(64), default="0")
+    fill_apply_warning: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
@@ -262,7 +263,7 @@ class PortfolioHoldingRow(Base):
     quantity: Mapped[str] = mapped_column(String(64))
     average_cost: Mapped[str | None] = mapped_column(String(64), nullable=True)
     realized_pnl: Mapped[str] = mapped_column(String(64), default="0")
-    provenance: Mapped[str] = mapped_column(String(32), default="local_manual")
+    provenance: Mapped[str] = mapped_column(String(32), default="simulation")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

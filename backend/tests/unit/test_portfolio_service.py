@@ -4,17 +4,21 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal
+from types import SimpleNamespace
 from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.db.models import Base, PortfolioAllocationRow, PortfolioRow
+from app.db.models import Base, PortfolioAllocationRow, PortfolioRow, SimulationSessionRow, TradeJournalRow
 from app.portfolio import identity
 from app.portfolio import repository as repo
 from app.portfolio import service as svc
 from app.portfolio.valuation import QuoteView
+from app.simulation.clock import SystemClock
+from app.simulation.session_service import _apply_fill
 
 
 @pytest.fixture()
@@ -39,6 +43,18 @@ def _seed_portfolio(db, cash: str = "1000") -> None:
         )
     )
     db.commit()
+
+
+def _buy_btc(db, *, qty="0.005", price="80000", cash_delta="-400", quotes=None):
+    return svc.apply_simulation_fill(
+        db,
+        asset="btc",
+        side="BUY",
+        qty=qty,
+        cash_delta=cash_delta,
+        fill_price=price,
+        quotes=quotes,
+    )
 
 
 def test_available_equals_cash_minus_reserved():
@@ -82,10 +98,14 @@ def test_migrates_cash_column_to_usdt_holding(db):
     usdt = [h for h in snap["holdings"] if h["asset"] == "usdt"]
     assert len(usdt) == 1
     assert usdt[0]["quantity"] == "1000"
-    assert usdt[0]["provenance"] == "local_manual"
+    assert usdt[0]["provenance"] == "simulation"
+    assert usdt[0]["unrealizedPnl"] is None
+    assert usdt[0]["return"] is None
     assert snap["cash"] == "1000"
     assert snap["equity"] == "1000"
     assert snap["equityComplete"] is True
+    assert snap["bookProvenance"] == "simulation"
+    assert snap["mode"] == "simulation"
 
 
 def test_fail_closed_corrupt_cash_does_not_invent(db):
@@ -200,12 +220,54 @@ def test_create_over_reserve_rejected(db):
     assert snap["cash"] == "100"
 
 
+def test_buy_then_sell_updates_usdt_btc_cost_and_realized(db):
+    quotes = {"btc": QuoteView(price=Decimal("90000"), status="fresh")}
+    svc.set_funding(db, "1000")
+    bought = _buy_btc(db, quotes=quotes)
+    assert bought is not None
+    assert bought["cash"] == "600"
+    btc = next(h for h in bought["holdings"] if h["asset"] == "btc")
+    assert btc["quantity"] == "0.005"
+    assert btc["averageCost"] == "80000"
+    assert btc["provenance"] == "simulation"
+    usdt = next(h for h in bought["holdings"] if h["asset"] == "usdt")
+    assert usdt["unrealizedPnl"] is None
+    assert usdt["return"] is None
+
+    sold = svc.apply_simulation_fill(
+        db,
+        asset="btc",
+        side="SELL",
+        qty="0.005",
+        cash_delta="450",
+        fill_price="90000",
+        quotes=quotes,
+    )
+    assert sold is not None
+    assert sold["cash"] == "1050"
+    assert [h["asset"] for h in sold["holdings"]] == ["usdt"]
+    usdt = next(h for h in sold["holdings"] if h["asset"] == "usdt")
+    assert usdt["realizedPnl"] == "50"
+
+
+def test_insufficient_usdt_refuses_without_snapshot_or_negative_cash(db):
+    svc.set_funding(db, "100")
+    n = repo.count_snapshots(db)
+    refused = _buy_btc(db, cash_delta="-400")
+    assert refused is None
+    snap = svc.build_snapshot(db)
+    assert snap["cash"] == "100"
+    assert snap["warning"] == svc.FILL_APPLY_INSUFFICIENT
+    assert [h["asset"] for h in snap["holdings"]] == ["usdt"]
+    assert repo.count_snapshots(db) == n
+
+
 def test_partial_valuation_excludes_unvalued_from_equity(db):
-    svc.set_funding(db, "500")
-    svc.upsert_holding(db, asset="btc", quantity="0.005", average_cost="80000")
+    svc.set_funding(db, "1000")
+    _buy_btc(db)
     snap = svc.build_snapshot(db, quotes={"btc": QuoteView(price=None, status="unavailable")})
-    assert snap["cash"] == "500"
-    assert snap["equity"] == "500"
+    assert snap["cash"] == "600"
+    assert snap["equity"] == "600"
     assert snap["equityComplete"] is False
     assert snap["unvaluedAssets"] == ["btc"]
     btc = next(h for h in snap["holdings"] if h["asset"] == "btc")
@@ -218,13 +280,13 @@ def test_partial_valuation_excludes_unvalued_from_equity(db):
 
 
 def test_stale_quote_included_in_equity(db):
-    svc.set_funding(db, "500")
-    svc.upsert_holding(db, asset="btc", quantity="0.005", average_cost="80000")
+    svc.set_funding(db, "1000")
+    _buy_btc(db)
     snap = svc.build_snapshot(
         db,
         quotes={"btc": QuoteView(price=Decimal("90000"), status="stale")},
     )
-    assert snap["equity"] == "950"
+    assert snap["equity"] == "1050"
     assert snap["equityComplete"] is True
     btc = next(h for h in snap["holdings"] if h["asset"] == "btc")
     assert btc["priceStatus"] == "stale"
@@ -235,8 +297,15 @@ def test_stale_quote_included_in_equity(db):
 
 
 def test_unknown_cost_nulls_pnl_and_return(db):
-    svc.set_funding(db, "500")
-    svc.upsert_holding(db, asset="btc", quantity="0.005", average_cost=None)
+    svc.set_funding(db, "1000")
+    repo.upsert_holding(
+        db,
+        asset="btc",
+        quantity="0.005",
+        average_cost=None,
+        provenance="simulation",
+    )
+    db.commit()
     snap = svc.build_snapshot(
         db,
         quotes={"btc": QuoteView(price=Decimal("90000"), status="fresh")},
@@ -251,8 +320,8 @@ def test_unknown_cost_nulls_pnl_and_return(db):
 
 
 def test_total_pnl_and_return_when_cost_basis_known(db):
-    svc.set_funding(db, "500")
-    svc.upsert_holding(db, asset="btc", quantity="0.005", average_cost="80000")
+    svc.set_funding(db, "1000")
+    _buy_btc(db)
     snap = svc.build_snapshot(
         db,
         quotes={"btc": QuoteView(price=Decimal("90000"), status="fresh")},
@@ -260,19 +329,22 @@ def test_total_pnl_and_return_when_cost_basis_known(db):
     assert snap["realizedPnl"] == "0"
     assert snap["unrealizedPnl"] == "50"
     assert snap["totalPnl"] == "50"
-    assert snap["totalReturn"] == identity.money_str(Decimal("50") / Decimal("900"))
+    assert snap["totalReturn"] == identity.money_str(Decimal("50") / Decimal("1000"))
 
 
 def test_usdt_only_total_pnl_and_return_are_zero(db):
     svc.set_funding(db, "1000")
     snap = svc.build_snapshot(db)
+    usdt = next(h for h in snap["holdings"] if h["asset"] == "usdt")
+    assert usdt["unrealizedPnl"] is None
+    assert usdt["return"] is None
     assert snap["totalPnl"] == "0"
     assert snap["totalReturn"] == "0"
 
 
 def test_unvalued_holding_omits_total_pnl_and_return(db):
-    svc.set_funding(db, "500")
-    svc.upsert_holding(db, asset="btc", quantity="0.005", average_cost="80000")
+    svc.set_funding(db, "1000")
+    _buy_btc(db)
     snap = svc.build_snapshot(db, quotes={"btc": QuoteView(price=None, status="unavailable")})
     assert snap["totalPnl"] is None
     assert snap["totalReturn"] is None
@@ -289,39 +361,186 @@ def test_get_does_not_append_snapshot(db):
 def test_mutations_append_one_snapshot_each(db):
     assert repo.count_snapshots(db) == 0
     svc.set_funding(db, "1000")
-    svc.upsert_holding(db, asset="btc", quantity="0.005", average_cost="80000")
+    _buy_btc(db)
     svc.create_allocation(db, label="A", reserved_size="250", target_ref="rsi")
     assert repo.count_snapshots(db) == 3
-    assert repo.list_snapshot_reasons(db) == ["funding", "holding_upsert", "allocation_create"]
-    svc.delete_holding(db, "btc")
-    assert repo.list_snapshot_reasons(db)[-1] == "holding_delete"
-
-
-def test_upsert_usdt_via_holdings_rejected(db):
-    with pytest.raises(svc.PortfolioError) as exc:
-        svc.upsert_holding(db, asset="usdt", quantity="10", average_cost="1")
-    assert exc.value.code == "invalid_config"
-    assert repo.count_snapshots(db) == 0
-
-
-def test_unsupported_asset_rejected_state_unchanged(db):
-    svc.set_funding(db, "1000")
-    n = repo.count_snapshots(db)
-    with pytest.raises(svc.PortfolioError) as exc:
-        svc.upsert_holding(db, asset="notacoin", quantity="1", average_cost=None)
-    assert exc.value.code == "invalid_config"
-    snap = svc.build_snapshot(db)
-    assert [h["asset"] for h in snap["holdings"]] == ["usdt"]
-    assert repo.count_snapshots(db) == n
+    assert repo.list_snapshot_reasons(db) == ["funding", "simulation_fill", "allocation_create"]
 
 
 def test_allocation_does_not_change_btc_quantity(db):
     svc.set_funding(db, "1000")
-    svc.upsert_holding(db, asset="btc", quantity="0.005", average_cost=None)
+    _buy_btc(db)
     svc.create_allocation(db, label="A", reserved_size="250", target_ref=None)
     snap = svc.build_snapshot(db)
     btc = next(h for h in snap["holdings"] if h["asset"] == "btc")
     assert btc["quantity"] == "0.005"
     assert snap["reserved"] == "250"
-    assert snap["cash"] == "1000"
-    assert snap["available"] == "750"
+    assert snap["cash"] == "600"
+    assert snap["available"] == "350"
+
+
+def test_deployed_and_positions_from_active_long_session(db):
+    svc.set_funding(db, "1000")
+    now = datetime.now(timezone.utc)
+    db.add(
+        SimulationSessionRow(
+            id="44444444-4444-4444-4444-444444444444",
+            mode="simulation",
+            state="RUNNING",
+            symbol="btc_usdt",
+            timeframe="1h",
+            starting_capital="1000",
+            allocated_capital="1000",
+            max_position_size="500",
+            target_net_profit_rate="0.01",
+            max_session_loss_rate="0.007",
+            target_net_profit_amount="5",
+            max_session_loss_amount="3.5",
+            max_trades=20,
+            duration_seconds=3600,
+            fee_rate="0.001",
+            slippage_rate="0.0005",
+            strategy_id="dual_ema",
+            cash="800",
+            position_side="long",
+            position_qty="0.005",
+            cost_basis="200",
+            created_at=now,
+            updated_at=now,
+        )
+    )
+    db.commit()
+    snap = svc.build_snapshot(db)
+    assert snap["deployed"] == "200"
+    assert len(snap["positions"]) == 1
+    pos = snap["positions"][0]
+    assert pos["sessionId"] == "44444444-4444-4444-4444-444444444444"
+    assert pos["asset"] == "btc"
+    assert pos["symbol"] == "btc_usdt"
+    assert pos["side"] == "long"
+    assert pos["quantity"] == "0.005"
+    assert pos["costBasis"] == "200"
+
+
+def test_no_active_long_means_zero_deployed(db):
+    svc.set_funding(db, "1000")
+    snap = svc.build_snapshot(db)
+    assert snap["deployed"] == "0"
+    assert snap["positions"] == []
+
+
+def test_apply_fill_hook_writes_portfolio_and_keeps_journal(db):
+    svc.set_funding(db, "1000")
+    now = datetime.now(timezone.utc)
+    session_id = str(uuid4())
+    row = SimulationSessionRow(
+        id=session_id,
+        mode="simulation",
+        state="RUNNING",
+        symbol="btc_usdt",
+        timeframe="1h",
+        starting_capital="1000",
+        allocated_capital="1000",
+        max_position_size="500",
+        target_net_profit_rate="0.01",
+        max_session_loss_rate="0.007",
+        target_net_profit_amount="5",
+        max_session_loss_amount="3.5",
+        max_trades=20,
+        duration_seconds=3600,
+        fee_rate="0",
+        slippage_rate="0",
+        strategy_id="dual_ema",
+        cash="1000",
+        position_side="flat",
+        position_qty="0",
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(row)
+    db.flush()
+    fill = SimpleNamespace(
+        cash_delta=Decimal("-200"),
+        fee=Decimal("0"),
+        slippage_cost=Decimal("0"),
+        reference_price=Decimal("80000"),
+        fill_price=Decimal("80000"),
+        notional=Decimal("200"),
+    )
+    trade = _apply_fill(
+        row,
+        side="BUY",
+        qty=Decimal("0.0025"),
+        fill=fill,
+        is_forced=False,
+        candle_open_time=None,
+        clock=SystemClock(),
+        db=db,
+    )
+    db.commit()
+    assert trade.session_id == session_id
+    journals = db.query(TradeJournalRow).filter(TradeJournalRow.session_id == session_id).all()
+    assert len(journals) == 1
+    snap = svc.build_snapshot(db)
+    assert snap["cash"] == "800"
+    btc = next(h for h in snap["holdings"] if h["asset"] == "btc")
+    assert btc["quantity"] == "0.0025"
+    assert snap["warning"] is None
+
+
+def test_apply_fill_hook_refuses_portfolio_keeps_journal(db):
+    svc.set_funding(db, "50")
+    now = datetime.now(timezone.utc)
+    session_id = str(uuid4())
+    row = SimulationSessionRow(
+        id=session_id,
+        mode="simulation",
+        state="RUNNING",
+        symbol="btc_usdt",
+        timeframe="1h",
+        starting_capital="1000",
+        allocated_capital="1000",
+        max_position_size="500",
+        target_net_profit_rate="0.01",
+        max_session_loss_rate="0.007",
+        target_net_profit_amount="5",
+        max_session_loss_amount="3.5",
+        max_trades=20,
+        duration_seconds=3600,
+        fee_rate="0",
+        slippage_rate="0",
+        strategy_id="dual_ema",
+        cash="1000",
+        position_side="flat",
+        position_qty="0",
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(row)
+    db.flush()
+    fill = SimpleNamespace(
+        cash_delta=Decimal("-200"),
+        fee=Decimal("0"),
+        slippage_cost=Decimal("0"),
+        reference_price=Decimal("80000"),
+        fill_price=Decimal("80000"),
+        notional=Decimal("200"),
+    )
+    _apply_fill(
+        row,
+        side="BUY",
+        qty=Decimal("0.0025"),
+        fill=fill,
+        is_forced=False,
+        candle_open_time=None,
+        clock=SystemClock(),
+        db=db,
+    )
+    db.commit()
+    journals = db.query(TradeJournalRow).filter(TradeJournalRow.session_id == session_id).all()
+    assert len(journals) == 1
+    snap = svc.build_snapshot(db)
+    assert snap["cash"] == "50"
+    assert snap["warning"] == svc.FILL_APPLY_INSUFFICIENT
+    assert [h["asset"] for h in snap["holdings"]] == ["usdt"]
+    assert row.cash == "800"

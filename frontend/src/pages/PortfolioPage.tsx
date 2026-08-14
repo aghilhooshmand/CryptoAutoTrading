@@ -47,12 +47,10 @@ export function PortfolioPage() {
 
   return (
     <section className="page" aria-labelledby="portfolio-title">
-      <h1 id="portfolio-title">Portfolio</h1>
-      <p>
-        Local holdings book: fund USDT, record local/manual assets, and reserve quote
-        cash with allocations. This is not real-money brokerage funding. Simulation
-        sessions below are separate experiment ledgers.
-      </p>
+      <div className="portfolio-title-row">
+        <h1 id="portfolio-title">Simulation Portfolio</h1>
+        <SimulationBadge />
+      </div>
 
       {loadError ? (
         <p className="form-error" role="alert" data-testid="portfolio-load-error">
@@ -63,7 +61,7 @@ export function PortfolioPage() {
       {snapshot ? (
         <>
           <PortfolioCapitalPanel snapshot={snapshot} onUpdated={setSnapshot} />
-          <HoldingsPanel snapshot={snapshot} onUpdated={setSnapshot} />
+          <HoldingsPanel snapshot={snapshot} />
           <AllocationPanel snapshot={snapshot} onUpdated={setSnapshot} />
         </>
       ) : !loadError ? (
@@ -73,16 +71,15 @@ export function PortfolioPage() {
       ) : null}
 
       <div className="portfolio-sim-summary" data-testid="portfolio-sim-summary">
-        <h2>Active simulation (separate)</h2>
+        <h2>Active simulation session</h2>
         {session ? (
           <>
-            <SimulationBadge />
             <p>
-              Active session <strong>{session.state}</strong> on {session.symbol}: cash{" "}
-              {session.cash} USDT; liquidation net {session.economics?.netPnl ?? "—"}.
+              Session <strong>{session.state}</strong> on {session.symbol}. Journals live on Auto
+              Trading.
             </p>
             <p>
-              <Link to="/auto-trading">Open Auto Trading</Link> for journals and controls.
+              <Link to="/auto-trading">Open Auto Trading</Link>
             </p>
           </>
         ) : (

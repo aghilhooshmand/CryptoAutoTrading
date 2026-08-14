@@ -33,8 +33,8 @@ Feature 010. Propose commits only.
 
 ## Phase 1: Setup
 
-- [ ] T044 Confirm reusable 009 surfaces (`backend/app/portfolio/`, `backend/app/api/portfolio.py`, `frontend/src/pages/PortfolioPage.tsx`, `frontend/src/features/portfolio/`, `frontend/src/services/portfolioApi.ts`) per plan.md — extend; do not create a second portfolio package
-- [ ] T045 [P] Confirm Feature 003 `_apply_fill` in `backend/app/simulation/session_service.py` as the only fill hook for 009 (pipeline already calls it; strategies must not write portfolio)
+- [X] T044 Confirm reusable 009 surfaces (`backend/app/portfolio/`, `backend/app/api/portfolio.py`, `frontend/src/pages/PortfolioPage.tsx`, `frontend/src/features/portfolio/`, `frontend/src/services/portfolioApi.ts`) per plan.md — extend; do not create a second portfolio package
+- [X] T045 [P] Confirm Feature 003 `_apply_fill` in `backend/app/simulation/session_service.py` as the only fill hook for 009 (pipeline already calls it; strategies must not write portfolio)
 
 ---
 
@@ -42,13 +42,13 @@ Feature 010. Propose commits only.
 
 **Purpose**: Remove operator holdings writes; simulation provenance; fill-apply domain API
 
-- [ ] T046 Remove public `PUT /portfolio/holdings` and `DELETE /portfolio/holdings/{asset}` from `backend/app/api/portfolio.py`; those paths MUST return 404 or 405 per `contracts/portfolio-api.md`
-- [ ] T047 [P] Migrate `local_manual` → `simulation` for portfolio/holdings provenance in `backend/app/portfolio/repository.py` / `backend/app/db/session.py`; GET snapshot `bookProvenance` and holding `provenance` are `simulation`
-- [ ] T048 Implement `apply_simulation_fill` in `backend/app/portfolio/service.py` (BUY/SELL qty + cash_delta + fill price; weighted average cost; realized P&L on sell; delete row at qty 0; no negative USDT; persist `fillApplyWarning` on refuse and skip `simulation_fill` snapshot; clear warning on success; snapshot reason `simulation_fill` only on success) per `data-model.md` / research Decision 3
-- [ ] T049 [P] Set USDT inspection `unrealizedPnl` and `return` to `null` in `backend/app/portfolio/service.py` (no artificial USDT unrealized P&L) per FR-001b
-- [ ] T050 [P] Contract tests in `backend/tests/contract/test_portfolio_api.py`: funding still works; `PUT /portfolio/holdings` is 404/405; GET has `bookProvenance` `simulation` and no requirement for operator BTC upsert
-- [ ] T051 [P] Unit tests in `backend/tests/unit/test_portfolio_service.py`: BUY then SELL updates USDT/BTC/cost/realized P&L; insufficient USDT leaves holdings unchanged, sets fill-apply warning, no snapshot; GET does not snapshot; allocation identity unchanged
-- [ ] T052 Run Simulation/Backtest regression: `pytest backend/tests/contract/test_simulation_api.py backend/tests/contract/test_backtest_api.py -q`
+- [X] T046 Remove public `PUT /portfolio/holdings` and `DELETE /portfolio/holdings/{asset}` from `backend/app/api/portfolio.py`; those paths MUST return 404 or 405 per `contracts/portfolio-api.md`
+- [X] T047 [P] Migrate `local_manual` → `simulation` for portfolio/holdings provenance in `backend/app/portfolio/repository.py` / `backend/app/db/session.py`; GET snapshot `bookProvenance` and holding `provenance` are `simulation`
+- [X] T048 Implement `apply_simulation_fill` in `backend/app/portfolio/service.py` (BUY/SELL qty + cash_delta + fill price; weighted average cost; realized P&L on sell; delete row at qty 0; no negative USDT; persist `fillApplyWarning` on refuse and skip `simulation_fill` snapshot; clear warning on success; snapshot reason `simulation_fill` only on success) per `data-model.md` / research Decision 3
+- [X] T049 [P] Set USDT inspection `unrealizedPnl` and `return` to `null` in `backend/app/portfolio/service.py` (no artificial USDT unrealized P&L) per FR-001b
+- [X] T050 [P] Contract tests in `backend/tests/contract/test_portfolio_api.py`: funding still works; `PUT /portfolio/holdings` is 404/405; GET has `bookProvenance` `simulation` and no requirement for operator BTC upsert
+- [X] T051 [P] Unit tests in `backend/tests/unit/test_portfolio_service.py`: BUY then SELL updates USDT/BTC/cost/realized P&L; insufficient USDT leaves holdings unchanged, sets fill-apply warning, no snapshot; GET does not snapshot; allocation identity unchanged
+- [X] T052 Run Simulation/Backtest regression: `pytest backend/tests/contract/test_simulation_api.py backend/tests/contract/test_backtest_api.py -q`
 
 **Checkpoint**: Public manual holdings API gone; fill-apply exists as domain API
 
@@ -60,15 +60,15 @@ Feature 010. Propose commits only.
 
 ### Tests
 
-- [ ] T053 [P] [US1] Frontend tests in `frontend/src/__tests__/portfolio.test.tsx`: summary cards; fund USDT; no holding asset/qty form; Simulation label; GET `warning` shown when present; no “local/manual holdings book” copy per FR-010 / SC-001 / SC-009
-- [ ] T054 [P] [US1] Contract GET unfunded + after funding: USDT only, `mode`/`bookProvenance` simulation, in `backend/tests/contract/test_portfolio_api.py`
+- [X] T053 [P] [US1] Frontend tests in `frontend/src/__tests__/portfolio.test.tsx`: summary cards; fund USDT; no holding asset/qty form; Simulation label; GET `warning` shown when present; no “local/manual holdings book” copy per FR-010 / SC-001 / SC-009
+- [X] T054 [P] [US1] Contract GET unfunded + after funding: USDT only, `mode`/`bookProvenance` simulation, in `backend/tests/contract/test_portfolio_api.py`
 
 ### Implementation
 
-- [ ] T055 [US1] Rework `frontend/src/pages/PortfolioPage.tsx` and `frontend/src/features/portfolio/` into Simulation Portfolio: summary cards (total value, available USDT, total P&L/return, realized/unrealized); remove HoldingsPanel record/remove form; strip sandbox wording; show GET `warning` when present (not hover-only)
-- [ ] T056 [US1] Keep funding as a compact control in `frontend/src/features/portfolio/PortfolioCapitalPanel.tsx` (simulation USDT, not “set equity”)
-- [ ] T057 [US1] Extend `frontend/src/services/portfolioApi.ts` types (`mode`, `bookProvenance` simulation, nullable USDT unrealized, `warning`, `positions`); remove `putHolding` / `deleteHolding` clients
-- [ ] T058 [US1] Run T053–T054; fix until passing
+- [X] T055 [US1] Rework `frontend/src/pages/PortfolioPage.tsx` and `frontend/src/features/portfolio/` into Simulation Portfolio: summary cards (total value, available USDT, total P&L/return, realized/unrealized); remove HoldingsPanel record/remove form; strip sandbox wording; show GET `warning` when present (not hover-only)
+- [X] T056 [US1] Keep funding as a compact control in `frontend/src/features/portfolio/PortfolioCapitalPanel.tsx` (simulation USDT, not “set equity”)
+- [X] T057 [US1] Extend `frontend/src/services/portfolioApi.ts` types (`mode`, `bookProvenance` simulation, nullable USDT unrealized, `warning`, `positions`); remove `putHolding` / `deleteHolding` clients
+- [X] T058 [US1] Run T053–T054; fix until passing
 
 **Checkpoint**: MVP inspect + fund without a manual holdings book
 
@@ -80,16 +80,16 @@ Feature 010. Propose commits only.
 
 ### Tests
 
-- [ ] T059 [P] [US2] Unit/contract tests: `apply_simulation_fill` BUY 200 USDT → BTC qty up / USDT down; SELL reverses + realized P&L; strategies not called, in `backend/tests/unit/test_portfolio_service.py` and/or `backend/tests/contract/test_portfolio_api.py` per SC-009
-- [ ] T060 [P] [US2] Test that Feature 003 `_apply_fill` invokes portfolio apply after the journal row is added; refused apply does not roll back journals and GET `warning` is set, in `backend/tests/unit/` or simulation contract tests per FR-009 / SC-009
+- [X] T059 [P] [US2] Unit/contract tests: `apply_simulation_fill` BUY 200 USDT → BTC qty up / USDT down; SELL reverses + realized P&L; strategies not called, in `backend/tests/unit/test_portfolio_service.py` and/or `backend/tests/contract/test_portfolio_api.py` per SC-009
+- [X] T060 [P] [US2] Test that Feature 003 `_apply_fill` invokes portfolio apply after the journal row is added; refused apply does not roll back journals and GET `warning` is set, in `backend/tests/unit/` or simulation contract tests per FR-009 / SC-009
 
 ### Implementation
 
-- [ ] T061 [US2] Hook `apply_simulation_fill` from `backend/app/simulation/session_service.py` `_apply_fill` after the trade journal is added (symbol → base asset); catch refused apply; do not raise out of the session transaction; do not hook strategy modules
-- [ ] T062 [US2] Surface fill-created holdings on GET (valuation unchanged) in `backend/app/portfolio/service.py`
-- [ ] T084 [US2] Derive `deployed` and `positions` on GET from Feature 003 sessions in `RUNNING`/`STOPPING` with a long position (`sessionId`, `symbol`, `asset`, `side`, `quantity`, `costBasis`); leftover `portfolio.deployed` is not authority, in `backend/app/portfolio/service.py` per research Decision 3b / FR-001
-- [ ] T085 [P] [US2] Tests: active long session → non-empty `positions` and `deployed` = cost basis; no active long → `"0"` / `[]`; refused apply → warning + unchanged holdings, in `backend/tests/unit/test_portfolio_service.py` and/or `backend/tests/contract/test_portfolio_api.py`
-- [ ] T063 [US2] Run T059–T060 and T085; fix until passing
+- [X] T061 [US2] Hook `apply_simulation_fill` from `backend/app/simulation/session_service.py` `_apply_fill` after the trade journal is added (symbol → base asset); catch refused apply; do not raise out of the session transaction; do not hook strategy modules
+- [X] T062 [US2] Surface fill-created holdings on GET (valuation unchanged) in `backend/app/portfolio/service.py`
+- [X] T084 [US2] Derive `deployed` and `positions` on GET from Feature 003 sessions in `RUNNING`/`STOPPING` with a long position (`sessionId`, `symbol`, `asset`, `side`, `quantity`, `costBasis`); leftover `portfolio.deployed` is not authority, in `backend/app/portfolio/service.py` per research Decision 3b / FR-001
+- [X] T085 [P] [US2] Tests: active long session → non-empty `positions` and `deployed` = cost basis; no active long → `"0"` / `[]`; refused apply → warning + unchanged holdings, in `backend/tests/unit/test_portfolio_service.py` and/or `backend/tests/contract/test_portfolio_api.py`
+- [X] T063 [US2] Run T059–T060 and T085; fix until passing
 
 **Checkpoint**: Example BUY/SELL lifecycle visible on Simulation Portfolio
 
@@ -101,14 +101,14 @@ Feature 010. Propose commits only.
 
 ### Tests
 
-- [ ] T064 [P] [US3] Contract tests: POST/PATCH/DELETE allocations vs USDT cash; over-reserve 400; shared `targetRef`; funding reject when cash < reserved, in `backend/tests/contract/test_portfolio_api.py`
-- [ ] T065 [P] [US3] Frontend tests: compact Capital (available/reserved/deployed); allocation CRUD not page-primary; overspend error; confirm release, in `frontend/src/__tests__/portfolio.test.tsx`
+- [X] T064 [P] [US3] Contract tests: POST/PATCH/DELETE allocations vs USDT cash; over-reserve 400; shared `targetRef`; funding reject when cash < reserved, in `backend/tests/contract/test_portfolio_api.py`
+- [X] T065 [P] [US3] Frontend tests: compact Capital (available/reserved/deployed); allocation CRUD not page-primary; overspend error; confirm release, in `frontend/src/__tests__/portfolio.test.tsx`
 
 ### Implementation
 
-- [ ] T066 [US3] Keep allocation service invariants in `backend/app/portfolio/service.py`
-- [ ] T067 [US3] Demote `frontend/src/features/portfolio/AllocationPanel.tsx` to expandable/compact Capital; parent page leads with summary + holdings
-- [ ] T068 [US3] Run T064–T065; fix until passing
+- [X] T066 [US3] Keep allocation service invariants in `backend/app/portfolio/service.py`
+- [X] T067 [US3] Demote `frontend/src/features/portfolio/AllocationPanel.tsx` to expandable/compact Capital; parent page leads with summary + holdings
+- [X] T068 [US3] Run T064–T065; fix until passing
 
 **Checkpoint**: SC-002 with secondary allocation UI
 
@@ -118,13 +118,13 @@ Feature 010. Propose commits only.
 
 ### Tests
 
-- [ ] T069 [P] [US4] Contract: fund + fill-apply + allocation; GET unchanged after failed over-reserve, in `backend/tests/contract/test_portfolio_api.py` per FR-007 / SC-003
-- [ ] T070 [P] [US4] Unit: funding / simulation_fill / allocation each insert one snapshot; GET does not, in `backend/tests/unit/test_portfolio_service.py` per FR-007a
+- [X] T069 [P] [US4] Contract: fund + fill-apply + allocation; GET unchanged after failed over-reserve, in `backend/tests/contract/test_portfolio_api.py` per FR-007 / SC-003
+- [X] T070 [P] [US4] Unit: funding / simulation_fill / allocation each insert one snapshot; GET does not, in `backend/tests/unit/test_portfolio_service.py` per FR-007a
 
 ### Implementation
 
-- [ ] T071 [US4] Snapshot reasons include `simulation_fill` only from a **successful** `apply_simulation_fill` (do not insert on refuse or GET) in `backend/app/portfolio/repository.py` / `service.py`
-- [ ] T072 [US4] Run T069–T070; fix until passing
+- [X] T071 [US4] Snapshot reasons include `simulation_fill` only from a **successful** `apply_simulation_fill` (do not insert on refuse or GET) in `backend/app/portfolio/repository.py` / `service.py`
+- [X] T072 [US4] Run T069–T070; fix until passing
 
 **Checkpoint**: SC-003
 
@@ -134,13 +134,13 @@ Feature 010. Propose commits only.
 
 ### Tests
 
-- [ ] T073 [P] [US5] Unit/contract: missing quote → excluded + `equityComplete` false (value not `"0"`); stale included; unknown cost null P&L; USDT unrealized null, in `backend/tests/unit/test_portfolio_valuation.py` and/or contract tests per FR-011a / SC-008
-- [ ] T074 [P] [US5] Frontend: partial equity labeled; stale indicator; weight visual present; no drawdown/value-over-time; holdings cards usable ~375px, in `frontend/src/__tests__/portfolio.test.tsx` per SC-006 / SC-007
+- [X] T073 [P] [US5] Unit/contract: missing quote → excluded + `equityComplete` false (value not `"0"`); stale included; unknown cost null P&L; USDT unrealized null, in `backend/tests/unit/test_portfolio_valuation.py` and/or contract tests per FR-011a / SC-008
+- [X] T074 [P] [US5] Frontend: partial equity labeled; stale indicator; weight visual present; no drawdown/value-over-time; holdings cards usable ~375px, in `frontend/src/__tests__/portfolio.test.tsx` per SC-006 / SC-007
 
 ### Implementation
 
-- [ ] T075 [US5] Add current-state allocation visual (donut or equivalent) in `frontend/src/features/portfolio/`; holdings table with card fallback in CSS (`frontend/src/styles.css`)
-- [ ] T076 [US5] Run T073–T074; fix until passing
+- [X] T075 [US5] Add current-state allocation visual (donut or equivalent) in `frontend/src/features/portfolio/`; holdings table with card fallback in CSS (`frontend/src/styles.css`)
+- [X] T076 [US5] Run T073–T074; fix until passing
 
 **Checkpoint**: Honest current-state analytics
 
@@ -148,13 +148,13 @@ Feature 010. Propose commits only.
 
 ## Phase 8: Polish
 
-- [ ] T077 [P] Re-run Simulation/Backtest contracts per FR-009 / SC-005
-- [ ] T078 [P] Frontend `npm test -- --run src/__tests__/portfolio`
-- [ ] T079 Execute quickstart automated checks in `specs/009-portfolio-capital-allocation/quickstart.md`
-- [ ] T080 [P] UI review vs `docs/UI_UX_STANDARDS.md` (Simulation obvious, no sandbox copy, 375px, confirm release)
-- [ ] T081 Keep Feature 009 `IN PROGRESS` in `docs/ROADMAP.md`; do not mark DONE; do not start Feature 010
-- [ ] T082 Confirm no credentials/real-money/strategy mutation; no public holdings upsert remains
-- [ ] T083 Propose commit message (do not auto-commit)
+- [X] T077 [P] Re-run Simulation/Backtest contracts per FR-009 / SC-005
+- [X] T078 [P] Frontend `npm test -- --run src/__tests__/portfolio`
+- [X] T079 Execute quickstart automated checks in `specs/009-portfolio-capital-allocation/quickstart.md`
+- [X] T080 [P] UI review vs `docs/UI_UX_STANDARDS.md` (Simulation obvious, no sandbox copy, 375px, confirm release)
+- [X] T081 Keep Feature 009 `IN PROGRESS` in `docs/ROADMAP.md`; do not mark DONE; do not start Feature 010
+- [X] T082 Confirm no credentials/real-money/strategy mutation; no public holdings upsert remains
+- [X] T083 Propose commit message (do not auto-commit)
 
 ---
 

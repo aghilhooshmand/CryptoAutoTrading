@@ -1,4 +1,4 @@
-/** Display helpers for the Feature 009 holdings book. */
+/** Display helpers for the Feature 009 Simulation Portfolio. */
 
 import type { PortfolioSnapshot } from "../../services/portfolioApi";
 
@@ -20,10 +20,8 @@ export function formatReturn(ratio: string | null | undefined): string {
 }
 
 export function formatProvenance(value: string | undefined): string {
-  if (value === "local_manual" || !value) {
-    return "local/manual — not a live XT account";
-  }
-  return value;
+  if (value === "exchange") return "exchange";
+  return "simulation";
 }
 
 /** Equity is the sum of valued holdings; incomplete books are labeled partial. */

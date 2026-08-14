@@ -18,6 +18,7 @@ from app.portfolio import identity
 
 PORTFOLIO_ID = 1
 QUOTE_ASSET = identity.QUOTE_ASSET
+SIMULATION = "simulation"
 LOCAL_MANUAL = "local_manual"
 
 
@@ -80,9 +81,29 @@ def migrate_cash_to_usdt(db: Session) -> bool:
         asset=QUOTE_ASSET,
         quantity=identity.money_str(qty),
         average_cost="1",
-        provenance=LOCAL_MANUAL,
+        provenance=SIMULATION,
     )
     return True
+
+
+def migrate_provenance(db: Session) -> int:
+    """Rewrite leftover local_manual provenance to simulation. Returns rows updated."""
+    rows = (
+        db.query(PortfolioHoldingRow)
+        .filter(PortfolioHoldingRow.provenance == LOCAL_MANUAL)
+        .all()
+    )
+    for row in rows:
+        row.provenance = SIMULATION
+    if rows:
+        db.flush()
+    return len(rows)
+
+
+def set_fill_apply_warning(db: Session, message: str | None) -> None:
+    row = ensure_portfolio(db)
+    row.fill_apply_warning = message
+    db.flush()
 
 
 def list_holdings(db: Session) -> list[PortfolioHoldingRow]:
@@ -117,7 +138,8 @@ def upsert_holding(
     asset: str,
     quantity: str,
     average_cost: str | None,
-    provenance: str = LOCAL_MANUAL,
+    provenance: str = SIMULATION,
+    realized_pnl: str | None = None,
 ) -> PortfolioHoldingRow:
     code = asset.lower().strip()
     now = _now()
@@ -129,7 +151,7 @@ def upsert_holding(
             asset=code,
             quantity=quantity,
             average_cost=average_cost,
-            realized_pnl="0",
+            realized_pnl=realized_pnl if realized_pnl is not None else "0",
             provenance=provenance,
             created_at=now,
             updated_at=now,
@@ -138,6 +160,9 @@ def upsert_holding(
     else:
         row.quantity = quantity
         row.average_cost = average_cost
+        row.provenance = provenance
+        if realized_pnl is not None:
+            row.realized_pnl = realized_pnl
         row.updated_at = now
     touch_portfolio(db)
     db.flush()
