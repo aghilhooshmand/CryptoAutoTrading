@@ -9,7 +9,26 @@ export interface PortfolioAllocation {
   updatedAt: string;
 }
 
+export interface PortfolioHolding {
+  id: string;
+  asset: string;
+  quantity: string;
+  averageCost: string | null;
+  price: string | null;
+  priceStatus: "fresh" | "stale" | "unavailable";
+  marketValue: string | null;
+  weight: string | null;
+  realizedPnl: string;
+  unrealizedPnl: string | null;
+  return: string | null;
+  provenance: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PortfolioSnapshot {
+  quoteCurrency?: string;
+  bookProvenance?: string;
   cash: string;
   reserved: string;
   available: string;
@@ -17,7 +36,10 @@ export interface PortfolioSnapshot {
   realizedPnl: string;
   unrealizedPnl: string;
   equity: string;
+  equityComplete: boolean;
+  unvaluedAssets: string[];
   positions: unknown[];
+  holdings: PortfolioHolding[];
   allocations: PortfolioAllocation[];
   updatedAt: string | null;
   warning: string | null;
@@ -78,6 +100,30 @@ export async function putPortfolioFunding(cash: string): Promise<PortfolioSnapsh
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ cash }),
+  });
+  return parseJson<PortfolioSnapshot>(response);
+}
+
+export async function putHolding(body: {
+  asset: string;
+  quantity: string;
+  averageCost?: string | null;
+}): Promise<PortfolioSnapshot> {
+  const response = await fetch("/portfolio/holdings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      asset: body.asset,
+      quantity: body.quantity,
+      averageCost: body.averageCost ?? null,
+    }),
+  });
+  return parseJson<PortfolioSnapshot>(response);
+}
+
+export async function deleteHolding(asset: string): Promise<PortfolioSnapshot> {
+  const response = await fetch(`/portfolio/holdings/${encodeURIComponent(asset)}`, {
+    method: "DELETE",
   });
   return parseJson<PortfolioSnapshot>(response);
 }

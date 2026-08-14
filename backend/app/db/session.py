@@ -49,6 +49,15 @@ def init_db() -> None:
     _ensure_column(engine, "backtest_runs", "strategy_params", "TEXT")
     _ensure_column(engine, "backtest_runs", "origin", "TEXT DEFAULT 'manual'")
     _ensure_column(engine, "backtest_runs", "comparison_id", "TEXT")
+    # Feature 009: leftover portfolio.cash → usdt holding (once).
+    from app.portfolio.repository import migrate_cash_to_usdt
+
+    db = SessionLocal()
+    try:
+        migrate_cash_to_usdt(db)
+        db.commit()
+    finally:
+        db.close()
 
 
 def _ensure_column(eng, table: str, column: str, coltype: str) -> None:

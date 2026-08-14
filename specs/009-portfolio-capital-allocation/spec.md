@@ -22,7 +22,9 @@
 
 ### Session 2026-08-14 (holdings / exchange-style portfolio)
 
-Pending `/speckit-clarify`. Informed defaults are recorded under Assumptions; open decisions are marked `[NEEDS CLARIFICATION]` in requirements.
+- Q: In Feature 009, how should assets other than quote cash (for example BTC or ETH) first appear in the portfolio? → A: Operator may also record local/manual holdings (quantity and optional cost basis) for supported assets, with local/bootstrap provenance.
+- Q: Should Feature 009 store a history of portfolio value over time, or only the current holdings and reservations? → A: Persist portfolio snapshots on meaningful state changes for future historical analytics; Feature 009 UI remains current-state focused. Do not show value-over-time or drawdown yet, and do not create periodic price-only snapshots in this feature.
+- Q: If a holding has no usable public price, or only a stale last-known price, how should Portfolio compute that holding’s value and total equity? → A: Never invent prices. No usable price means unknown value and exclusion from calculated equity; stale last-known prices remain included with a clear stale indicator. If any holding is unvalued, the UI/API must indicate that the displayed equity is partial/known-value equity rather than silently presenting it as complete.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -39,11 +41,12 @@ internal ledger.
 reservation has nothing coherent to sit on, and later Simulation / real-money /
 Torque work would invent a second “asset portfolio.”
 
-**Independent Test**: Establish known holdings (at least quote cash; other
-assets if this feature’s write path includes them), open Portfolio, and confirm
-each holding’s quantity and known valuation fields, portfolio totals, and that
+**Independent Test**: Fund quote cash and record at least one other local
+holding (quantity and optional cost basis), open Portfolio, and confirm each
+holding’s quantity and known valuation fields, portfolio totals, and that
 weights sum to 100% among holdings whose values are known (within ordinary
-rounding).
+rounding). Local/manual provenance is visible and not labeled as a live
+exchange account.
 
 **Acceptance Scenarios**:
 
@@ -56,12 +59,14 @@ rounding).
    cash (when the quote asset is valued 1:1), available/reserved/deployed
    capital categories, realized and unrealized P&L, an empty or clearly empty
    positions list, and a holdings list that at least shows the quote asset.
-3. **Given** the portfolio holds more than one asset with known market values
-   (for example USDT, BTC, ETH), **When** the operator views Portfolio,
-   **Then** they see each asset’s quantity, current price when available,
-   current value in quote currency, and weight as a share of total equity, and
-   they can identify total equity as the sum of those values without opening
-   strategy screens.
+3. **Given** the operator has funded quote cash and recorded local holdings
+   for other supported assets (for example BTC and ETH) with quantities and
+   optional cost basis, **When** they view Portfolio, **Then** they see each
+   asset’s quantity, current price when available, current value in quote
+   currency, and weight as a share of total equity, and they can identify
+   total equity as the sum of those values without opening strategy screens.
+   Those non-quote holdings are labeled as local/manual, not as a live
+   exchange account.
 4. **Given** cost basis is known for a holding, **When** the operator views
    that holding, **Then** they see average acquisition price (or equivalent
    cost basis), unrealized P&L vs current value, and a simple return for that
@@ -157,9 +162,9 @@ effective picture and later features can reuse this domain.
 **Why this priority**: A non-persisted book cannot support reproducibility or
 later Simulation / real-money / Torque binding.
 
-**Independent Test**: Establish quote cash (and any other holdings this
-feature allows), create allocations, reload, and confirm the same holdings,
-capital categories, and allocation records remain inspectable.
+**Independent Test**: Fund quote cash, record a local non-quote holding, create
+allocations, reload, and confirm the same holdings quantities, capital
+categories, and allocation records remain inspectable.
 
 **Acceptance Scenarios**:
 
@@ -184,9 +189,9 @@ not shown invented history or false precision.
 terminal that fabricates drawdown or time series.
 
 **Independent Test**: With known holdings and known vs unknown cost basis,
-confirm totals and per-holding P&L match the stated identities; confirm no
-historical chart or drawdown figure appears unless historical state actually
-exists.
+confirm totals and per-holding P&L match the stated identities; confirm the
+Portfolio page does not show value-over-time or drawdown even if snapshots
+were stored on book changes.
 
 **Acceptance Scenarios**:
 
@@ -194,14 +199,15 @@ exists.
    Portfolio, **Then** they can read total equity, each holding’s weight, and
    portfolio realized, unrealized, and total P&L/return when those figures are
    defined.
-2. **Given** Feature 009 does not yet have sufficient historical snapshots,
-   **When** the operator views Portfolio, **Then** they do not see
-   value-over-time, P&L-over-time, or maximum-drawdown figures presented as
-   calculated facts.
+2. **Given** Feature 009 persists snapshots for later analytics but the
+   operator-facing view is current-state, **When** the operator views
+   Portfolio, **Then** they do not see value-over-time, P&L-over-time, or
+   maximum-drawdown figures presented as calculated facts.
 3. **Given** public market data for a supported holding is missing or not
    current, **When** that holding is valued, **Then** the operator sees a
-   clear unavailable or stale treatment and the system does not invent a
-   price to complete the books.
+   clear unavailable or stale treatment, no invented price, and—if any
+   holding is unvalued—that displayed equity is labeled as partial
+   (known-value) equity, not as a complete total.
 
 ---
 
@@ -223,10 +229,15 @@ exists.
   positions state until later binding.
 - Empty non-quote holdings → do not invent BTC/ETH rows the operator does
   not own; show quote cash holding after funding.
+- Invalid local/manual holding (zero or negative quantity, unknown asset)
+  → rejected; prior state unchanged.
 - Holding quantity of zero → not presented as an owned asset.
 - Missing or stale public price for a holding → do not invent a price;
-  quantity remains visible; value/weight/unrealized P&L follow the chosen
-  fail-closed valuation rule.
+  quantity remains visible. No usable price: value unknown; holding omitted
+  from calculated equity and from weights of that equity. Stale last-known
+  public price: include that value in equity with a clear stale indicator.
+  If any holding is unvalued, displayed equity MUST be labeled partial /
+  known-value equity, not presented as a complete total.
 - Unknown cost basis → do not invent average price or unrealized P&L.
 - Corrupt or inconsistent stored portfolio/holdings/allocation state on load
   → fail closed with a clear operator warning; do not invent balances,
@@ -259,24 +270,27 @@ exists.
   cost basis is known, it MUST also present unrealized P&L and a simple
   return for that holding. When cost basis is unknown, P&L/return for that
   holding MUST be omitted or marked unknown—not fabricated.
-- **FR-001c**: How non-quote holdings (for example BTC or ETH) first appear
-  in Feature 009 itself is [NEEDS CLARIFICATION: 009 write path for
-  non-quote holdings — quote-cash funding only until later execution
-  binding; operator local/manual bootstrap of quantities and optional cost
-  basis; or another allowed origin]. The model MUST still define holdings so
-  later execution can apply: quote cash decreases, the bought asset
+- **FR-001c**: The operator MUST be able to record, adjust, and remove
+  local/manual holdings for supported non-quote assets (quantity required;
+  cost basis / average acquisition price optional). Those holdings MUST
+  carry local/manual (bootstrap) provenance and MUST NOT be presented as a
+  live exchange account. Recording a local holding MUST NOT place orders,
+  start Simulation, or change reserved allocations. The model MUST still
+  allow later execution to apply: quote cash decreases, the bought asset
   quantity increases, cost basis updates, then market value and unrealized
   P&L change with price, then a sell decreases the asset, increases quote
   cash, and updates realized P&L. Feature 009 MUST NOT itself place
   real-money or XT private orders to create that lifecycle.
 - **FR-001d**: Total equity MUST be the sum of holding market values in the
-  quote currency for holdings that are included under the valuation rule.
-  Equity MUST NOT be defined as quote cash alone once other valued holdings
-  exist. Portfolio realized P&L, unrealized P&L, and total P&L/return MUST
-  be coherent with holding-level figures (no double counting).
+  quote currency for holdings that are included under FR-011a. Equity MUST
+  NOT be defined as quote cash alone once other valued holdings exist.
+  Portfolio realized P&L, unrealized P&L, and total P&L/return MUST be
+  coherent with holding-level figures (no double counting). When any
+  holding is unvalued, the displayed equity figure MUST be identified as
+  partial / known-value equity, not as a complete portfolio total.
 - **FR-001e**: Holdings MUST carry a provenance/source distinction sufficient
-  for later mapping (at least: local/manual or bootstrap if used;
-  simulation; real-exchange synchronization). Feature 009 MUST NOT call XT
+  for later mapping (at least: local/manual or bootstrap; simulation;
+  real-exchange synchronization). Feature 009 MUST NOT call XT
   private/account APIs. Feature 012 remains responsible for XT private
   integration. The 009 model MUST be reusable so Feature 012 can map
   exchange balances into this same holdings/accounting domain rather than
@@ -313,13 +327,16 @@ exists.
   quantities, cost basis when known, provenance, and allocation state needed
   for inspection after restart. Market prices MAY be refreshed on read from
   public market data and need not be the persisted source of truth.
-- **FR-007a**: Historical portfolio snapshots (value over time, P&L over
-  time, maximum drawdown, best/worst holdings over a history) are
-  [NEEDS CLARIFICATION: persist historical snapshots in 009 vs current
-  effective state only, with time-series analytics deferred until enough
-  history exists]. Feature 009 MUST NOT present historical analytics as
-  facts if it does not yet have sufficient historical state to calculate
-  them correctly.
+- **FR-007a**: The system MUST persist portfolio snapshots on **meaningful
+  state changes** (quote-cash funding, allocation create/resize/release,
+  local/manual holding record/adjust/remove, and later execution-driven
+  holding mutations when those exist). Snapshots are for future historical
+  analytics (value over time, P&L over time, drawdown, best/worst holdings).
+  Feature 009 MUST NOT create periodic or price-tick-only snapshots when
+  holdings quantities and reservations have not changed. Feature 009 UI MUST
+  remain current-state focused: it MUST NOT show value-over-time,
+  P&L-over-time, or maximum-drawdown figures. Feature 009 MUST NOT present
+  historical analytics as facts in the operator UI.
 - **FR-008**: Invalid allocation, funding, or holdings updates MUST be
   rejected with a clear reason and MUST leave the last valid persisted
   state unchanged.
@@ -340,12 +357,15 @@ exists.
   trading.
 - **FR-011a**: Supported holdings SHOULD be valued using existing public
   market data (Feature 002) in the quote currency (primarily USDT) when a
-  matching public price exists. Missing or stale prices MUST NOT be
-  invented. Exact treatment of missing vs stale prices when computing
-  equity and weights is [NEEDS CLARIFICATION: exclude unvalued holdings
-  from equity; include last-known price with a stale warning; or mark
-  whole-portfolio equity unavailable if any included holding cannot be
-  valued safely].
+  matching public price exists. Prices MUST NEVER be invented. If a holding
+  has no usable public price, its value is unknown: quantity remains
+  visible; that holding MUST be excluded from calculated equity and from
+  weights based on that equity. If a last-known public price exists but is
+  stale, that value MUST remain included in equity and weights with a
+  clear stale indicator. If any holding is unvalued, the UI and the
+  inspection contract MUST indicate that displayed equity is partial /
+  known-value equity rather than silently presenting it as complete.
+  Weights among valued holdings are shares of that known-value equity.
 - **FR-012**: This feature MUST NOT implement: XT private/account
   authentication or synchronization; real-money execution; leverage; short
   selling; margin; multi-exchange portfolios; automatic portfolio
@@ -368,8 +388,9 @@ exists.
   Controller → Risk → Execution. Distinct from holdings. Empty/zero
   deployed in Feature 009 until later binding.
 - **Capital / portfolio snapshot**: Operator-visible coherent view of
-  holdings + capital categories + allocations at a point in time.
-  Historical snapshot persistence is subject to FR-007a.
+  holdings + capital categories + allocations at a point in time. Feature
+  009 also persists snapshots on meaningful book changes for later
+  analytics; the 009 UI still shows the current book only.
 - **Allocation Target Reference**: Optional non-authoritative label
   (strategy id or program name). Not a unique ownership key; does not
   execute trades.
@@ -395,7 +416,9 @@ exists.
   available never goes negative, reserved never exceeds quote cash,
   double-reservation cannot succeed, and (when all included holdings are
   valued) equity equals the sum of those holding values without
-  double-counting allocations into equity.
+  double-counting allocations into equity. When any holding is unvalued,
+  checks prove displayed equity is marked partial / known-value and equals
+  only the sum of valued holdings.
 - **SC-005**: Existing Simulation and Backtest regression suites that encode
   current session/run accounting remain green after this feature lands.
 - **SC-006**: Portfolio primary workflows for inspect holdings + allocate
@@ -406,7 +429,9 @@ exists.
   15% / 5%) from the Portfolio page without calculating by hand.
 - **SC-008**: When cost basis is unknown or a public price is missing, the
   operator is not shown a fabricated P&L, return, or market value for that
-  gap.
+  gap. Missing-price holdings stay out of calculated equity; stale
+  last-known prices stay in with a stale indicator; partial equity is
+  labeled as such.
 
 ## Assumptions
 
@@ -429,14 +454,25 @@ exists.
 - **Funding vs equity**: Controlled funding changes quote cash (and thus
   the quote holding). It does not overwrite crypto holdings or set equity
   independently of valuation.
-- **No execution in 009**: Creating/resizing allocations does not trade.
-  The buy/sell lifecycle is the domain contract for later Simulation /
-  Execution / Feature 012 binding, not an XT private call in this feature.
+- **No execution in 009**: Creating/resizing allocations or recording
+  local/manual holdings does not trade. Local holdings are operator-entered
+  inventory with local provenance. The buy/sell lifecycle is the domain
+  contract for later Simulation / Execution / Feature 012 binding, not an
+  XT private call in this feature.
+- **Local/manual holdings**: The operator may record supported non-quote
+  assets (quantity required, cost basis optional) so Portfolio can show a
+  multi-asset book before execution is bound. These are never labeled as
+  live exchange balances.
 - **Valuation source**: Public market data already available for supported
   USDT-quoted pairs. Quote asset (USDT) values 1:1 in quote currency.
-  Unsupported assets are not silently given fake prices.
+  Unsupported assets are not silently given fake prices. No usable price →
+  unknown value, excluded from calculated equity. Stale last-known price →
+  included with a stale indicator. Any unvalued holding → equity labeled
+  partial / known-value.
 - **Analytics honesty**: Current-state totals, weights, and P&L where
-  inputs exist. No fabricated drawdown or equity curve.
+  inputs exist. Persist snapshots on meaningful book changes for later
+  features; do not show equity curves or drawdown in 009; do not snapshot
+  on price refresh alone.
 - **Settings remain defaults**: Feature 008 does not own the portfolio
   ledger.
 - **Simulation session cash stays session-local** until a later binding
@@ -464,4 +500,8 @@ exists.
   in this feature
 - A second, separate asset-portfolio product beside capital reservation
 - Presenting simulated or local/manual balances as a real XT account
-- Inventing historical performance charts when no historical book exists
+- Inventing historical performance charts in Feature 009 when the UI is
+  current-state only (snapshots may exist for later features; 009 must not
+  present value-over-time or drawdown as operator facts)
+- Periodic price-only portfolio snapshots with no holdings or reservation
+  change

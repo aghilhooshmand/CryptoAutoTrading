@@ -4,109 +4,139 @@
 **Date**: 2026-08-14  
 **Spec**: [spec.md](./spec.md)
 
-## Decision 1: Persist portfolio in SQLite via thin `/portfolio` API
+Cash-only 009 research (singleton SQLite, `/portfolio`, `available = cash −
+reserved`, explicit funding, non-unique `targetRef`, no sim ledger migration)
+remains in force for **quote-cash reservation**. This document records holdings
+reconcile decisions.
 
-**Decision**: Store the local portfolio and allocations in the existing SQLite
-database behind a FastAPI router under `/portfolio`. Frontend Portfolio page
-consumes this API. Do **not** use `localStorage` as source of truth.
+## Decision 1: One book — USDT holding is quote cash
 
-**Rationale**:
-- Spec requires persist-after-restart, reject-leave-last-good, and hard capital
-  invariants — same pattern as Feature 008 Settings.
-- Constitution XV prefers SQLite for local persistence.
-- Keeps capital authority on the backend (strategies cannot invent capital).
+**Decision**: Persist asset balances in `portfolio_holdings`. The `usdt` row
+quantity **is** quote cash. Funding `PUT /portfolio/funding` upserts that
+holding. Allocation invariants read quote cash from the USDT holding, not from
+a parallel cash ledger.
 
-**Alternatives considered**:
-- Frontend-only state — rejected: weak invariants, lost on refresh, drifts from
-  future Simulation binding.
-- Separate DB file — rejected: unnecessary second channel.
+**Migration**: On first load after upgrade, if `portfolio.cash` is set and no
+`usdt` holding exists, copy `cash` → `usdt` quantity (provenance
+`local_manual`). Thereafter holdings are source of truth. Do not keep two
+authoritative cash fields.
 
-## Decision 2: Singleton portfolio + allocation rows
-
-**Decision**:
-- One `portfolio` singleton row (fixed `id=1`) for cash and portfolio-level
-  P&L/deployed fields.
-- Many `portfolio_allocations` rows keyed by UUID, FK to portfolio.
-
-Overwrite cash via funding endpoints; mutate allocations via create/resize/
-release. No append-only capital history table in v1.
-
-**Rationale**: Spec entities are current Portfolio + Allocation records for
-inspection/reproducibility of *effective* state, not a full ledger of every
-tick.
+**Rationale**: Spec forbids a separate capital portfolio vs asset portfolio.
+Existing allocation tests keep the same identity: `available = quote_cash −
+reserved`.
 
 **Alternatives considered**:
-- Event-sourced ledger in 009 — deferred; later features can add journals.
-- Soft-delete only — release may hard-delete or mark released; prefer
-  hard-delete/release that frees reserved immediately for v1 simplicity.
+- Keep `portfolio.cash` as authority and holdings as display-only — rejected
+  (two books).
+- Equity-as-cash (current code) — superseded by spec.
 
-## Decision 3: Capital identity `available = cash − reserved`
+## Decision 2: Local/manual non-quote holdings
 
-**Decision** (clarify Q3):
-- `reserved` = sum of active allocation reserved sizes
-- `available = cash − reserved`
-- Enforce `reserved ≥ 0`, `available ≥ 0`, `reserved ≤ cash`
-- `deployed` reported separately; **0** in Feature 009
-- Positions list **empty** in Feature 009
+**Decision**: Operator may upsert/delete holdings for **supported** non-quote
+assets (quantity > 0; optional average cost). Provenance `local_manual`.
+Supported assets = base currencies of Feature 002 USDT-quoted pairs (e.g.
+`btc`, `eth`) plus quote `usdt` via funding only. Recording a holding does not
+trade, start Simulation, or change allocations.
 
-**Rationale**: Matches “reserve without spending”; keeps deployed ready for
-later binding without double-subtracting in v1.
+USDT quantity MUST NOT be writable through the generic holdings upsert (would
+bypass reserved-cash checks). Use funding.
 
-**Alternatives considered**:
-- Subtract deployed from available now — rejected while deployed stays unused.
-- Equity mark-to-market formula — deferred until positions exist.
-
-## Decision 4: Explicit Portfolio funding (not Settings / Simulation)
-
-**Decision** (clarify Q1 / Q5):
-- Operator sets initial cash via Portfolio funding action.
-- Later increases/decreases use the same controlled funding path.
-- Funding reduction with `new_cash < reserved` → **reject**; operator must
-  release/resize allocations first.
-- Feature 008 Settings and active Simulation session do **not** own or silently
-  seed portfolio cash.
-
-**Rationale**: Portfolio is the capital authority; Settings remain defaults only
-(XXXIII); Simulation accounting stays session-local (FR-009).
+**Rationale**: Clarify Q1 (holdings session). Enables multi-asset Portfolio UI
+before execution binding without looking like XT private balances.
 
 **Alternatives considered**:
-- Mirror Settings `startingCapital` — rejected (clarify).
-- Mirror Simulation cash — rejected (would couple and rewrite narratives).
+- Funding-only until execution — rejected by clarify.
+- Demo seed BTC/ETH — rejected (not operator inventory).
 
-## Decision 5: Allocations are reservations with optional non-unique targets
+## Decision 3: Capital identity unchanged (quote cash)
 
-**Decision** (clarify Q4):
-- Required: stable allocation id, operator label, reserved size (> 0).
-- Optional: `targetRef` (strategy id / program label string) — **not unique**.
-- Create / resize / release only; no trading side effects.
+**Decision**: `reserved = Σ allocation.reservedSize`; `available = quote_cash −
+reserved`; `reserved ≤ quote_cash`. Deployed stays `"0"`; positions `[]` in
+009. Allocations reserve USDT, not BTC units. Cross-allocation spend is
+rejected by the same reserved-vs-available checks (execution later must use
+this identity).
 
-**Rationale**: Spec future scenarios need flexible labeling; uniqueness would
-falsely imply strategy ownership of capital.
+**Rationale**: Clarify Q3 (capital session) still in force.
+
+**Alternatives considered**: Reserve against equity — rejected (would lock BTC
+value as spendable cash).
+
+## Decision 4: Valuation via Feature 002 public quotes
+
+**Decision**: On read (and on mutation responses that return the read model),
+value each non-USDT holding as `{asset}_usdt` via existing
+`MarketDataService.get_quote`. Reuse Feature 002 freshness: prefer
+`observedAt` else `retrievedAt`; **> 60s → stale**. USDT values 1:1, always
+treated as fresh.
+
+- No usable price → quantity visible; value/weight/unrealized omitted; exclude
+  from equity.
+- Stale last-known price → include value in equity; per-holding and book-level
+  stale indicators.
+- Any excluded holding → `equityComplete: false` (partial / known-value
+  equity). Weights are shares of known-value equity.
+
+Never invent prices. Tests stub the market service.
+
+Portfolio GET/mutations that need quotes become **async** FastAPI handlers so
+they can await `get_quote` without a second HTTP hop.
+
+**Rationale**: Clarify Q3 (holdings session); constitution VIII; Feature 002
+already owns XT public access.
 
 **Alternatives considered**:
-- Unique per strategy — rejected.
-- Require registry strategy id — rejected for v1 (Torque/program labels later).
+- Frontend calls `/market/quote` per row — rejected (split authority; easier to
+  desync equity).
+- Exclude stale from equity — rejected by clarify.
 
-## Decision 6: Foundation-first; no Simulation/Backtest ledger migration
+## Decision 5: Snapshots on meaningful book changes only
 
-**Decision**: Do not rewrite session/run fill accounting onto the portfolio
-ledger in 009. Keep regression suites green. Later features bind trading to
-allocations.
+**Decision**: Append a `portfolio_snapshots` row after successful funding,
+holdings upsert/delete, and allocation create/resize/release. Payload = the
+read model at that moment (quantities, reservations, valuation if quotes were
+fetched for the response). Do **not** snapshot on GET or on price refresh
+alone. No `GET /portfolio/snapshots` in Feature 009 (avoids a history UI).
+Unit tests assert a row is written on mutation and not on GET.
 
-**Rationale**: Spec FR-009 / assumptions; reduces blast radius.
-
-**Alternatives considered**:
-- Thin read-only Simulation mirror for deployed/positions — rejected (clarify Q2).
-
-## Decision 7: Package and UI placement
-
-**Decision**:
-- Backend package: `backend/app/portfolio/` (mirror `app.settings`).
-- UI: expand `PortfolioPage` under existing primary Portfolio nav.
-- Inherit `docs/UI_UX_STANDARDS.md` (labels, units, help, validation, busy,
-  confirm release).
-
-**Rationale**: Constitution XIII (three primary areas); XIV UX principles.
+**Rationale**: Clarify Q2. Prepares later analytics without 009 charts.
 
 **Alternatives considered**:
-- Auto Trading tab for allocations — rejected; capital belongs in Portfolio.
+- Current-state only, no table — rejected by clarify.
+- Periodic price snapshots — rejected by clarify.
+- Public snapshot list in 009 — rejected (UI would be tempted to chart).
+
+## Decision 6: P&L honesty
+
+**Decision**: Holding unrealized P&L and return only when **both** average cost
+and a usable (fresh or stale) market value exist. Holding realized P&L stays
+`0` for local/manual bootstrap (no fill). Book realized/unrealized = sums of
+known holding figures; unknown cost does not invent unrealized. Do not show
+drawdown or equity curves.
+
+**Rationale**: Spec FR-001b / SC-008; constitution VI/XII.
+
+## Decision 7: Provenance for Feature 012 reuse
+
+**Decision**: Holding `provenance` enum: `local_manual` | `simulation` |
+`exchange`. Feature 009 writes only `local_manual`. UI labels local/manual,
+never “XT account”. Feature 012 later upserts `exchange` rows in the **same**
+table.
+
+**Rationale**: Spec FR-001e / FR-012.
+
+## Decision 8: Extend existing 009 code; no sim ledger migration
+
+**Decision**: Keep `identity` helpers, allocation CRUD, funding path, fail-closed
+corrupt load, Vite `/portfolio` proxy, Portfolio page shell. Change equity
+formula and add holdings/valuation/snapshots. Do not rewrite Simulation/
+Backtest journals.
+
+**Rationale**: Spec FR-009; current implementation is a valid reservation
+foundation.
+
+## Decision 9: Package layout
+
+**Decision**: Add `app/portfolio/valuation.py`; extend `repository.py` /
+`service.py` / `api/portfolio.py`. Do not create `app/holdings`.
+
+**Rationale**: Constitution X; spec one-book rule.

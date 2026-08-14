@@ -1,10 +1,12 @@
-"""Capital identity helpers: available = cash − reserved (Feature 009)."""
+"""Capital identity helpers: available = quote_cash − reserved (Feature 009)."""
 
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 
 from app.simulation.money import as_str, d
+
+QUOTE_ASSET = "usdt"
 
 
 class CapitalIdentityError(Exception):
@@ -23,11 +25,29 @@ def parse_money(raw: str | int | float | Decimal) -> Decimal:
     return value
 
 
+def quote_cash_from_usdt_quantity(quantity: str | None) -> Decimal:
+    """Quote cash is the USDT holding quantity, or 0 if none."""
+    if quantity is None:
+        return Decimal("0")
+    return parse_money(quantity)
+
+
 def sum_reserved(sizes: list[str]) -> Decimal:
     total = Decimal("0")
     for size in sizes:
         total += parse_money(size)
     return total
+
+
+def sum_market_values(values: list[Decimal]) -> Decimal:
+    total = Decimal("0")
+    for value in values:
+        total += value
+    return total
+
+
+def equity_complete(unvalued_assets: list[str]) -> bool:
+    return len(unvalued_assets) == 0
 
 
 def available_from(cash: Decimal, reserved: Decimal) -> Decimal:
@@ -50,3 +70,9 @@ def assert_invariants(cash: Decimal, reserved: Decimal) -> Decimal:
 
 def money_str(value: Decimal) -> str:
     return as_str(value)
+
+
+def weight_str(market_value: Decimal, equity: Decimal) -> str | None:
+    if equity <= 0:
+        return None
+    return money_str(market_value / equity)

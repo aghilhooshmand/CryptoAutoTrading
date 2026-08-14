@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -219,7 +219,10 @@ class BacktestTradeRow(Base):
 
 
 class PortfolioRow(Base):
-    """Singleton local portfolio capital (Feature 009). Fixed id=1."""
+    """Singleton local portfolio (Feature 009). Fixed id=1.
+
+    `cash` is a leftover cache; quote cash authority is the `usdt` holding.
+    """
 
     __tablename__ = "portfolio"
 
@@ -243,3 +246,33 @@ class PortfolioAllocationRow(Base):
     target_ref: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class PortfolioHoldingRow(Base):
+    """One asset balance under the singleton portfolio (Feature 009)."""
+
+    __tablename__ = "portfolio_holdings"
+    __table_args__ = (
+        UniqueConstraint("portfolio_id", "asset", name="uq_portfolio_holding_asset"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    portfolio_id: Mapped[int] = mapped_column(Integer, index=True, default=1)
+    asset: Mapped[str] = mapped_column(String(32))
+    quantity: Mapped[str] = mapped_column(String(64))
+    average_cost: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    realized_pnl: Mapped[str] = mapped_column(String(64), default="0")
+    provenance: Mapped[str] = mapped_column(String(32), default="local_manual")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class PortfolioSnapshotRow(Base):
+    """Append-only historical book snapshot (Feature 009). Not listed in the 009 UI."""
+
+    __tablename__ = "portfolio_snapshots"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    reason: Mapped[str] = mapped_column(String(32))
+    payload: Mapped[str] = mapped_column(Text)

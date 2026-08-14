@@ -1,20 +1,28 @@
-"""Portfolio & allocations HTTP API (Feature 009)."""
+"""Portfolio, holdings & allocations HTTP API (Feature 009)."""
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.db import session as db_session
+from app.portfolio import repository as repo
 from app.portfolio import service as svc
+from app.portfolio.valuation import fetch_quotes
 
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
 
 class FundingBody(BaseModel):
     cash: str
+
+
+class UpsertHoldingBody(BaseModel):
+    asset: str
+    quantity: str
+    averageCost: Optional[str] = None
 
 
 class CreateAllocationBody(BaseModel):
@@ -34,63 +42,76 @@ def _raise(err: svc.PortfolioError) -> None:
     )
 
 
-@router.get("")
-def get_portfolio() -> dict[str, Any]:
+async def _mutate(apply_fn: Callable, reason: str) -> dict[str, Any]:
     db = db_session.SessionLocal()
     try:
-        return svc.build_snapshot(db)
+        return await svc.snapshot_after(db, reason, lambda: apply_fn(db), fetch_quotes)
+    except svc.PortfolioError as err:
+        db.rollback()
+        _raise(err)
+        raise  # pragma: no cover
+    finally:
+        db.close()
+
+
+@router.get("")
+async def get_portfolio() -> dict[str, Any]:
+    db = db_session.SessionLocal()
+    try:
+        svc.prepare_read(db)
+        quotes = await fetch_quotes(repo.holding_assets(db))
+        return svc.build_snapshot(db, quotes)
     finally:
         db.close()
 
 
 @router.put("/funding")
-def put_funding(body: FundingBody) -> dict[str, Any]:
-    db = db_session.SessionLocal()
-    try:
-        return svc.set_funding(db, body.cash)
-    except svc.PortfolioError as err:
-        _raise(err)
-        raise  # pragma: no cover
-    finally:
-        db.close()
+async def put_funding(body: FundingBody) -> dict[str, Any]:
+    return await _mutate(lambda db: svc._apply_funding(db, body.cash), "funding")
+
+
+@router.put("/holdings")
+async def put_holding(body: UpsertHoldingBody) -> dict[str, Any]:
+    return await _mutate(
+        lambda db: svc._apply_upsert_holding(
+            db,
+            asset=body.asset,
+            quantity_raw=body.quantity,
+            average_cost_raw=body.averageCost,
+        ),
+        "holding_upsert",
+    )
+
+
+@router.delete("/holdings/{asset}")
+async def delete_holding(asset: str) -> dict[str, Any]:
+    return await _mutate(lambda db: svc._apply_delete_holding(db, asset), "holding_delete")
 
 
 @router.post("/allocations", status_code=201)
-def post_allocation(body: CreateAllocationBody) -> dict[str, Any]:
-    db = db_session.SessionLocal()
-    try:
-        return svc.create_allocation(
+async def post_allocation(body: CreateAllocationBody) -> dict[str, Any]:
+    return await _mutate(
+        lambda db: svc._apply_create_allocation(
             db,
             label=body.label,
             reserved_size=body.reservedSize,
             target_ref=body.targetRef,
-        )
-    except svc.PortfolioError as err:
-        _raise(err)
-        raise  # pragma: no cover
-    finally:
-        db.close()
+        ),
+        "allocation_create",
+    )
 
 
 @router.patch("/allocations/{allocation_id}")
-def patch_allocation(allocation_id: str, body: PatchAllocationBody) -> dict[str, Any]:
-    db = db_session.SessionLocal()
-    try:
-        return svc.resize_allocation(db, allocation_id, body.reservedSize)
-    except svc.PortfolioError as err:
-        _raise(err)
-        raise  # pragma: no cover
-    finally:
-        db.close()
+async def patch_allocation(allocation_id: str, body: PatchAllocationBody) -> dict[str, Any]:
+    return await _mutate(
+        lambda db: svc._apply_resize_allocation(db, allocation_id, body.reservedSize),
+        "allocation_resize",
+    )
 
 
 @router.delete("/allocations/{allocation_id}")
-def delete_allocation(allocation_id: str) -> dict[str, Any]:
-    db = db_session.SessionLocal()
-    try:
-        return svc.release_allocation(db, allocation_id)
-    except svc.PortfolioError as err:
-        _raise(err)
-        raise  # pragma: no cover
-    finally:
-        db.close()
+async def delete_allocation(allocation_id: str) -> dict[str, Any]:
+    return await _mutate(
+        lambda db: svc._apply_release_allocation(db, allocation_id),
+        "allocation_release",
+    )

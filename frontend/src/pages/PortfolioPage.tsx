@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { AllocationPanel } from "../features/portfolio/AllocationPanel";
+import { HoldingsPanel } from "../features/portfolio/HoldingsPanel";
 import { PortfolioCapitalPanel } from "../features/portfolio/PortfolioCapitalPanel";
 import {
   getPortfolio,
@@ -48,9 +49,9 @@ export function PortfolioPage() {
     <section className="page" aria-labelledby="portfolio-title">
       <h1 id="portfolio-title">Portfolio</h1>
       <p>
-        Local capital book for funding and allocation reservations (USDT). This is not
-        real-money brokerage funding. Simulation sessions below are separate experiment
-        ledgers.
+        Local holdings book: fund USDT, record local/manual assets, and reserve quote
+        cash with allocations. This is not real-money brokerage funding. Simulation
+        sessions below are separate experiment ledgers.
       </p>
 
       {loadError ? (
@@ -62,6 +63,7 @@ export function PortfolioPage() {
       {snapshot ? (
         <>
           <PortfolioCapitalPanel snapshot={snapshot} onUpdated={setSnapshot} />
+          <HoldingsPanel snapshot={snapshot} onUpdated={setSnapshot} />
           <AllocationPanel snapshot={snapshot} onUpdated={setSnapshot} />
         </>
       ) : !loadError ? (

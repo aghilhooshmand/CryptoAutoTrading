@@ -1,4 +1,4 @@
-"""Unit tests for Feature 009 portfolio identity and service."""
+"""Unit tests for Feature 009 portfolio identity, holdings, and service."""
 
 from __future__ import annotations
 
@@ -12,7 +12,9 @@ from sqlalchemy.orm import sessionmaker
 
 from app.db.models import Base, PortfolioAllocationRow, PortfolioRow
 from app.portfolio import identity
+from app.portfolio import repository as repo
 from app.portfolio import service as svc
+from app.portfolio.valuation import QuoteView
 
 
 @pytest.fixture()
@@ -46,6 +48,17 @@ def test_available_equals_cash_minus_reserved():
     assert identity.assert_invariants(cash, reserved) == Decimal("600")
 
 
+def test_quote_cash_from_usdt_quantity():
+    assert identity.quote_cash_from_usdt_quantity(None) == Decimal("0")
+    assert identity.quote_cash_from_usdt_quantity("500") == Decimal("500")
+
+
+def test_equity_complete_and_sum_values():
+    assert identity.equity_complete([]) is True
+    assert identity.equity_complete(["btc"]) is False
+    assert identity.sum_market_values([Decimal("500"), Decimal("450")]) == Decimal("950")
+
+
 def test_reserved_cannot_exceed_cash():
     with pytest.raises(identity.CapitalIdentityError):
         identity.assert_invariants(Decimal("100"), Decimal("150"))
@@ -53,6 +66,18 @@ def test_reserved_cannot_exceed_cash():
 
 def test_sum_reserved():
     assert identity.sum_reserved(["100", "250.5", "0.5"]) == Decimal("351")
+
+
+def test_migrates_cash_column_to_usdt_holding(db):
+    _seed_portfolio(db, "1000")
+    snap = svc.build_snapshot(db)
+    usdt = [h for h in snap["holdings"] if h["asset"] == "usdt"]
+    assert len(usdt) == 1
+    assert usdt[0]["quantity"] == "1000"
+    assert usdt[0]["provenance"] == "local_manual"
+    assert snap["cash"] == "1000"
+    assert snap["equity"] == "1000"
+    assert snap["equityComplete"] is True
 
 
 def test_fail_closed_corrupt_cash_does_not_invent(db):
@@ -153,7 +178,6 @@ def test_service_mutations_do_not_call_trading(db):
         assert snap["reserved"] == "250"
         assert snap["available"] == "750"
         w.assert_not_called()
-        # Routers are not invoked via service path
         assert sim.start_session.call_count == 0 if hasattr(sim, "start_session") else True
         assert bt.create_run.call_count == 0 if hasattr(bt, "create_run") else True
 
@@ -166,3 +190,100 @@ def test_create_over_reserve_rejected(db):
     snap = svc.build_snapshot(db)
     assert snap["reserved"] == "0"
     assert snap["cash"] == "100"
+
+
+def test_partial_valuation_excludes_unvalued_from_equity(db):
+    svc.set_funding(db, "500")
+    svc.upsert_holding(db, asset="btc", quantity="0.005", average_cost="80000")
+    snap = svc.build_snapshot(db, quotes={"btc": QuoteView(price=None, status="unavailable")})
+    assert snap["cash"] == "500"
+    assert snap["equity"] == "500"
+    assert snap["equityComplete"] is False
+    assert snap["unvaluedAssets"] == ["btc"]
+    btc = next(h for h in snap["holdings"] if h["asset"] == "btc")
+    assert btc["quantity"] == "0.005"
+    assert btc["price"] is None
+    assert btc["marketValue"] is None
+    assert btc["unrealizedPnl"] is None
+    assert btc["return"] is None
+    assert btc["priceStatus"] == "unavailable"
+
+
+def test_stale_quote_included_in_equity(db):
+    svc.set_funding(db, "500")
+    svc.upsert_holding(db, asset="btc", quantity="0.005", average_cost="80000")
+    snap = svc.build_snapshot(
+        db,
+        quotes={"btc": QuoteView(price=Decimal("90000"), status="stale")},
+    )
+    assert snap["equity"] == "950"
+    assert snap["equityComplete"] is True
+    btc = next(h for h in snap["holdings"] if h["asset"] == "btc")
+    assert btc["priceStatus"] == "stale"
+    assert btc["marketValue"] == "450"
+    assert btc["unrealizedPnl"] == "50"
+    assert btc["return"] == "0.125"
+    assert btc["weight"] is not None
+
+
+def test_unknown_cost_nulls_pnl_and_return(db):
+    svc.set_funding(db, "500")
+    svc.upsert_holding(db, asset="btc", quantity="0.005", average_cost=None)
+    snap = svc.build_snapshot(
+        db,
+        quotes={"btc": QuoteView(price=Decimal("90000"), status="fresh")},
+    )
+    btc = next(h for h in snap["holdings"] if h["asset"] == "btc")
+    assert btc["averageCost"] is None
+    assert btc["marketValue"] == "450"
+    assert btc["unrealizedPnl"] is None
+    assert btc["return"] is None
+
+
+def test_get_does_not_append_snapshot(db):
+    svc.set_funding(db, "100")
+    n = repo.count_snapshots(db)
+    svc.build_snapshot(db)
+    svc.build_snapshot(db)
+    assert repo.count_snapshots(db) == n
+
+
+def test_mutations_append_one_snapshot_each(db):
+    assert repo.count_snapshots(db) == 0
+    svc.set_funding(db, "1000")
+    svc.upsert_holding(db, asset="btc", quantity="0.005", average_cost="80000")
+    svc.create_allocation(db, label="A", reserved_size="250", target_ref="rsi")
+    assert repo.count_snapshots(db) == 3
+    assert repo.list_snapshot_reasons(db) == ["funding", "holding_upsert", "allocation_create"]
+    svc.delete_holding(db, "btc")
+    assert repo.list_snapshot_reasons(db)[-1] == "holding_delete"
+
+
+def test_upsert_usdt_via_holdings_rejected(db):
+    with pytest.raises(svc.PortfolioError) as exc:
+        svc.upsert_holding(db, asset="usdt", quantity="10", average_cost="1")
+    assert exc.value.code == "invalid_config"
+    assert repo.count_snapshots(db) == 0
+
+
+def test_unsupported_asset_rejected_state_unchanged(db):
+    svc.set_funding(db, "1000")
+    n = repo.count_snapshots(db)
+    with pytest.raises(svc.PortfolioError) as exc:
+        svc.upsert_holding(db, asset="notacoin", quantity="1", average_cost=None)
+    assert exc.value.code == "invalid_config"
+    snap = svc.build_snapshot(db)
+    assert [h["asset"] for h in snap["holdings"]] == ["usdt"]
+    assert repo.count_snapshots(db) == n
+
+
+def test_allocation_does_not_change_btc_quantity(db):
+    svc.set_funding(db, "1000")
+    svc.upsert_holding(db, asset="btc", quantity="0.005", average_cost=None)
+    svc.create_allocation(db, label="A", reserved_size="250", target_ref=None)
+    snap = svc.build_snapshot(db)
+    btc = next(h for h in snap["holdings"] if h["asset"] == "btc")
+    assert btc["quantity"] == "0.005"
+    assert snap["reserved"] == "250"
+    assert snap["cash"] == "1000"
+    assert snap["available"] == "750"

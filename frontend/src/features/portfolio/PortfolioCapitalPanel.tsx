@@ -52,7 +52,7 @@ export function PortfolioCapitalPanel({ snapshot, onUpdated }: Props) {
             Equity{" "}
             <InfoTooltip
               label="Equity"
-              text="Total portfolio equity for this local book. In this version it equals cash."
+              text="Sum of valued holdings in USDT. If any holding has no usable price, this is a partial / known-value total and is not complete book equity."
               testId="help-equity"
             />
           </dt>
@@ -63,7 +63,7 @@ export function PortfolioCapitalPanel({ snapshot, onUpdated }: Props) {
             Cash{" "}
             <InfoTooltip
               label="Cash"
-              text="Funded capital in the local portfolio (USDT)."
+              text="Quote cash is the USDT holding quantity. Allocations reserve this cash; they do not change other asset quantities."
               testId="help-cash"
             />
           </dt>
@@ -122,11 +122,11 @@ export function PortfolioCapitalPanel({ snapshot, onUpdated }: Props) {
       <form className="portfolio-funding" onSubmit={onFund} data-testid="portfolio-funding">
         <h3>Fund portfolio</h3>
         <p className="note">
-          Set local portfolio cash in USDT. This does not start Simulation or Backtest
+          Set local quote cash (USDT holding). This does not start Simulation or Backtest
           trading and is not real-money brokerage funding.
         </p>
         <label htmlFor="portfolio-cash">
-          Cash (USDT)
+          Quote cash / USDT
           <input
             id="portfolio-cash"
             name="cash"

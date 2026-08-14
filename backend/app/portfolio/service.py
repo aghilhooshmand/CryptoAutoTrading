@@ -7,8 +7,13 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.db.models import PortfolioAllocationRow
+from app.db.models import PortfolioAllocationRow, PortfolioHoldingRow
 from app.portfolio import identity, repository as repo
+from app.portfolio.valuation import QuoteView, is_supported_non_quote_asset, usdt_quote
+
+QUOTE_ASSET = identity.QUOTE_ASSET
+LOCAL_MANUAL = "local_manual"
+BOOK_PROVENANCE = "local_manual"
 
 
 class PortfolioError(Exception):
@@ -51,7 +56,7 @@ CORRUPT_MUTATION_MSG = (
 )
 
 
-def _safe_money(raw: str, field: str) -> Decimal | None:
+def _safe_money(raw: str) -> Decimal | None:
     try:
         return identity.parse_money(raw)
     except identity.CapitalIdentityError:
@@ -72,47 +77,116 @@ def _sum_reserved_or_error(sizes: list[str]) -> Decimal:
         raise PortfolioError("invalid_config", CORRUPT_MUTATION_MSG) from exc
 
 
-def build_snapshot(db: Session) -> dict[str, Any]:
-    """Read portfolio; fail closed with warning if stored money is corrupt."""
-    row = repo.get_portfolio(db)
+def quote_cash_amount(db: Session) -> Decimal:
+    """Authoritative quote cash from the USDT holding (0 if none)."""
+    qty = repo.usdt_quantity(db)
+    if qty is None:
+        return Decimal("0")
+    return _parse_cash_or_error(qty)
+
+
+def prepare_read(db: Session) -> None:
+    """Persist leftover cash→USDT migration if needed. Does not append a snapshot."""
+    if repo.get_portfolio(db) is None:
+        return
+    if repo.migrate_cash_to_usdt(db):
+        db.commit()
+
+
+def _holding_view(row: PortfolioHoldingRow, quotes: dict[str, QuoteView], equity: Decimal) -> dict[str, Any]:
+    asset = row.asset
+    quote = quotes.get(asset)
+    if asset == QUOTE_ASSET:
+        quote = quote or usdt_quote()
+
+    quantity = _safe_money(row.quantity)
+    avg = None if row.average_cost in (None, "") else _safe_money(row.average_cost)
+    realized_raw = _safe_money(row.realized_pnl)
+    realized = identity.money_str(realized_raw) if realized_raw is not None else "0"
+
+    price: str | None = None
+    price_status = "unavailable"
+    market_value: str | None = None
+    weight: str | None = None
+    unrealized: str | None = None
+    ret: str | None = None
+
+    if quantity is not None and quote is not None and quote.price is not None:
+        price_status = quote.status
+        price = identity.money_str(quote.price)
+        value = quantity * quote.price
+        market_value = identity.money_str(value)
+        weight = identity.weight_str(value, equity)
+        if avg is not None:
+            cost = quantity * avg
+            u = value - cost
+            unrealized = identity.money_str(u)
+            if cost != 0:
+                ret = identity.money_str(u / cost)
+            else:
+                ret = None
+
+    return {
+        "id": row.id,
+        "asset": asset,
+        "quantity": row.quantity,
+        "averageCost": None if row.average_cost in (None, "") else row.average_cost,
+        "price": price,
+        "priceStatus": price_status,
+        "marketValue": market_value,
+        "weight": weight,
+        "realizedPnl": realized,
+        "unrealizedPnl": unrealized,
+        "return": ret,
+        "provenance": row.provenance or LOCAL_MANUAL,
+        "createdAt": _iso(row.created_at),
+        "updatedAt": _iso(row.updated_at),
+    }
+
+
+def build_snapshot(db: Session, quotes: dict[str, QuoteView] | None = None) -> dict[str, Any]:
+    """Read portfolio; fail closed with warning if stored money is corrupt.
+
+    GET must not insert historical snapshot rows. Callers that mutate the book
+    append a snapshot separately in the same transaction.
+    """
+    quotes = quotes or {}
+    repo.ensure_portfolio(db)
+    repo.migrate_cash_to_usdt(db)
+
+    holdings = repo.list_holdings(db)
     allocations = repo.list_allocations(db)
+    portfolio = repo.get_portfolio(db)
+    updated_at = portfolio.updated_at if portfolio is not None else None
 
     warning: str | None = None
-    if row is None:
-        cash = Decimal("0")
-        realized = Decimal("0")
-        unrealized = Decimal("0")
-        updated_at = None
-    else:
-        cash_v = _safe_money(row.cash, "cash")
-        deployed_v = _safe_money(row.deployed, "deployed")
-        realized_v = _safe_money(row.realized_pnl, "realizedPnl")
-        unrealized_v = _safe_money(row.unrealized_pnl, "unrealizedPnl")
-        if None in (cash_v, deployed_v, realized_v, unrealized_v):
+    cash = Decimal("0")
+    usdt_row = repo.get_holding(db, QUOTE_ASSET)
+    if usdt_row is not None:
+        cash_v = _safe_money(usdt_row.quantity)
+        if cash_v is None:
             warning = CORRUPT_PORTFOLIO_MSG
             cash = Decimal("0")
-            realized = Decimal("0")
-            unrealized = Decimal("0")
         else:
-            cash = cash_v  # type: ignore[assignment]
-            realized = realized_v  # type: ignore[assignment]
-            unrealized = unrealized_v  # type: ignore[assignment]
-        updated_at = row.updated_at
+            cash = cash_v
+    elif portfolio is not None:
+        leftover = _safe_money(portfolio.cash)
+        if leftover is None:
+            warning = CORRUPT_PORTFOLIO_MSG
+            cash = Decimal("0")
 
     reserved_sizes: list[str] = []
     allocation_out: list[dict[str, Any]] = []
     allocation_corrupt = False
     for a in allocations:
-        # Keep corrupt rows visible so the operator can inspect/release them.
         allocation_out.append(_allocation_dict(a))
-        size_v = _safe_money(a.reserved_size, "reservedSize")
+        size_v = _safe_money(a.reserved_size)
         if size_v is None:
             allocation_corrupt = True
             continue
         reserved_sizes.append(a.reserved_size)
 
     if allocation_corrupt:
-        # Do not understate reserved by summing only valid rows — that invents available.
         warning = warning or CORRUPT_ALLOCATION_MSG
         reserved = Decimal("0")
         available = Decimal("0")
@@ -130,23 +204,78 @@ def build_snapshot(db: Session) -> dict[str, Any]:
             reserved = identity.sum_reserved(reserved_sizes) if reserved_sizes else Decimal("0")
             available = Decimal("0")
 
-    # Feature 009: deployed always 0, positions empty, equity flat = cash
+    valued: list[Decimal] = []
+    unvalued_assets: list[str] = []
+    holding_corrupt = False
+    prepared: list[tuple[PortfolioHoldingRow, Decimal | None, QuoteView | None]] = []
+    for row in holdings:
+        qty = _safe_money(row.quantity)
+        if qty is None:
+            holding_corrupt = True
+            prepared.append((row, None, quotes.get(row.asset)))
+            continue
+        quote = quotes.get(row.asset)
+        if row.asset == QUOTE_ASSET:
+            quote = quote or usdt_quote()
+        if quote is not None and quote.price is not None:
+            valued.append(qty * quote.price)
+        else:
+            unvalued_assets.append(row.asset)
+        prepared.append((row, qty, quote))
+
+    if holding_corrupt:
+        warning = warning or CORRUPT_PORTFOLIO_MSG
+
+    equity = identity.sum_market_values(valued)
+    complete = identity.equity_complete(unvalued_assets) and not holding_corrupt
+
+    holding_out: list[dict[str, Any]] = []
+    known_unrealized = Decimal("0")
+    known_realized = Decimal("0")
+    for row, _qty, _quote in prepared:
+        view = _holding_view(row, quotes, equity)
+        holding_out.append(view)
+        u = view["unrealizedPnl"]
+        if u is not None:
+            parsed_u = _safe_money(u)
+            if parsed_u is not None:
+                known_unrealized += parsed_u
+        r = _safe_money(view["realizedPnl"])
+        if r is not None:
+            known_realized += r
+
     return {
+        "quoteCurrency": QUOTE_ASSET,
+        "bookProvenance": BOOK_PROVENANCE,
         "cash": identity.money_str(cash),
         "reserved": identity.money_str(reserved),
         "available": identity.money_str(available),
         "deployed": "0",
-        "realizedPnl": identity.money_str(realized),
-        "unrealizedPnl": identity.money_str(unrealized),
-        "equity": identity.money_str(cash),
+        "realizedPnl": identity.money_str(known_realized),
+        "unrealizedPnl": identity.money_str(known_unrealized),
+        "equity": identity.money_str(equity),
+        "equityComplete": complete,
+        "unvaluedAssets": unvalued_assets,
         "positions": [],
+        "holdings": holding_out,
         "allocations": allocation_out,
         "updatedAt": _iso(updated_at) if updated_at else None,
         "warning": warning,
     }
 
 
-def set_funding(db: Session, cash_raw: str) -> dict[str, Any]:
+def _commit_with_snapshot(
+    db: Session,
+    reason: str,
+    quotes: dict[str, QuoteView] | None,
+) -> dict[str, Any]:
+    snap = build_snapshot(db, quotes)
+    repo.append_snapshot(db, reason=reason, payload=snap)
+    db.commit()
+    return snap
+
+
+def _apply_funding(db: Session, cash_raw: str) -> None:
     try:
         cash = identity.parse_money(cash_raw)
     except identity.CapitalIdentityError as exc:
@@ -155,6 +284,7 @@ def set_funding(db: Session, cash_raw: str) -> dict[str, Any]:
         raise PortfolioError("invalid_config", "Cash cannot be negative")
 
     repo.ensure_portfolio(db)
+    repo.migrate_cash_to_usdt(db)
     allocations = repo.list_allocations(db)
     reserved = _sum_reserved_or_error([a.reserved_size for a in allocations])
     try:
@@ -165,17 +295,104 @@ def set_funding(db: Session, cash_raw: str) -> dict[str, Any]:
             "Cash cannot be less than reserved capital. Resize or release allocations first.",
         ) from exc
 
-    repo.set_cash(db, identity.money_str(cash))
-    return build_snapshot(db)
+    if cash == 0:
+        repo.delete_holding(db, QUOTE_ASSET)
+        repo.sync_cash_cache(db, "0")
+    else:
+        repo.upsert_holding(
+            db,
+            asset=QUOTE_ASSET,
+            quantity=identity.money_str(cash),
+            average_cost="1",
+            provenance=LOCAL_MANUAL,
+        )
+        repo.sync_cash_cache(db, identity.money_str(cash))
 
 
-def create_allocation(
+def set_funding(db: Session, cash_raw: str, quotes: dict[str, QuoteView] | None = None) -> dict[str, Any]:
+    _apply_funding(db, cash_raw)
+    return _commit_with_snapshot(db, "funding", quotes)
+
+
+def _apply_upsert_holding(
+    db: Session,
+    *,
+    asset: str,
+    quantity_raw: str,
+    average_cost_raw: str | None,
+) -> None:
+    code = (asset or "").strip().lower()
+    if not code:
+        raise PortfolioError("invalid_config", "Asset is required")
+    if code == QUOTE_ASSET:
+        raise PortfolioError("invalid_config", "Use funding to set USDT quote cash")
+    if not is_supported_non_quote_asset(code):
+        raise PortfolioError("invalid_config", f"Unsupported asset: {code}")
+
+    try:
+        qty = identity.parse_money(quantity_raw)
+    except identity.CapitalIdentityError as exc:
+        raise PortfolioError("invalid_config", exc.message) from exc
+    if qty <= 0:
+        raise PortfolioError("invalid_config", "Holding quantity must be greater than zero")
+
+    avg: str | None = None
+    if average_cost_raw not in (None, ""):
+        try:
+            avg_d = identity.parse_money(average_cost_raw)
+        except identity.CapitalIdentityError as exc:
+            raise PortfolioError("invalid_config", exc.message) from exc
+        if avg_d < 0:
+            raise PortfolioError("invalid_config", "Average cost cannot be negative")
+        avg = identity.money_str(avg_d)
+
+    repo.ensure_portfolio(db)
+    repo.migrate_cash_to_usdt(db)
+    repo.upsert_holding(
+        db,
+        asset=code,
+        quantity=identity.money_str(qty),
+        average_cost=avg,
+        provenance=LOCAL_MANUAL,
+    )
+
+
+def upsert_holding(
+    db: Session,
+    *,
+    asset: str,
+    quantity: str,
+    average_cost: str | None,
+    quotes: dict[str, QuoteView] | None = None,
+) -> dict[str, Any]:
+    _apply_upsert_holding(db, asset=asset, quantity_raw=quantity, average_cost_raw=average_cost)
+    return _commit_with_snapshot(db, "holding_upsert", quotes)
+
+
+def _apply_delete_holding(db: Session, asset: str) -> None:
+    code = (asset or "").strip().lower()
+    if code == QUOTE_ASSET:
+        raise PortfolioError("invalid_config", "Use funding to set USDT quote cash")
+    if not repo.delete_holding(db, code):
+        raise PortfolioError("not_found", "Holding not found", http_status=404)
+
+
+def delete_holding(
+    db: Session,
+    asset: str,
+    quotes: dict[str, QuoteView] | None = None,
+) -> dict[str, Any]:
+    _apply_delete_holding(db, asset)
+    return _commit_with_snapshot(db, "holding_delete", quotes)
+
+
+def _apply_create_allocation(
     db: Session,
     *,
     label: str,
     reserved_size: str,
     target_ref: str | None,
-) -> dict[str, Any]:
+) -> None:
     label_clean = (label or "").strip()
     if not label_clean:
         raise PortfolioError("invalid_config", "Allocation label is required")
@@ -187,8 +404,9 @@ def create_allocation(
     if size <= 0:
         raise PortfolioError("invalid_config", "Reserved size must be greater than zero")
 
-    portfolio = repo.ensure_portfolio(db)
-    cash = _parse_cash_or_error(portfolio.cash)
+    repo.ensure_portfolio(db)
+    repo.migrate_cash_to_usdt(db)
+    cash = quote_cash_amount(db)
     existing = repo.list_allocations(db)
     reserved = _sum_reserved_or_error([a.reserved_size for a in existing]) + size
     try:
@@ -206,10 +424,21 @@ def create_allocation(
         reserved_size=identity.money_str(size),
         target_ref=target,
     )
-    return build_snapshot(db)
 
 
-def resize_allocation(db: Session, allocation_id: str, reserved_size: str) -> dict[str, Any]:
+def create_allocation(
+    db: Session,
+    *,
+    label: str,
+    reserved_size: str,
+    target_ref: str | None,
+    quotes: dict[str, QuoteView] | None = None,
+) -> dict[str, Any]:
+    _apply_create_allocation(db, label=label, reserved_size=reserved_size, target_ref=target_ref)
+    return _commit_with_snapshot(db, "allocation_create", quotes)
+
+
+def _apply_resize_allocation(db: Session, allocation_id: str, reserved_size: str) -> None:
     row = repo.get_allocation(db, allocation_id)
     if row is None:
         raise PortfolioError("not_found", "Allocation not found", http_status=404)
@@ -221,8 +450,9 @@ def resize_allocation(db: Session, allocation_id: str, reserved_size: str) -> di
     if size <= 0:
         raise PortfolioError("invalid_config", "Reserved size must be greater than zero")
 
-    portfolio = repo.ensure_portfolio(db)
-    cash = _parse_cash_or_error(portfolio.cash)
+    repo.ensure_portfolio(db)
+    repo.migrate_cash_to_usdt(db)
+    cash = quote_cash_amount(db)
     others = [a for a in repo.list_allocations(db) if a.id != allocation_id]
     reserved = _sum_reserved_or_error([a.reserved_size for a in others]) + size
     try:
@@ -234,10 +464,39 @@ def resize_allocation(db: Session, allocation_id: str, reserved_size: str) -> di
         ) from exc
 
     repo.update_allocation_size(db, allocation_id, identity.money_str(size))
-    return build_snapshot(db)
 
 
-def release_allocation(db: Session, allocation_id: str) -> dict[str, Any]:
+def resize_allocation(
+    db: Session,
+    allocation_id: str,
+    reserved_size: str,
+    quotes: dict[str, QuoteView] | None = None,
+) -> dict[str, Any]:
+    _apply_resize_allocation(db, allocation_id, reserved_size)
+    return _commit_with_snapshot(db, "allocation_resize", quotes)
+
+
+def _apply_release_allocation(db: Session, allocation_id: str) -> None:
     if not repo.delete_allocation(db, allocation_id):
         raise PortfolioError("not_found", "Allocation not found", http_status=404)
-    return build_snapshot(db)
+
+
+def release_allocation(
+    db: Session,
+    allocation_id: str,
+    quotes: dict[str, QuoteView] | None = None,
+) -> dict[str, Any]:
+    _apply_release_allocation(db, allocation_id)
+    return _commit_with_snapshot(db, "allocation_release", quotes)
+
+
+async def snapshot_after(
+    db: Session,
+    reason: str,
+    apply_fn,
+    fetch_quotes,
+) -> dict[str, Any]:
+    """Apply a book mutation, value holdings, append one snapshot, commit once."""
+    apply_fn()
+    quotes = await fetch_quotes(repo.holding_assets(db))
+    return _commit_with_snapshot(db, reason, quotes)

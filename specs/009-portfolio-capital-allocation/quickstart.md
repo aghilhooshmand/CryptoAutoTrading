@@ -5,13 +5,14 @@
 **Contracts**: [contracts/portfolio-api.md](./contracts/portfolio-api.md)  
 **Data model**: [data-model.md](./data-model.md)
 
-Validate local portfolio funding, allocation reservations, capital identity
-(`available = cash − reserved`), persistence, and Portfolio UI — without
-starting Simulation/Backtest trading.
+Validate one-book holdings + quote-cash reservation: funding, local/manual
+holdings, valuation (including partial/stale), allocations, persistence, and
+Portfolio UI — without starting Simulation/Backtest or calling XT private APIs.
 
 ## Prerequisites
 
-- Features 001–008 available (app shell, Portfolio route, SQLite)
+- Features 001–008 available (app shell, Portfolio route, public market data,
+  SQLite)
 - Backend and frontend per root README
 
 ```bash
@@ -39,55 +40,66 @@ cd ../frontend && npm test -- --run src/__tests__/portfolio
 
 Expected:
 
-- Funding sets cash; `available` tracks `cash − reserved`
+- Funding sets USDT holding / `cash`; `available = cash − reserved`
+- Local BTC (or other supported) holding appears with provenance `local_manual`
+- Equity = sum of valued holdings; `equityComplete` false when a holding has
+  no price; stale last-known still included with stale status
 - Over-reserve and under-reserved cash cuts return `400` and leave prior state
+- Holdings upsert of `usdt` rejected (funding only)
 - Deployed stays `0`; positions stay `[]`
-- Reload returns the same portfolio/allocations
+- Mutations persist a historical snapshot; GET does not
+- Reload returns the same quantities and reservations (prices may refresh)
 - Simulation/Backtest contract suites still green
 
 ## Manual smoke
 
-### 1) Fund portfolio
+### 1) Fund quote cash
 
-Open **Portfolio**. Set cash to `1000` USDT via funding. Confirm equity/cash/
-available show `1000`, reserved `0`, deployed `0`, positions empty.
+Open **Portfolio**. Set cash to `1000` USDT. Confirm USDT holding quantity
+`1000`, available `1000`, reserved `0`, deployed `0`, positions empty.
+Provenance is local/manual, not a live exchange account.
 
-### 2) Split allocations
+### 2) Record a local holding
 
-Create allocation A: label + `250` (optional `targetRef` e.g. `rsi`).  
-Create allocation B: `250` with the **same** `targetRef` allowed.  
-Confirm reserved `500`, available `500`.
+Add BTC quantity `0.005` with optional average cost. Confirm holdings table
+shows quantity, public price or unavailable/stale, value when known, and
+weight vs USDT. Equity is the sum of valued lines; if BTC is unvalued, equity
+is labeled partial.
 
-### 3) Reject overspend
+### 3) Split allocations
 
-Attempt allocation `600` more → rejected; state unchanged.
+Create allocation A: `250` (optional `targetRef` `rsi`).  
+Create allocation B: `250` with the **same** `targetRef`.  
+Confirm reserved `500`, available `500`. BTC quantity unchanged.
 
-### 4) Reject unsafe cash cut
+### 4) Reject overspend and unsafe cash cut
 
-Try funding cash to `400` while reserved is `500` → rejected; reserved still
-`500`.
+Allocate more than available → rejected.  
+Fund cash to below reserved → rejected; holdings/reservations unchanged.
 
-### 5) Release / resize
+### 5) Release / resize / remove holding
 
-Resize or release an allocation → available increases; totals reconcile.
-Confirm before release.
+Resize or release an allocation (confirm release). Remove BTC (confirm).
+Totals reconcile.
 
 ### 6) Persistence
 
-Reload the app → same cash and allocations.
+Reload → same USDT quantity, remaining holdings, and allocations. No
+value-over-time chart.
 
 ### 7) Narrow layout
 
-At ~375px, complete fund + allocate without hover-only controls; capital terms
-have short help where needed.
+At ~375px, fund, record a holding, and allocate without hover-only controls.
 
 ### 8) No trading side effects
 
-Funding/allocate/release does not start Simulation or Backtest runs.
+None of the above starts Simulation or Backtest or requires XT credentials.
 
 ## Done when
 
-- [x] Automated portfolio unit + contract tests pass
-- [x] Simulation/Backtest regression contracts pass
-- [x] Smoke steps 1–8 observed
-- [x] No credentials / real-money / strategy balance mutation paths introduced
+- [ ] Automated portfolio unit + contract tests pass (including holdings and
+      partial equity)
+- [ ] Simulation/Backtest regression contracts pass
+- [ ] Smoke steps 1–8 observed
+- [ ] No credentials / real-money / strategy balance mutation paths introduced
+- [ ] No 009 UI charts for drawdown or value-over-time
