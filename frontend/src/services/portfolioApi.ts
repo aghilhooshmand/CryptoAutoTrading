@@ -35,6 +35,8 @@ export interface PortfolioSnapshot {
   deployed: string;
   realizedPnl: string;
   unrealizedPnl: string;
+  totalPnl: string | null;
+  totalReturn: string | null;
   equity: string;
   equityComplete: boolean;
   unvaluedAssets: string[];

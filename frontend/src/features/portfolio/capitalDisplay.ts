@@ -14,6 +14,11 @@ export function formatWeight(ratio: string | null | undefined): string {
   return `${pct.toFixed(2)}%`;
 }
 
+export function formatReturn(ratio: string | null | undefined): string {
+  if (ratio == null || ratio === "") return "—";
+  return formatWeight(ratio);
+}
+
 export function formatProvenance(value: string | undefined): string {
   if (value === "local_manual" || !value) {
     return "local/manual — not a live XT account";

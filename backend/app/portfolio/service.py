@@ -244,6 +244,23 @@ def build_snapshot(db: Session, quotes: dict[str, QuoteView] | None = None) -> d
         if r is not None:
             known_realized += r
 
+    pnl_defined = all(view["unrealizedPnl"] is not None for view in holding_out)
+    cost_basis = Decimal("0")
+    if pnl_defined:
+        for view in holding_out:
+            qty = _safe_money(view["quantity"])
+            avg_raw = view["averageCost"]
+            avg = None if avg_raw in (None, "") else _safe_money(str(avg_raw))
+            if qty is not None and avg is not None:
+                cost_basis += qty * avg
+        combined = identity.total_pnl(known_realized, known_unrealized)
+        total_pnl_out = identity.money_str(combined) if combined is not None else None
+        ret = identity.total_return(combined, cost_basis)
+        total_return_out = identity.money_str(ret) if ret is not None else None
+    else:
+        total_pnl_out = None
+        total_return_out = None
+
     return {
         "quoteCurrency": QUOTE_ASSET,
         "bookProvenance": BOOK_PROVENANCE,
@@ -253,6 +270,8 @@ def build_snapshot(db: Session, quotes: dict[str, QuoteView] | None = None) -> d
         "deployed": "0",
         "realizedPnl": identity.money_str(known_realized),
         "unrealizedPnl": identity.money_str(known_unrealized),
+        "totalPnl": total_pnl_out,
+        "totalReturn": total_return_out,
         "equity": identity.money_str(equity),
         "equityComplete": complete,
         "unvaluedAssets": unvalued_assets,

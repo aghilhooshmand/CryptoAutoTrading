@@ -6,7 +6,7 @@ import {
   type PortfolioSnapshot,
   putPortfolioFunding,
 } from "../../services/portfolioApi";
-import { formatUsdt, portfolioEquityDisplay } from "./capitalDisplay";
+import { formatUsdt, formatReturn, portfolioEquityDisplay } from "./capitalDisplay";
 
 interface Props {
   snapshot: PortfolioSnapshot;
@@ -109,6 +109,28 @@ export function PortfolioCapitalPanel({ snapshot, onUpdated }: Props) {
         <div>
           <dt>Unrealized P&amp;L</dt>
           <dd data-testid="metric-unrealized">{formatUsdt(snapshot.unrealizedPnl)}</dd>
+        </div>
+        <div>
+          <dt>
+            Total P&amp;L{" "}
+            <InfoTooltip
+              label="Total P&L"
+              text="Realized plus unrealized P&L when every holding has a defined unrealized figure. Shown as unknown if cost basis or value is missing for any holding."
+              testId="help-total-pnl"
+            />
+          </dt>
+          <dd data-testid="metric-total-pnl">{formatUsdt(snapshot.totalPnl)}</dd>
+        </div>
+        <div>
+          <dt>
+            Total return{" "}
+            <InfoTooltip
+              label="Total return"
+              text="Total P&L divided by cost basis, only when every holding has a known average cost and a usable value. Otherwise unknown — not invented."
+              testId="help-total-return"
+            />
+          </dt>
+          <dd data-testid="metric-total-return">{formatReturn(snapshot.totalReturn)}</dd>
         </div>
       </dl>
 

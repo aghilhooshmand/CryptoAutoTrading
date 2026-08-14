@@ -81,6 +81,8 @@ def test_get_unfunded_empty(client):
     assert data["equityComplete"] is True
     assert data["warning"] is None
     assert data["bookProvenance"] == "local_manual"
+    assert data["totalPnl"] == "0"
+    assert data["totalReturn"] is None
     _assert_invariants(data)
 
 
@@ -95,6 +97,8 @@ def test_put_funding_valid(client):
     usdt = next(h for h in data["holdings"] if h["asset"] == "usdt")
     assert usdt["quantity"] == "1000"
     assert usdt["provenance"] == "local_manual"
+    assert data["totalPnl"] == "0"
+    assert data["totalReturn"] == "0"
     _assert_invariants(data)
 
 
@@ -129,6 +133,8 @@ def test_holdings_crud_and_invariants(client):
     assert btc["provenance"] == "local_manual"
     assert btc["marketValue"] == "450"
     assert btc["unrealizedPnl"] == "50"
+    assert data["totalPnl"] == "50"
+    assert data["totalReturn"] is not None
     _assert_invariants(data)
 
     rejected = client.put("/portfolio/holdings", json={"asset": "usdt", "quantity": "10"})
@@ -306,6 +312,8 @@ def test_missing_quote_marks_equity_incomplete(client, monkeypatch):
     assert snap["equityComplete"] is False
     assert "btc" in snap["unvaluedAssets"]
     assert snap["equity"] == "500"
+    assert snap["totalPnl"] is None
+    assert snap["totalReturn"] is None
 
 
 def test_stale_quote_included(client, monkeypatch):

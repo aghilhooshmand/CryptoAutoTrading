@@ -25,7 +25,9 @@ Null means unknown (cost basis, value, P&L)—never a fabricated number.
   "available": "250",
   "deployed": "0",
   "realizedPnl": "0",
-  "unrealizedPnl": "20",
+  "unrealizedPnl": "50",
+  "totalPnl": "50",
+  "totalReturn": "0.05555556",
   "equity": "950",
   "equityComplete": true,
   "unvaluedAssets": [],
@@ -90,6 +92,8 @@ equity), not a percent like Feature 002 `changePercent`. UI may display `%`.
 | `equity` | Sum of **valued** holding `marketValue` (known-value equity) |
 | `equityComplete` | `false` if any holding is unvalued |
 | `unvaluedAssets` | Asset codes excluded from equity |
+| `totalPnl` | Realized + unrealized when every holding has defined unrealized P&L; otherwise `null` |
+| `totalReturn` | `totalPnl / cost basis` when cost basis exists for every holding; otherwise `null` |
 | `deployed` | Always `"0"` in Feature 009 |
 | `positions` | Always `[]` in Feature 009 |
 | `bookProvenance` | `local_manual` in 009; never imply live XT account |
@@ -97,7 +101,8 @@ equity), not a percent like Feature 002 `changePercent`. UI may display `%`.
 
 Holding inspection nulls when unknown: `price`, `marketValue`, `weight`,
 `unrealizedPnl`, `return`, `averageCost`. `priceStatus` is `unavailable` when
-there is no usable price.
+there is no usable price. Book `totalPnl` / `totalReturn` are `null` when any
+holding lacks a defined unrealized P&L or cost basis.
 
 ---
 
@@ -250,6 +255,7 @@ Codes: `invalid_config`, `not_found`.
 - Holdings table: asset, quantity, price (stale/unavailable), value, weight %,
   cost basis if known, P&L if known, provenance (local/manual ≠ exchange).
 - If `equityComplete` is false, label equity as partial / known-value.
+- Show total P&L and total return when defined; otherwise unknown (not invented).
 - Fund USDT; separate control to record/adjust/remove non-quote holdings.
 - Allocate against available quote cash; confirm release; confirm holding
   delete.

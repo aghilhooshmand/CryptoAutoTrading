@@ -68,6 +68,14 @@ def test_sum_reserved():
     assert identity.sum_reserved(["100", "250.5", "0.5"]) == Decimal("351")
 
 
+def test_total_pnl_and_return_helpers():
+    assert identity.total_pnl(Decimal("0"), Decimal("50")) == Decimal("50")
+    assert identity.total_pnl(Decimal("10"), None) is None
+    assert identity.total_return(Decimal("50"), Decimal("900")) == Decimal("50") / Decimal("900")
+    assert identity.total_return(Decimal("50"), Decimal("0")) is None
+    assert identity.total_return(None, Decimal("900")) is None
+
+
 def test_migrates_cash_column_to_usdt_holding(db):
     _seed_portfolio(db, "1000")
     snap = svc.build_snapshot(db)
@@ -238,6 +246,36 @@ def test_unknown_cost_nulls_pnl_and_return(db):
     assert btc["marketValue"] == "450"
     assert btc["unrealizedPnl"] is None
     assert btc["return"] is None
+    assert snap["totalPnl"] is None
+    assert snap["totalReturn"] is None
+
+
+def test_total_pnl_and_return_when_cost_basis_known(db):
+    svc.set_funding(db, "500")
+    svc.upsert_holding(db, asset="btc", quantity="0.005", average_cost="80000")
+    snap = svc.build_snapshot(
+        db,
+        quotes={"btc": QuoteView(price=Decimal("90000"), status="fresh")},
+    )
+    assert snap["realizedPnl"] == "0"
+    assert snap["unrealizedPnl"] == "50"
+    assert snap["totalPnl"] == "50"
+    assert snap["totalReturn"] == identity.money_str(Decimal("50") / Decimal("900"))
+
+
+def test_usdt_only_total_pnl_and_return_are_zero(db):
+    svc.set_funding(db, "1000")
+    snap = svc.build_snapshot(db)
+    assert snap["totalPnl"] == "0"
+    assert snap["totalReturn"] == "0"
+
+
+def test_unvalued_holding_omits_total_pnl_and_return(db):
+    svc.set_funding(db, "500")
+    svc.upsert_holding(db, asset="btc", quantity="0.005", average_cost="80000")
+    snap = svc.build_snapshot(db, quotes={"btc": QuoteView(price=None, status="unavailable")})
+    assert snap["totalPnl"] is None
+    assert snap["totalReturn"] is None
 
 
 def test_get_does_not_append_snapshot(db):

@@ -76,3 +76,17 @@ def weight_str(market_value: Decimal, equity: Decimal) -> str | None:
     if equity <= 0:
         return None
     return money_str(market_value / equity)
+
+
+def total_pnl(realized: Decimal, unrealized: Decimal | None) -> Decimal | None:
+    """Combined P&L only when unrealized is defined (not invented)."""
+    if unrealized is None:
+        return None
+    return realized + unrealized
+
+
+def total_return(pnl: Decimal | None, cost_basis: Decimal | None) -> Decimal | None:
+    """Portfolio return only when total P&L and a positive cost basis both exist."""
+    if pnl is None or cost_basis is None or cost_basis <= 0:
+        return None
+    return pnl / cost_basis

@@ -26,6 +26,23 @@ function usdtHolding(quantity: string): PortfolioHolding {
   };
 }
 
+function bookTotals(holdings: PortfolioHolding[]): Pick<PortfolioSnapshot, "totalPnl" | "totalReturn"> {
+  if (holdings.some((h) => h.unrealizedPnl == null)) {
+    return { totalPnl: null, totalReturn: null };
+  }
+  const realized = holdings.reduce((sum, h) => sum + Number(h.realizedPnl), 0);
+  const unrealized = holdings.reduce((sum, h) => sum + Number(h.unrealizedPnl), 0);
+  const totalPnl = realized + unrealized;
+  const cost = holdings.reduce((sum, h) => {
+    if (h.averageCost == null) return sum;
+    return sum + Number(h.quantity) * Number(h.averageCost);
+  }, 0);
+  return {
+    totalPnl: String(totalPnl),
+    totalReturn: cost > 0 ? String(totalPnl / cost) : null,
+  };
+}
+
 function emptySnapshot(overrides?: Partial<PortfolioSnapshot>): PortfolioSnapshot {
   return {
     quoteCurrency: "usdt",
@@ -36,6 +53,8 @@ function emptySnapshot(overrides?: Partial<PortfolioSnapshot>): PortfolioSnapsho
     deployed: "0",
     realizedPnl: "0",
     unrealizedPnl: "0",
+    totalPnl: "0",
+    totalReturn: null,
     equity: "0",
     equityComplete: true,
     unvaluedAssets: [],
@@ -103,7 +122,7 @@ function mockPortfolioFetch(initial?: PortfolioSnapshot) {
         (s, h) => s + Number(h.marketValue ?? 0),
         0,
       );
-      snap = { ...snap, equity: String(valued) };
+      snap = { ...snap, equity: String(valued), ...bookTotals(snap.holdings) };
       return new Response(JSON.stringify(snap), { status: 200 });
     }
 
@@ -232,6 +251,7 @@ function mockPortfolioFetch(initial?: PortfolioSnapshot) {
         equity: String(equity),
         equityComplete: true,
         unvaluedAssets: [],
+        ...bookTotals(holdings),
       };
       return new Response(JSON.stringify(snap), { status: 200 });
     }
@@ -249,7 +269,7 @@ function mockPortfolioFetch(initial?: PortfolioSnapshot) {
       }
       const holdings = snap.holdings.filter((h) => h.asset !== asset);
       const equity = holdings.reduce((s, h) => s + Number(h.marketValue ?? 0), 0);
-      snap = { ...snap, holdings, equity: String(equity) };
+      snap = { ...snap, holdings, equity: String(equity), ...bookTotals(holdings) };
       return new Response(JSON.stringify(snap), { status: 200 });
     }
 
@@ -308,6 +328,8 @@ describe("Portfolio page", () => {
       expect(screen.getByTestId("funding-status")).toHaveTextContent("Funding saved");
       expect(screen.getByTestId("holding-qty-usdt")).toHaveTextContent("1000");
       expect(screen.getByTestId("holding-provenance-usdt")).toHaveTextContent(/local\/manual/i);
+      expect(screen.getByTestId("metric-total-pnl")).toHaveTextContent("0 USDT");
+      expect(screen.getByTestId("metric-total-return")).toHaveTextContent("0.00%");
     });
   });
 
@@ -353,6 +375,8 @@ describe("Portfolio page", () => {
         deployed: "0",
         realizedPnl: "0",
         unrealizedPnl: "0",
+        totalPnl: "0",
+        totalReturn: "0",
         equity: "1000",
         equityComplete: true,
         unvaluedAssets: [],
@@ -371,6 +395,8 @@ describe("Portfolio page", () => {
         deployed: "0",
         realizedPnl: "0",
         unrealizedPnl: "0",
+        totalPnl: "0",
+        totalReturn: "0",
         equity: "1250",
         equityComplete: true,
         unvaluedAssets: [],
@@ -505,6 +531,8 @@ describe("Portfolio page", () => {
           equity: "500",
           equityComplete: false,
           unvaluedAssets: ["eth"],
+          totalPnl: null,
+          totalReturn: null,
           holdings: [
             usdtHolding("500"),
             {
@@ -548,6 +576,8 @@ describe("Portfolio page", () => {
       expect(screen.getByTestId("metric-equity")).toHaveTextContent(/partial/i);
       expect(screen.getByTestId("holding-price-btc")).toHaveTextContent(/stale/i);
       expect(screen.getByTestId("holding-price-eth")).toHaveTextContent(/unavailable/i);
+      expect(screen.getByTestId("metric-total-pnl")).toHaveTextContent("—");
+      expect(screen.getByTestId("metric-total-return")).toHaveTextContent("—");
     });
     expect(screen.queryByText(/drawdown/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/value over time/i)).not.toBeInTheDocument();
@@ -611,6 +641,8 @@ describe("Portfolio page", () => {
         deployed: "0",
         realizedPnl: "0",
         unrealizedPnl: "0",
+        totalPnl: "50",
+        totalReturn: "0.05555556",
         equity: "1450",
         equityComplete: true,
         unvaluedAssets: [],

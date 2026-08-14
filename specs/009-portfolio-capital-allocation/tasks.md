@@ -280,3 +280,9 @@ T015 portfolioApi types/clients
 | **Parallel opportunities** | Yes — marked [P] across phases |
 
 **Format validation**: All tasks use `- [ ]`, Task IDs T001–T042, [P]/[USn] where required, and file paths in descriptions.
+
+---
+
+## Phase 9: Convergence
+
+- [X] T043 Add derived portfolio total P&L (realized + unrealized when defined) and total return (when cost basis exists) to the GET snapshot in `backend/app/portfolio/service.py` and surface them on `frontend/src/features/portfolio/PortfolioCapitalPanel.tsx`; omit as unknown when not defined per FR-001d / US5/AC1 (partial)
