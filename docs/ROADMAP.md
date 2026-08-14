@@ -273,7 +273,7 @@ Execution Abstraction
 | ID | Feature | Status |
 |---|---|---|
 | 008 | Trading & Experiment Defaults | DONE |
-| 009 | Portfolio & Capital Allocation Core | IN PROGRESS |
+| 009 | Portfolio & Capital Allocation Core | DONE |
 | 010 | Advanced Risk Management | PLANNED |
 | 011 | Execution Abstraction | PLANNED |
 
@@ -371,7 +371,7 @@ Execution → Portfolio/Accounting.
 Feature 012 maps XT private balances later; Feature 009 must not call XT
 private APIs and must not look like a live exchange account.
 
-Status: `IN PROGRESS`
+Status: `DONE`
 
 ---
 
@@ -1244,18 +1244,19 @@ Current completed foundation:
 006 → DONE
 007 → DONE
 008 → DONE
+009 → DONE
 ```
 
 Current active milestone:
 
 ```text
-009 → Portfolio & Capital Allocation Core
+010 → Advanced Risk Management
 ```
 
 Next planned milestone:
 
 ```text
-010 → Advanced Risk Management
+011 → Execution Abstraction
 ```
 
 The near-term objective is therefore:

@@ -152,7 +152,7 @@ Feature 010. Propose commits only.
 - [X] T078 [P] Frontend `npm test -- --run src/__tests__/portfolio`
 - [X] T079 Execute quickstart automated checks in `specs/009-portfolio-capital-allocation/quickstart.md`
 - [X] T080 [P] UI review vs `docs/UI_UX_STANDARDS.md` (Simulation obvious, no sandbox copy, 375px, confirm release)
-- [X] T081 Keep Feature 009 `IN PROGRESS` in `docs/ROADMAP.md`; do not mark DONE; do not start Feature 010
+- [X] T081 Mark Feature 009 `DONE` in `docs/ROADMAP.md` after completion checks; do not start Feature 010
 - [X] T082 Confirm no credentials/real-money/strategy mutation; no public holdings upsert remains
 - [X] T083 Propose commit message (do not auto-commit)
 

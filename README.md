@@ -63,7 +63,7 @@ npm run dev
 Frontend URL: `http://127.0.0.1:5173`
 
 Vite proxies `/health`, `/market`, `/simulation`, `/backtest`, `/strategies`,
-and `/comparisons` to the backend.
+`/comparisons`, `/settings`, and `/portfolio` to the backend.
 Open the frontend URL and use Dashboard **Refresh** to load XT public market data
 (manual refresh is required; auto-refresh is optional polish and not required).
 
@@ -189,6 +189,7 @@ npm test
 ## Out of scope
 
 Do not expect real-money XT order placement, private XT trading APIs, WebSocket
-streaming, multi-session concurrency, multi-strategy selection, news / Fear &
-Greed sentiment, futures/margin/leverage, authentication, or a full portfolio
-product (Portfolio shows only a thin active-simulation summary).
+streaming, multi-session concurrency, news / Fear & Greed sentiment,
+futures/margin/leverage, authentication, or a Real XT Portfolio (Feature 012).
+Feature 009 provides the **Simulation Portfolio** only (simulation USDT funding,
+fill-driven holdings, public mark-to-market — not live exchange balances).

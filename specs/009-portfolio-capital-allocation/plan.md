@@ -33,7 +33,7 @@ compact Capital section.
 | Feature 002 `get_quote` | Valuation |
 | Vite `/portfolio` proxy, Portfolio route | Shell |
 
-### Contradicted the locked direction (corrected by T044–T086)
+### Contradicted the locked direction (corrected by T044–T087)
 
 | Area | Contradiction (before correction) |
 |------|----------------|
