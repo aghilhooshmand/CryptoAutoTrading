@@ -178,7 +178,7 @@ T044–T052 foundation (remove operator holdings API + fill-apply domain)
 
 | Metric | Count |
 |--------|-------|
-| **Correction tasks** | 42 (T044–T085; T084–T085 added for I1/C1/U1) |
+| **Correction tasks** | 44 (T044–T087) |
 | **Prior superseded delivery** | T001–T043 (not repeated here) |
 | **US1** | T053–T058 |
 | **US2** | T059–T063, T084–T085 |
@@ -186,10 +186,12 @@ T044–T052 foundation (remove operator holdings API + fill-apply domain)
 | **US4** | T069–T072 |
 | **US5** | T073–T076 |
 | **Setup + Foundational + Polish** | T044–T052, T077–T083 |
+| **Convergence** | T086–T087 |
 
 ---
 
 ## Phase 9: Convergence
 
 - [X] T086 Show per-holding return % when cost basis and value exist, and show average cost and realized P&L when known, on the holdings table and ~375px cards in `frontend/src/features/portfolio/HoldingsPanel.tsx`; keep USDT unrealized/return omitted per FR-001b / US5/AC1 (partial)
+- [X] T087 [P] Unit test: with `fillApplyWarning` set, corrupt stored allocation size on load → GET snapshot `warning` is the corrupt-state message (not the fill-apply text), in `backend/tests/unit/test_portfolio_service.py` per spec edge case / data-model warning precedence
 

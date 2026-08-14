@@ -4,9 +4,14 @@
 
 **Created**: 2026-08-13
 
-**Updated**: 2026-08-14 (Simulation Portfolio — locked product direction)
+**Updated**: 2026-08-14 (Simulation Portfolio — locked product direction;
+analyze remediation I1/U1/U2)
 
-**Status**: Draft
+**Status**: Implemented (awaiting completion / roadmap DONE)
+
+Correction tasks T044–T087 are complete. Feature 009 remains **IN PROGRESS**
+on `docs/ROADMAP.md` until the operator finishes the completion checklist
+(tests, docs review, commit) and marks it DONE.
 
 **Input**: User description: "Revise Feature 009 to a Simulation Portfolio that behaves like a normal crypto exchange portfolio. Operator may fund only simulation quote cash (primarily USDT). Do not provide UI or operator API to manually record BTC/ETH/SOL. Non-USDT holdings appear only when simulated executions create them (BUY decreases USDT and increases the asset; SELL reverses and updates realized P&L). Strategies never modify balances. Pipeline: Strategy → Controller → Risk → Execution → Portfolio/Accounting. Value with Feature 002 public prices; never invent prices. Keep capital reservation for future Risk/Torque but do not make it the dominant UI. Clear SIMULATION state; Feature 012 later adds a separate Real XT Portfolio. Persist snapshots on meaningful state changes; no fake history charts. Modern exchange-style UI per docs/UI_UX_STANDARDS.md."
 
@@ -199,6 +204,11 @@ visible, value unknown, equity partial. No value-over-time or drawdown chart.
   `/portfolio` returns that text in `warning` until a later successful
   `apply_simulation_fill`. Corrupt-state `warning` takes precedence if both
   exist.
+- Simulated SELL whose quantity exceeds the Simulation Portfolio holding for
+  that asset → do not invent a short or negative quantity; do **not** mutate
+  holdings; do **not** roll back Feature 003 journals; persist a fill-apply
+  warning (same path as insufficient USDT); GET `/portfolio` exposes
+  `warning` until a later successful `apply_simulation_fill`.
 - Holding quantity that would reach 0 after SELL → remove the asset row.
 - Missing public price → quantity visible; value/weight/unrealized unknown;
   exclude from equity; do not treat value as zero.
@@ -235,7 +245,15 @@ visible, value unknown, equity partial. No value-over-time or drawdown chart.
   Non-USDT holdings MUST be created/updated only when simulated execution
   applies a fill: BUY decreases USDT and increases the asset (cost basis
   from the fill); SELL decreases the asset, increases USDT, and updates
-  realized P&L. Feature 009 MUST NOT place real-money or XT private orders.
+  realized P&L. Fill apply MUST move USDT by the Feature 003 fill
+  `cash_delta` (net of that fill’s fees/slippage as Feature 003 computed
+  them). Holding `realizedPnl` on SELL MUST use
+  `(fill_price − average_cost) × qty` when average cost is known and MUST
+  NOT invent a second fee line — fee drag appears in quote cash / equity via
+  `cash_delta`. A SELL that would reduce quantity below zero MUST be refused
+  the same way as an insufficient-USDT apply (no book mutation; journals
+  unchanged; warning). Feature 009 MUST NOT place real-money or XT private
+  orders.
 - **FR-001d**: Total value MUST be the sum of valued holding market values.
   P&L figures MUST be coherent with holdings (no double count with
   allocations). Unvalued holdings → equity labeled partial / known-value.

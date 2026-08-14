@@ -41,12 +41,17 @@ update and trade journal row, call `portfolio.apply_simulation_fill` in the
 - `side` BUY/SELL
 - `qty`, `fill.cash_delta`, `fill.fill_price` (average-cost input)
 
-BUY: USDT += cash_delta (negative); increase asset qty; update average cost
-(weighted). SELL: decrease asset qty (delete row at 0); USDT += cash_delta;
-add realized P&L from cost vs proceeds. Snapshot reason `simulation_fill`.
-Successful apply **clears** persisted `fillApplyWarning`.
+BUY: USDT += cash_delta (negative; already net of Feature 003 fees/slippage);
+increase asset qty; update average cost (weighted). SELL: decrease asset qty
+(delete row at 0); USDT += cash_delta; SELL realized P&L delta =
+`(fill.fill_price − average_cost) × qty` when average_cost is known —
+otherwise leave realized unchanged and do not invent. Do **not** invent a
+second fee line inside holding realized P&L; fee drag appears in quote cash /
+equity via `cash_delta`. Snapshot reason `simulation_fill`. Successful apply
+**clears** persisted `fillApplyWarning`.
 
-If applying the cash_delta would make USDT negative:
+If applying the cash_delta would make USDT negative, **or** SELL `qty`
+exceeds the current holding quantity for that asset (no shorts in 009):
 
 1. Do not mutate holdings.
 2. Do not append a `simulation_fill` snapshot.

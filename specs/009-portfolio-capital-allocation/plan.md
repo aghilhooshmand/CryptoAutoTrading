@@ -8,7 +8,9 @@ Capital reservation stays in the model but not as the dominant UI.
 
 ## Summary
 
-**Rework in-progress Feature 009** (do not start Feature 010).
+**Rework of Feature 009** (Simulation Portfolio direction; do not start
+Feature 010). Remaining correction work is tracked in `tasks.md`
+(T044–T087). Operator-visible name: **Simulation Portfolio**.
 
 Keep the existing `app.portfolio` package, USDT-as-quote-cash identity,
 allocation CRUD, valuation, and snapshots. **Remove** the operator
@@ -31,9 +33,9 @@ compact Capital section.
 | Feature 002 `get_quote` | Valuation |
 | Vite `/portfolio` proxy, Portfolio route | Shell |
 
-### Contradicts (must change)
+### Contradicted the locked direction (corrected by T044–T086)
 
-| Area | Contradiction |
+| Area | Contradiction (before correction) |
 |------|----------------|
 | `PUT`/`DELETE /portfolio/holdings` | Operator can type BTC/ETH |
 | `HoldingsPanel` record/remove form | Manual holdings book |
@@ -52,9 +54,11 @@ compact Capital section.
 2. Remove public holdings upsert/delete routes.
 3. Add `apply_simulation_fill` in `app.portfolio` and call it from Feature
    003 `_apply_fill` **after** the session journal row is added, still in the
-   same SQLAlchemy session. Catch a refused apply (insufficient USDT): do not
-   roll back journals; persist `fillApplyWarning`; skip `simulation_fill`
-   snapshot. Successful apply clears that warning.
+   same SQLAlchemy session. Catch a refused apply (insufficient USDT or SELL
+   qty exceeding the holding): do not roll back journals; persist
+   `fillApplyWarning`; skip `simulation_fill` snapshot. Successful apply
+   clears that warning. USDT moves by Feature 003 `cash_delta`; SELL
+   `realizedPnl` uses `(fill_price − average_cost) × qty` (no second fee line).
 4. On GET, derive `deployed` / `positions` from active Feature 003 sessions
    (`RUNNING` or `STOPPING` with a long position). Do not persist those as
    an operator-editable ledger.

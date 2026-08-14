@@ -262,6 +262,44 @@ def test_insufficient_usdt_refuses_without_snapshot_or_negative_cash(db):
     assert repo.count_snapshots(db) == n
 
 
+def test_corrupt_warning_precedes_fill_apply_warning(db):
+    """Corrupt-state GET warning beats a persisted fill-apply warning (C1)."""
+    svc.set_funding(db, "100")
+    refused = _buy_btc(db, cash_delta="-400")
+    assert refused is None
+    snap = svc.build_snapshot(db)
+    assert snap["warning"] == svc.FILL_APPLY_INSUFFICIENT
+    portfolio = repo.get_portfolio(db)
+    assert portfolio is not None
+    assert portfolio.fill_apply_warning == svc.FILL_APPLY_INSUFFICIENT
+
+    now = datetime.now(timezone.utc)
+    db.add(
+        PortfolioAllocationRow(
+            id="11111111-1111-1111-1111-111111111111",
+            portfolio_id=1,
+            label="bad",
+            reserved_size="not-a-number",
+            target_ref=None,
+            created_at=now,
+            updated_at=now,
+        )
+    )
+    db.commit()
+
+    snap2 = svc.build_snapshot(db)
+    assert snap2["warning"] == svc.CORRUPT_ALLOCATION_MSG
+    assert "corrupt" in snap2["warning"].lower()
+    assert snap2["warning"] != svc.FILL_APPLY_INSUFFICIENT
+    # Fill-apply text remains stored until a successful apply; it is not shown.
+    portfolio2 = repo.get_portfolio(db)
+    assert portfolio2 is not None
+    assert portfolio2.fill_apply_warning == svc.FILL_APPLY_INSUFFICIENT
+    assert snap2["cash"] == "100"
+    assert snap2["available"] == "0"
+    assert snap2["reserved"] == "0"
+
+
 def test_partial_valuation_excludes_unvalued_from_equity(db):
     svc.set_funding(db, "1000")
     _buy_btc(db)
