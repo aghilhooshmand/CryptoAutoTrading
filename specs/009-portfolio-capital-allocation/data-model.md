@@ -2,187 +2,175 @@
 
 **Feature**: `009-portfolio-capital-allocation`  
 **Date**: 2026-08-14  
-**Related**: Constitution XXXIV; Feature 002 public quotes; Feature 003/004
-session-run accounting (unchanged)
+**Related**: Constitution XXXIV; Feature 002 public quotes; Feature 003
+fills applied into this domain; Feature 004 journals unchanged
 
 ## Entities
 
-### Portfolio
+### Simulation Portfolio
 
-Singleton local accounting container (`id = 1`).
+Singleton (`id = 1`). Operator-visible 009 container.
 
 | Field | Type / notes | Required |
 |-------|----------------|----------|
 | `quoteCurrency` | `"usdt"` in v1 | yes |
-| `bookProvenance` | `local_manual` in 009 | yes |
-| `updatedAt` | ISO timestamp of last successful mutation | yes |
+| `bookProvenance` | `simulation` in 009 | yes |
+| `fillApplyWarning` | Nullable string; set when fill-apply is refused; cleared on successful apply | no |
+| `updatedAt` | Last successful **book** mutation (funding, successful fill apply, allocation_*). Recording a warning without a book change does not require a snapshot. | yes |
 
-Quote cash, reserved, available, equity, P&L, holdings, allocations, positions,
-and `warning` / `equityComplete` are **derived** on read (see Snapshot).
+Derived on read: cash, reserved, available, equity, P&L, holdings,
+allocations, positions, `deployed`, `warning`, `equityComplete`.
 
-**Persistence**: table `portfolio`. After migration, do **not** treat a `cash`
-column as authority. Optional leftover `cash` column may be ignored or dropped
-once `usdt` holding exists.
+`warning` on the read model: corrupt-state message if load is corrupt;
+else `fillApplyWarning`; else `null`.
+
+**Persistence**: table `portfolio`. `cash` and `deployed` columns are leftover
+cache only — quote cash authority is the `usdt` holding; deployed authority
+is the Feature 003 projection.
 
 ### Holding
 
-One balance per asset under the singleton portfolio.
-
-| Field | Type / notes | Required |
-|-------|----------------|----------|
-| `id` | UUID string | yes |
-| `asset` | Canonical lowercase code (`usdt`, `btc`, `eth`, …) unique per portfolio | yes |
-| `quantity` | Decimal string, strictly > 0 | yes |
-| `averageCost` | Decimal string quote-per-unit; null if unknown | no |
-| `realizedPnl` | Decimal string; `"0"` for local/manual in 009 | yes |
-| `provenance` | `local_manual` \| `simulation` \| `exchange` | yes |
-| `createdAt` / `updatedAt` | ISO timestamps | yes |
-
-**Inspection-only (not stored)**: `price`, `priceStatus` (`fresh` \| `stale` \|
-`unavailable`), `marketValue`, `weight`, `unrealizedPnl`, `return`.
-
-The `usdt` holding quantity **is** quote cash. Cost basis of USDT is `1`.
-
-**Persistence**: table `portfolio_holdings`.
-
-### Allocation
-
-Unchanged reservation of **quote cash**.
-
-| Field | Type / notes | Required |
-|-------|----------------|----------|
-| `id` | UUID string | yes |
-| `label` | Operator-facing name | yes |
-| `reservedSize` | Decimal string, strictly > 0 (USDT) | yes |
-| `targetRef` | Optional non-unique label | no |
-| `createdAt` / `updatedAt` | ISO timestamps | yes |
-
-**Persistence**: table `portfolio_allocations`. Release = delete row.
-
-### Position (pipeline view)
-
-Logical only in 009. Always `[]`; deployed always `"0"`. Later features write
-through Controller → Risk → Execution — never via strategy or holdings upsert.
-
-### Historical snapshot (persisted, not shown in 009 UI)
+One balance per asset.
 
 | Field | Type / notes | Required |
 |-------|----------------|----------|
 | `id` | UUID | yes |
-| `createdAt` | Time of meaningful book mutation | yes |
-| `reason` | `funding` \| `holding_upsert` \| `holding_delete` \| `allocation_create` \| `allocation_resize` \| `allocation_release` | yes |
-| `payload` | JSON of the read model at that moment | yes |
+| `asset` | Lowercase (`usdt`, `btc`, …) unique per portfolio | yes |
+| `quantity` | Decimal string, strictly > 0 | yes |
+| `averageCost` | Quote per unit; null if unknown | no |
+| `realizedPnl` | Decimal string; updated on simulated SELL | yes |
+| `provenance` | `simulation` in 009 (`exchange` reserved for 012) | yes |
+| `createdAt` / `updatedAt` | ISO | yes |
 
-**Persistence**: table `portfolio_snapshots`, append-only. No public list API
-in Feature 009.
+Inspection-only: `price`, `priceStatus`, `marketValue`, `weight`,
+`unrealizedPnl`, `return`.
 
-### Read-model snapshot (API/UI)
+USDT quantity **is** quote cash. USDT unrealized P&L is not stored or
+invented (inspection: null).
 
-Projection of Portfolio + Holdings (valued) + Allocations. Not a separate
-current-state table.
+Non-USDT rows are created only by `apply_simulation_fill`, never by operator
+upsert.
+
+**Persistence**: `portfolio_holdings`.
+
+### Allocation
+
+Quote-cash reservation. Unchanged semantically.
+
+| Field | Notes |
+|-------|--------|
+| `id`, `label`, `reservedSize` (> 0), optional `targetRef`, timestamps | |
+
+**Persistence**: `portfolio_allocations`. Release = delete.
+
+### Position (pipeline view)
+
+Derived on GET from Feature 003 sessions in `RUNNING` or `STOPPING` with
+`position_side == long`. Otherwise `[]`.
+
+| Field | Notes |
+|-------|--------|
+| `sessionId` | Feature 003 session id |
+| `symbol` | e.g. `btc_usdt` |
+| `asset` | Base, e.g. `btc` |
+| `side` | `long` |
+| `quantity` | Session `position_qty` |
+| `costBasis` | Session USDT `cost_basis` when stored; else null |
+
+`deployed` = sum of non-null `costBasis` values, else `"0"`. Distinct from
+holdings. Not stored as portfolio authority. Allocation CRUD is **not**
+constrained by deployed in 009.
+
+### Historical snapshot
+
+| Field | Notes |
+|-------|--------|
+| `id`, `createdAt` | |
+| `reason` | `funding` \| `simulation_fill` \| `allocation_create` \| `allocation_resize` \| `allocation_release` |
+| `payload` | JSON read model |
+
+Append-only. No public list API. GET does not append.
+
+### Read-model snapshot
+
+Valued GET body for the UI.
 
 ## Relationships
 
 ```text
-Portfolio (1)
-   ├── Holding (0..N)          # includes usdt = quote cash
-   ├── Allocation (0..N)       # reserves quote cash only
-   └── Snapshot (0..N)         # history for later analytics
+Simulation Portfolio (1)
+   ├── Holding (0..N)       # usdt = quote cash; others from sim fills
+   ├── Allocation (0..N)
+   └── Snapshot (0..N)
 ```
-
-Strategies / sessions / XT private accounts are **not** FKs (`targetRef` and
-`provenance` are labels/enums).
 
 ## Validation rules
 
-1. Money/quantity fields: finite, non-negative decimal strings; holding
-   quantity and allocation size strictly > 0.
-2. `quote_cash` = USDT holding quantity, or `"0"` if none.
-3. `reserved = Σ allocation.reservedSize`.
-4. `available = quote_cash − reserved` ≥ 0 ⇒ `reserved ≤ quote_cash`.
-5. Funding: resulting `quote_cash ≥ reserved`; else reject.
-6. Holdings upsert for `usdt` via generic holdings API → reject (use funding).
-7. Non-quote asset must be a supported Feature 002 USDT base (or equivalent
-   allowlist); unknown asset → reject.
-8. Local/manual provenance for all 009 operator writes.
-9. Invalid mutation: no partial write; last good state retained.
-10. Strategies cannot create/update/delete portfolio, holding, allocation, or
-    snapshot rows.
+1. Money/quantity: finite, non-negative decimal strings; holding qty and
+   allocation size strictly > 0 (zero qty → delete holding).
+2. `quote_cash` = USDT quantity or `"0"`.
+3. `reserved = Σ reservedSize`; `available = quote_cash − reserved` ≥ 0.
+4. Funding: resulting USDT ≥ reserved.
+5. No public operator holdings upsert/delete.
+6. Fill apply MUST NOT invent negative USDT. Refused apply MUST persist
+   `fillApplyWarning` and MUST NOT append `simulation_fill`. The Feature 003
+   session transaction MUST still commit.
+7. Strategies cannot write portfolio rows.
+8. Invalid **portfolio** mutation: no partial persist of that mutation.
+   Session journals already written for a fill are not undone.
 
 ## Valuation rules (read)
 
-1. USDT: price `"1"`, status `fresh`, value = quantity.
-2. Other assets: public quote for `{asset}_usdt`.
-3. No usable quote → unvalued: omit value/weight/unrealized; exclude from
-   equity.
-4. Stale last-known quote → include value; set holding `priceStatus: stale`.
-5. `equity` = sum of included market values.
-6. `equityComplete` = false if any holding is unvalued.
-7. Weights = `marketValue / equity` among valued holdings when equity > 0.
-8. Unrealized P&L / return only if `averageCost` and market value both known.
+1. USDT: price `"1"`, fresh, value = quantity; unrealized/return null.
+2. Other assets: public `{asset}_usdt`.
+3. No usable quote → quantity visible; value unknown (**not** zero);
+   exclude from equity.
+4. Stale last-known → include; `priceStatus: stale`.
+5. `equity` = sum of included values; `equityComplete` false if any unvalued.
+6. Weights = `marketValue / equity` among valued holdings.
+7. Unrealized/return only if average cost and market value both known.
 
 ## State transitions
 
-### Quote cash (USDT holding)
+### Quote cash
 
 ```text
-[no usdt / quantity 0]
-      │ funding set (cash ≥ reserved)
-      ▼
-[funded]
-      │ funding increase / decrease with cash' ≥ reserved → ok
-      │ funding decrease with cash' < reserved → reject
+[unfunded] ──fund (USDT ≥ reserved)──► [funded]
+                 │
+                 └── decrease below reserved → reject
 ```
 
 ### Non-quote holding
 
 ```text
-(none) ──upsert──► active ──upsert──► active'
-                      │
-                      └──delete──► (removed)
+(none) ──simulated BUY──► active ──BUY──► active' (qty/cost up)
+                            │
+                            └──simulated SELL──► reduced or (removed if qty 0)
 ```
-
-Does not change reserved allocations.
 
 ### Allocation
 
 ```text
 (none) ──create──► active ──resize──► active'
-                      │
                       └──release──► (removed)
 ```
-
-No trading/deployed allocation states in Feature 009.
 
 ### Snapshot
 
 ```text
-successful funding | holding upsert/delete | allocation mutation
-        │
-        ▼
-  append snapshot row
+funding | simulation_fill (success only) | allocation_*  →  append row
+GET / price tick / refused fill-apply  →  no row
 ```
 
-GET does not append.
+## Invariants
 
-## Invariants (after every successful write)
-
-- `quote_cash ≥ 0`
-- `reserved ≥ 0`
 - `available = quote_cash − reserved ≥ 0`
-- `deployed = 0` (Feature 009)
-- `positions = []` (Feature 009)
-- USDT holding quantity equals quote cash used in allocation checks
+- USDT quantity is the cash used in reservation checks
 - No strategy-owned balances
-- Snapshots exist for that mutation (best-effort after commit; do not fail the
-  operator mutation if snapshot insert fails — log/warn; prefer including
-  snapshot in the same transaction)
-
-Prefer **same transaction** as the book mutation so history cannot diverge.
+- Snapshots in the same transaction as a **successful** book mutation
+- `deployed` / `positions` match active Feature 003 longs on that GET
 
 ## Fail-closed load
 
-If stored portfolio/holding/allocation data cannot be interpreted safely: do
-not invent quantities, cash, or prices; surface `warning`; refuse unsafe
-mutations until repaired. Unvalued holdings must not silently complete equity
-(`equityComplete: false`).
+Corrupt stored money/qty → warning (takes precedence over fill-apply
+warning); do not invent. Unvalued holdings must not silently complete equity.

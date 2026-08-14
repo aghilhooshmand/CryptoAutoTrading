@@ -4,504 +4,361 @@
 
 **Created**: 2026-08-13
 
-**Updated**: 2026-08-14 (holdings/accounting reconcile)
+**Updated**: 2026-08-14 (Simulation Portfolio — locked product direction)
 
 **Status**: Draft
 
-**Input**: User description: "Portfolio & Capital Allocation Core — Build one coherent portfolio/accounting foundation for CryptoAutoTrading, in the spirit of an exchange account view plus explicit capital reservation. Track what assets the operator owns (quantity, market price, market value, weight, cost basis where known, realized/unrealized P&L, return per holding) and the portfolio totals (equity, quote cash, available, reserved, deployed, total P&L/return). Support explicit capital allocations so quote cash can later be assigned safely to strategies, trading programs, or Torque branches without over-allocation, double reservation, negative available capital, or spending another allocation’s reserved cash. Holdings, balances, allocations, and P&L are independent from strategy logic. Strategies remain advisory and must never directly modify holdings, balances, allocations, or P&L. All trading continues Strategy → Controller → Risk → Execution → Portfolio/Accounting. Use existing public market data to value supported holdings in the quote currency (primarily USDT) where possible. Design holdings so later Simulation, real-exchange sync, and Torque can reuse the same domain without a second portfolio implementation. Persist effective state for inspection and reproducibility. Provide a practical operator-facing Portfolio page following docs/UI_UX_STANDARDS.md. Do not implement XT private/account integration, real-money execution, leverage, short selling, margin, automatic rebalancing/optimization, Torque grammar, or Grammatical Evolution."
+**Input**: User description: "Revise Feature 009 to a Simulation Portfolio that behaves like a normal crypto exchange portfolio. Operator may fund only simulation quote cash (primarily USDT). Do not provide UI or operator API to manually record BTC/ETH/SOL. Non-USDT holdings appear only when simulated executions create them (BUY decreases USDT and increases the asset; SELL reverses and updates realized P&L). Strategies never modify balances. Pipeline: Strategy → Controller → Risk → Execution → Portfolio/Accounting. Value with Feature 002 public prices; never invent prices. Keep capital reservation for future Risk/Torque but do not make it the dominant UI. Clear SIMULATION state; Feature 012 later adds a separate Real XT Portfolio. Persist snapshots on meaningful state changes; no fake history charts. Modern exchange-style UI per docs/UI_UX_STANDARDS.md."
 
 ## Clarifications
 
-### Session 2026-08-14 (capital reservation — still in force except where superseded below)
+### Session 2026-08-14 (capital reservation — still in force except where superseded)
 
-- Q: How should the operator establish the local portfolio’s initial cash / equity in Feature 009? → A: Operator explicitly sets starting **quote cash** (USDT-oriented) via a controlled Portfolio funding action; later quote-cash adjustments use the same controlled funding path and must keep capital invariants. **Superseded in part (2026-08-14 holdings reconcile):** funding sets quote-currency cash/holdings, not total portfolio equity. Equity is the sum of holding market values.
-- Q: In Feature 009, before Simulation/Real Money are bound to allocations, what should “capital deployed in positions” and the positions list represent? → A: First-class portfolio fields that remain zero/empty in 009 until a later feature binds trading activity; still shown clearly so the capital model is complete. **Still in force for positions/deployed.** Holdings are a distinct first-class concept (asset balances) and are not the same as the positions list.
-- Q: How should available capital be defined relative to cash, allocated/reserved capital, and deployed capital? → A: `available = cash − reserved`; deployed is a distinct reported category (0 in 009); reserved cannot exceed cash. **Still in force** with cash meaning **quote-currency cash** (the USDT holding), not total equity.
-- Q: May two different allocations both reference the same strategy or program label at the same time? → A: Yes — multiple allocations may share the same optional target reference if capital invariants hold; targets are labels, not unique ownership keys.
-- Q: When the operator reduces portfolio cash through a funding adjustment, what must happen if the new cash would be below total reserved capital? → A: Reject the reduction; require release/resize of allocations first; leave prior state unchanged.
+- Q: How should the operator establish initial quote cash? → A: Explicit Portfolio **funding** of simulation USDT. Funding must keep `quote_cash ≥ reserved`. Equity is the sum of valued holdings, not a synonym for cash.
+- Q: What are deployed capital and the positions list? → A: First-class **read-model** fields, derived on GET from Feature 003. If one or more **active** sessions (`RUNNING` or `STOPPING`) have `position_side == long`, `positions` lists those open trades (session id, symbol/asset, side, quantity, cost basis when stored) and `deployed` is the sum of those sessions’ USDT `cost_basis`. Otherwise `deployed` is `"0"` and `positions` is `[]`. Holdings (balances) are distinct from positions (open trades). 009 does **not** attribute deployed USDT to a specific allocation; allocation resize/release is constrained only by FR-003 (`reserved ≤ quote_cash`). Per-allocation deployed limits belong to Feature 010.
+- Q: How is available capital defined? → A: `available = quote_cash − reserved`. Quote cash is the USDT holding. Reserved cannot exceed quote cash. Deployed is reported separately and is not subtracted again from available in this feature’s reservation identity.
+- Q: May two allocations share the same target label? → A: Yes — `targetRef` is a non-unique label.
+- Q: Funding reduction below reserved? → A: Reject; resize/release allocations first; prior state unchanged.
 
-### Session 2026-08-14 (holdings / exchange-style portfolio)
+### Session 2026-08-14 (holdings — **SUPERSEDED**)
 
-- Q: In Feature 009, how should assets other than quote cash (for example BTC or ETH) first appear in the portfolio? → A: Operator may also record local/manual holdings (quantity and optional cost basis) for supported assets, with local/bootstrap provenance.
-- Q: Should Feature 009 store a history of portfolio value over time, or only the current holdings and reservations? → A: Persist portfolio snapshots on meaningful state changes for future historical analytics; Feature 009 UI remains current-state focused. Do not show value-over-time or drawdown yet, and do not create periodic price-only snapshots in this feature.
-- Q: If a holding has no usable public price, or only a stale last-known price, how should Portfolio compute that holding’s value and total equity? → A: Never invent prices. No usable price means unknown value and exclusion from calculated equity; stale last-known prices remain included with a clear stale indicator. If any holding is unvalued, the UI/API must indicate that the displayed equity is partial/known-value equity rather than silently presenting it as complete.
+The earlier decision that the operator may **manually record** BTC/ETH (or other) local/manual holdings is **void**. Non-quote holdings MUST NOT be operator-entered. They MUST appear only from simulated execution.
+
+History/valuation clarifications from that session remain in force:
+
+- Persist snapshots on meaningful portfolio/accounting changes only; no periodic price-only snapshots; 009 UI is current-state (no value-over-time or drawdown charts).
+- Never invent prices. No usable price → unknown value, exclude from equity. Stale last-known → include with stale indicator. Any unvalued holding → equity labeled partial / known-value.
+
+### Session 2026-08-14 (Simulation Portfolio — locked)
+
+- Feature 009 is the **Simulation Portfolio** only. Operator-facing name: Simulation Portfolio. Not a bookkeeping sandbox.
+- Operator may fund/add **simulation quote cash only** (primarily USDT). No normal UI (and no public operator API) to type in BTC, ETH, SOL, or other crypto quantities.
+- Simulated BUY/SELL through the established pipeline **attempts** to update holdings (USDT and the traded asset, cost basis, realized P&L). Feature 003 session journals remain the session record even if the Simulation Portfolio refuses the apply.
+- Feature 012 later adds a clearly separate **Real XT Portfolio** on the same domain with different provenance — not mixed into 009.
+- Capital allocations remain in the model for future Risk/Torque but are a secondary, compact UI — not the dominant Portfolio experience.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Inspect exchange-style holdings and portfolio value (Priority: P1)
+### User Story 1 - Inspect Simulation Portfolio (Priority: P1)
 
-As a local operator, I want a Portfolio view that shows what I own—each asset,
-quantity, current market price when known, current value, weight in the
-portfolio, cost basis / average acquisition price where known, realized P&L,
-unrealized P&L, and return—plus total portfolio equity and total P&L/return,
-so that Portfolio feels like an account/holdings page rather than a hidden
-internal ledger.
+As an operator, I want a Simulation Portfolio page that shows total value,
+available USDT, what I own, weights, and P&L so that it feels like a normal
+exchange portfolio — not a manual ledger form.
 
-**Why this priority**: Without holdings and a single equity figure, capital
-reservation has nothing coherent to sit on, and later Simulation / real-money /
-Torque work would invent a second “asset portfolio.”
+**Why this priority**: This is the primary operator experience for Feature 009.
 
-**Independent Test**: Fund quote cash and record at least one other local
-holding (quantity and optional cost basis), open Portfolio, and confirm each
-holding’s quantity and known valuation fields, portfolio totals, and that
-weights sum to 100% among holdings whose values are known (within ordinary
-rounding). Local/manual provenance is visible and not labeled as a live
-exchange account.
+**Independent Test**: Fund 1000 USDT. Open Portfolio. Confirm SIMULATION is
+obvious, total value equals USDT when that is the only holding, available USDT
+is 1000, holdings show USDT only, and there is no form to add BTC/ETH/SOL.
 
 **Acceptance Scenarios**:
 
-1. **Given** the operator has not yet funded quote cash, **When** they open
-   Portfolio, **Then** they can set explicit starting quote cash via a
-   controlled funding action, and that cash appears as the quote-currency
-   holding (not as a separate unrelated “capital book”).
-2. **Given** the portfolio has quote cash and zero other assets, **When** the
-   operator opens Portfolio, **Then** they see total equity equal to that quote
-   cash (when the quote asset is valued 1:1), available/reserved/deployed
-   capital categories, realized and unrealized P&L, an empty or clearly empty
-   positions list, and a holdings list that at least shows the quote asset.
-3. **Given** the operator has funded quote cash and recorded local holdings
-   for other supported assets (for example BTC and ETH) with quantities and
-   optional cost basis, **When** they view Portfolio, **Then** they see each
-   asset’s quantity, current price when available, current value in quote
-   currency, and weight as a share of total equity, and they can identify
-   total equity as the sum of those values without opening strategy screens.
-   Those non-quote holdings are labeled as local/manual, not as a live
-   exchange account.
-4. **Given** cost basis is known for a holding, **When** the operator views
-   that holding, **Then** they see average acquisition price (or equivalent
-   cost basis), unrealized P&L vs current value, and a simple return for that
-   holding. **Given** cost basis is unknown, **Then** quantity is still shown
-   and P&L/return for that holding is shown as unknown—not invented.
-5. **Given** any displayed snapshot, **When** the operator checks provenance,
-   **Then** the view does not present local/manual or simulated balances as a
-   live exchange account.
+1. **Given** the operator has not funded quote cash, **When** they open
+   Portfolio, **Then** they can fund simulation USDT, and that amount appears
+   as the USDT holding and as available cash (absent reservations).
+2. **Given** only funded USDT, **When** they view Portfolio, **Then** they see
+   summary cards (total value, available USDT, total P&L/return, realized and
+   unrealized P&L), a holdings view with USDT, and empty or absent non-USDT
+   rows — not invented BTC/ETH.
+3. **Given** any Portfolio view, **When** they look for asset entry, **Then**
+   there is no operator control to type a crypto quantity for BTC, ETH, SOL,
+   or similar. Copy does not describe a “local/manual holdings book” or
+   “not real-money brokerage funding” sandbox.
+4. **Given** the page, **When** they check mode, **Then** Simulation is clearly
+   indicated and the view is not labeled as a live XT account.
 
 ---
 
-### User Story 2 - Create and manage explicit capital allocations (Priority: P1)
+### User Story 2 - Holdings follow simulated execution (Priority: P1)
 
-As a local operator, I want to create, adjust, and release explicit capital
-allocations against **available quote cash** (for example 500 USDT with 250
-reserved for program A, 150 for program B, and 100 remaining available) so that
-unused quote cash stays available and no allocation can overspend or spend
-cash reserved for another allocation.
+As an operator, I want BTC (and other traded assets) to appear automatically
+when Simulation executes a BUY, and to decrease with USDT returning on SELL,
+so that holdings come from the pipeline rather than from typing balances.
 
-**Why this priority**: Explicit allocations remain constitutionally required
-for multi-strategy and future Torque branches; holdings do not replace them.
+**Why this priority**: Without fill→portfolio accounting, the Simulation
+Portfolio cannot show what was traded.
 
-**Independent Test**: From a portfolio with known available quote cash C,
-create two valid allocations that sum to ≤ C, attempt an overspending
-allocation and confirm rejection, then release or reduce an allocation and
-confirm available quote cash increases accordingly.
+**Independent Test**: Fund 1000 USDT. Apply a simulated BUY of BTC that spends
+200 USDT (test hook or live Simulation fill). Portfolio USDT decreases, BTC
+quantity increases with cost basis from the fill. A later simulated SELL
+reduces BTC, increases USDT, and updates realized P&L. Strategies are not
+invoked as the writer of balances.
 
 **Acceptance Scenarios**:
 
-1. **Given** available quote cash of C, **When** the operator creates one
-   allocation of size C for a single target label, **Then** the allocation is
-   accepted, available quote cash becomes 0, and reserved equals C (absent
-   deployment).
-2. **Given** available quote cash of C, **When** the operator creates multiple
-   allocations whose sizes sum to ≤ C, **Then** each allocation is recorded
-   independently with its own identity and size, unused remainder stays
-   available, and the portfolio still shows one shared equity base (holdings
-   are not copied into per-strategy wallets).
-3. **Given** available quote cash of C, **When** the operator attempts an
-   allocation that would make total reserved exceed quote cash, **Then** the
-   system rejects the change with a clear reason and leaves the prior
-   portfolio/allocation/holdings state unchanged.
-4. **Given** an existing allocation that is not fully deployed, **When** the
-   operator reduces or releases it within allowed rules, **Then** reserved
-   decreases and available quote cash increases by the released amount without
-   creating negative available capital.
-5. **Given** any allocation create/resize/release attempt, **When** validation
-   fails (over-allocation, invalid size, inconsistent state), **Then** no
-   partial corrupt update is persisted.
-6. **Given** quote cash reserved for allocation A, **When** a later spending
-   path (including future execution binding) would spend that reserved cash
-   for a different allocation, **Then** that spend is rejected; Feature 009
-   must make this ownership rule part of the accounting model even if 009
-   itself does not yet execute trades.
+1. **Given** funded USDT and no BTC, **When** a simulated BUY BTC fill is
+   applied through Execution → Portfolio/Accounting, **Then** USDT quantity
+   decreases by the fill’s cash effect, BTC quantity increases, average cost
+   is set from the fill, and provenance is simulation — not a live exchange.
+2. **Given** a BTC holding from a prior simulated BUY, **When** a simulated
+   SELL fill is applied, **Then** BTC quantity decreases (row removed if
+   quantity reaches 0), USDT increases, and realized P&L updates. Unrealized
+   P&L on remaining BTC uses public price vs remaining cost basis.
+3. **Given** a strategy signal, **When** holdings change, **Then** the change
+   is attributable to Controller → Risk → Execution → Portfolio/Accounting,
+   never to strategy code writing balances.
+4. **Given** Feature 003 session journals, **When** a fill is recorded on the
+   session and then applied to the Simulation Portfolio, **Then** historical
+   session/run journal rows are not rewritten. If portfolio apply is refused
+   (insufficient USDT), journals stay as Feature 003 wrote them and Portfolio
+   GET exposes `warning`. Backtest journals are not migrated onto this ledger
+   in 009.
 
 ---
 
-### User Story 3 - Inspect allocation-level accounting within one portfolio (Priority: P2)
+### User Story 3 - Capital reservation without dominating the UI (Priority: P2)
 
-As a local operator, I want each allocation to show its own reserved size and
-a simple accounting summary while still belonging to the same portfolio so
-that I can compare how quote cash was assigned without treating allocations as
-separate portfolios or strategy-owned wallets.
+As an operator, I want quote-cash reservations to remain available for future
+Risk and Torque, without the Portfolio page being an allocation-first form.
 
-**Why this priority**: Independent allocation records are required for future
-concurrent programs; they must not fork holdings or double-count equity.
+**Why this priority**: Constitution requires explicit allocations; the locked
+UX requires they stay secondary.
 
-**Independent Test**: Create at least two allocations with different sizes,
-inspect each allocation’s reserved capital and summary, and confirm portfolio
-holdings/equity still reconcile as one book.
+**Independent Test**: With known available USDT C, create two valid
+allocations summing to ≤ C, reject overspend, release/resize, and confirm
+holdings quantities are unchanged. The primary page still leads with summary
+and holdings; allocations sit in a compact or expandable Capital section.
 
 **Acceptance Scenarios**:
 
-1. **Given** two allocations A and B under one portfolio, **When** the
-   operator inspects each, **Then** each shows its own identity, reserved
-   quote cash, and allocation-level fields provided by this feature (at
-   minimum reserved size; performance fields when activity exists).
-2. **Given** those allocations, **When** the operator returns to holdings and
-   totals, **Then** portfolio equity and holdings remain the single source of
-   truth and allocation figures do not double-count equity.
-3. **Given** an allocation with no trading activity yet, **When** the
-   operator inspects it, **Then** reserved quote cash and membership in the
-   parent portfolio remain obvious.
+1. **Given** available quote cash C, **When** the operator creates allocations
+   summing to ≤ C, **Then** reserved and available update (`available =
+   cash − reserved`) and holdings (including any BTC from fills) are not
+   copied into per-strategy wallets.
+2. **Given** an overspend or a funding cut below reserved, **When** they
+   submit, **Then** the change is rejected and prior state is unchanged.
+3. **Given** the Portfolio layout, **When** they scan the page, **Then**
+   summary and holdings are primary; Available / Reserved / Deployed appear
+   as compact capital figures; allocation CRUD is not the visual center.
 
 ---
 
-### User Story 4 - Persist portfolio, holdings, and allocations (Priority: P1)
+### User Story 4 - Persist Simulation Portfolio state (Priority: P1)
 
-As a local operator, I want portfolio holdings, quote-cash funding, and
-allocation state persisted so that after restart I can inspect the same
-effective picture and later features can reuse this domain.
+As an operator, I want funded USDT, fill-driven holdings, and reservations to
+survive reload.
 
-**Why this priority**: A non-persisted book cannot support reproducibility or
-later Simulation / real-money / Torque binding.
+**Why this priority**: A non-persisted portfolio cannot be inspected after
+restart.
 
-**Independent Test**: Fund quote cash, record a local non-quote holding, create
-allocations, reload, and confirm the same holdings quantities, capital
-categories, and allocation records remain inspectable.
+**Independent Test**: Fund USDT, apply a simulated BUY, create an allocation,
+reload. Same quantities and reservations remain (prices may refresh).
 
 **Acceptance Scenarios**:
 
-1. **Given** the operator has established holdings and one or more
-   allocations, **When** they reload the application, **Then** Portfolio shows
-   the same effective holdings quantities, capital categories, and allocation
-   records (market prices may refresh; quantities and reservations must not
-   silently disappear).
-2. **Given** a rejected invalid allocation or funding change, **When** the
-   operator reloads, **Then** the last valid persisted state is still present.
+1. **Given** funded USDT, fill-created holdings, and allocations, **When** the
+   operator reloads, **Then** quantities, cost basis, provenance, capital
+   categories, and allocation records remain inspectable.
+2. **Given** a rejected invalid mutation, **When** they reload, **Then** the
+   last valid state is still present.
 
 ---
 
-### User Story 5 - Understand simple current-state portfolio analytics (Priority: P2)
+### User Story 5 - Current-state value, weights, and P&L (Priority: P2)
 
-As a local operator, I want only those portfolio analytics that current data
-can support correctly—total value, weights, realized/unrealized P&L, total
-P&L/return, and per-holding performance where cost basis exists—so that I am
-not shown invented history or false precision.
+As an operator, I want honest current valuation, weights, and P&L — including
+a simple current allocation visual — without invented history.
 
-**Why this priority**: Useful, honest numbers beat a professional-looking
-terminal that fabricates drawdown or time series.
+**Why this priority**: Exchange-style scanning needs totals and weights; fake
+charts would violate evidence rules.
 
-**Independent Test**: With known holdings and known vs unknown cost basis,
-confirm totals and per-holding P&L match the stated identities; confirm the
-Portfolio page does not show value-over-time or drawdown even if snapshots
-were stored on book changes.
+**Independent Test**: With USDT plus a valued BTC holding, confirm total
+value, weights (visual and numeric), and P&L. Missing price → quantity
+visible, value unknown, equity partial. No value-over-time or drawdown chart.
 
 **Acceptance Scenarios**:
 
-1. **Given** holdings with known values, **When** the operator views
-   Portfolio, **Then** they can read total equity, each holding’s weight, and
-   portfolio realized, unrealized, and total P&L/return when those figures are
-   defined.
-2. **Given** Feature 009 persists snapshots for later analytics but the
-   operator-facing view is current-state, **When** the operator views
-   Portfolio, **Then** they do not see value-over-time, P&L-over-time, or
-   maximum-drawdown figures presented as calculated facts.
-3. **Given** public market data for a supported holding is missing or not
-   current, **When** that holding is valued, **Then** the operator sees a
-   clear unavailable or stale treatment, no invented price, and—if any
-   holding is unvalued—that displayed equity is labeled as partial
-   (known-value) equity, not as a complete total.
+1. **Given** valued holdings, **When** the operator views Portfolio, **Then**
+   they can read total value, available USDT, per-asset weight (including a
+   simple donut or equivalent current-state visual), and P&L/return when
+   defined. USDT does not show an artificial unrealized P&L.
+2. **Given** snapshots persisted on funding, fills, and allocation changes,
+   **When** they view Portfolio, **Then** they do not see value-over-time,
+   P&L-over-time, or drawdown presented as facts.
+3. **Given** a missing or stale public price, **When** that holding is shown,
+   **Then** quantity remains; missing price → value unknown (not zero);
+   stale last-known → included and marked stale; incomplete books labeled
+   partial / known-value.
 
 ---
 
 ### Edge Cases
 
-- Allocation size of zero or negative → rejected; prior state unchanged.
-- Sum of allocation reserves would exceed quote cash → rejected with a clear
-  over-allocation reason.
-- Funding reduction that would make quote cash below total reserved →
-  rejected; operator must release/resize allocations first; prior state
-  unchanged.
-- Reducing an allocation below capital already deployed for that allocation
-  (when deployment exists) → rejected or constrained so accounting stays
-  consistent.
-- Concurrent or repeated submit of the same allocation change → must not
-  double-apply reservations.
-- Empty positions list when no pipeline positions exist → shown as no open
-  positions, not as missing data. In Feature 009 this remains the normal
-  positions state until later binding.
-- Empty non-quote holdings → do not invent BTC/ETH rows the operator does
-  not own; show quote cash holding after funding.
-- Invalid local/manual holding (zero or negative quantity, unknown asset)
-  → rejected; prior state unchanged.
-- Holding quantity of zero → not presented as an owned asset.
-- Missing or stale public price for a holding → do not invent a price;
-  quantity remains visible. No usable price: value unknown; holding omitted
-  from calculated equity and from weights of that equity. Stale last-known
-  public price: include that value in equity with a clear stale indicator.
-  If any holding is unvalued, displayed equity MUST be labeled partial /
-  known-value equity, not presented as a complete total.
+- Allocation size ≤ 0 → rejected; prior state unchanged.
+- Reserved would exceed quote cash → rejected.
+- Funding would make quote cash < reserved → rejected.
+- Reduce allocation while a session has open deployed exposure → allowed in
+  009 if FR-003 still holds (`reserved ≤ quote_cash`). Do not invent
+  per-allocation deployed in this feature.
+- Repeated submit of the same allocation change → must not double-reserve.
+- No simulated trades yet → holdings show USDT after funding only; do not
+  invent BTC/ETH/SOL rows.
+- Simulated BUY with insufficient Simulation Portfolio USDT to apply the
+  fill’s cash effect → do not invent negative USDT; do **not** roll back the
+  Feature 003 session fill/journals; persist a fill-apply warning; GET
+  `/portfolio` returns that text in `warning` until a later successful
+  `apply_simulation_fill`. Corrupt-state `warning` takes precedence if both
+  exist.
+- Holding quantity that would reach 0 after SELL → remove the asset row.
+- Missing public price → quantity visible; value/weight/unrealized unknown;
+  exclude from equity; do not treat value as zero.
+- Stale last-known public price → include value; mark stale.
+- Any unvalued holding → equity labeled partial / known-value.
 - Unknown cost basis → do not invent average price or unrealized P&L.
-- Corrupt or inconsistent stored portfolio/holdings/allocation state on load
-  → fail closed with a clear operator warning; do not invent balances,
-  quantities, or P&L to “fix” the books.
-- Simulated or local/manual holdings must never be labeled as a live
-  exchange account.
+- Corrupt stored state → fail closed; do not invent balances or prices.
+- Simulation Portfolio MUST NOT be presented as a live XT account.
+- Operator MUST NOT be able to PUT/DELETE non-USDT holdings via the
+  Portfolio UI or public operator API.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: The system MUST provide one authoritative local portfolio
-  accounting model (not a separate “capital portfolio” and “asset
-  portfolio”) that includes: holdings, total equity, quote cash, available
-  quote capital, reserved quote capital, deployed capital, realized P&L,
-  unrealized P&L, allocations, and positions. Quote cash MUST be the
-  quote-currency holding (USDT-oriented), not a parallel cash ledger.
-- **FR-001a**: The operator MUST establish and adjust quote cash through
-  explicit controlled Portfolio funding actions. Feature 008 Settings MUST
-  NOT silently become the portfolio ledger. Funding MUST preserve capital
-  invariants. A funding reduction that would make `quote cash < reserved`
-  MUST be rejected with a clear reason; prior valid state MUST remain
-  unchanged. Funding MUST NOT treat “set equity” as a synonym for “set
-  quote cash” once non-quote holdings exist.
-- **FR-001b**: Each holding MUST record at least: asset identity, quantity,
-  and enough information to later store cost basis / average acquisition
-  price when known. On inspection, when public market data can value that
-  asset in the quote currency, the system MUST present current price,
-  current market value, and weight of that holding in total equity. When
-  cost basis is known, it MUST also present unrealized P&L and a simple
-  return for that holding. When cost basis is unknown, P&L/return for that
-  holding MUST be omitted or marked unknown—not fabricated.
-- **FR-001c**: The operator MUST be able to record, adjust, and remove
-  local/manual holdings for supported non-quote assets (quantity required;
-  cost basis / average acquisition price optional). Those holdings MUST
-  carry local/manual (bootstrap) provenance and MUST NOT be presented as a
-  live exchange account. Recording a local holding MUST NOT place orders,
-  start Simulation, or change reserved allocations. The model MUST still
-  allow later execution to apply: quote cash decreases, the bought asset
-  quantity increases, cost basis updates, then market value and unrealized
-  P&L change with price, then a sell decreases the asset, increases quote
-  cash, and updates realized P&L. Feature 009 MUST NOT itself place
-  real-money or XT private orders to create that lifecycle.
-- **FR-001d**: Total equity MUST be the sum of holding market values in the
-  quote currency for holdings that are included under FR-011a. Equity MUST
-  NOT be defined as quote cash alone once other valued holdings exist.
-  Portfolio realized P&L, unrealized P&L, and total P&L/return MUST be
-  coherent with holding-level figures (no double counting). When any
-  holding is unvalued, the displayed equity figure MUST be identified as
-  partial / known-value equity, not as a complete portfolio total.
-- **FR-001e**: Holdings MUST carry a provenance/source distinction sufficient
-  for later mapping (at least: local/manual or bootstrap; simulation;
-  real-exchange synchronization). Feature 009 MUST NOT call XT
-  private/account APIs. Feature 012 remains responsible for XT private
-  integration. The 009 model MUST be reusable so Feature 012 can map
-  exchange balances into this same holdings/accounting domain rather than
-  a second portfolio implementation. A simulated or local balance MUST NOT
-  be presented as a real XT balance.
-- **FR-002**: The system MUST support explicit capital allocations that
-  reserve **quote cash** for named uses (strategy, trading program, Torque
-  branch, or operator label) without transferring ownership of capital or
-  holdings to strategy logic. An optional target reference MUST NOT be
-  required to be unique across allocations; multiple allocations MAY share
-  the same target reference when total reserved still respects FR-003.
-- **FR-003**: Capital identity for Feature 009 MUST be:
-  `available = quote_cash − reserved`, with `reserved ≥ 0`, `available ≥ 0`,
-  and `reserved ≤ quote_cash`. Quote cash is the spendable quote-currency
-  holding. Reserved MUST NOT be subtracted from non-quote asset quantities.
-  Deployed capital is a distinct reported category (pipeline capital in
-  open positions) and MUST NOT be subtracted again from available in this
-  feature’s undeployed foundation (deployed remains 0 until later binding).
-  Double reservation of the same quote cash MUST be prevented. Spending
-  quote cash reserved for another allocation MUST be preventable by the
-  model (no silent cross-allocation spend).
-- **FR-004**: Strategies MUST remain advisory only. Strategy logic MUST
-  NEVER directly create, invent, or modify holdings, balances, allocations,
-  reservations, positions, or P&L. Any future trading that uses portfolio
-  capital MUST continue Strategy → Controller → Risk → Execution →
-  Portfolio/Accounting.
-- **FR-005**: Each allocation MUST have a stable identity and reserved quote
-  size, and MUST remain a child of the parent portfolio (not a separate
-  portfolio and not a copy of holdings). Identity is the allocation record
-  itself, not the optional target reference.
-- **FR-006**: The system MUST allow the operator to create, inspect, adjust
-  (resize), and release allocations subject to FR-003.
-- **FR-007**: The system MUST persist the effective portfolio, holdings
-  quantities, cost basis when known, provenance, and allocation state needed
-  for inspection after restart. Market prices MAY be refreshed on read from
-  public market data and need not be the persisted source of truth.
-- **FR-007a**: The system MUST persist portfolio snapshots on **meaningful
-  state changes** (quote-cash funding, allocation create/resize/release,
-  local/manual holding record/adjust/remove, and later execution-driven
-  holding mutations when those exist). Snapshots are for future historical
-  analytics (value over time, P&L over time, drawdown, best/worst holdings).
-  Feature 009 MUST NOT create periodic or price-tick-only snapshots when
-  holdings quantities and reservations have not changed. Feature 009 UI MUST
-  remain current-state focused: it MUST NOT show value-over-time,
-  P&L-over-time, or maximum-drawdown figures. Feature 009 MUST NOT present
-  historical analytics as facts in the operator UI.
-- **FR-008**: Invalid allocation, funding, or holdings updates MUST be
-  rejected with a clear reason and MUST leave the last valid persisted
-  state unchanged.
-- **FR-009**: Existing Simulation and Backtest session/run accounting MUST
-  remain compatible: historical effective configurations and results MUST
-  NOT be rewritten by introducing the portfolio model. Full migration of
-  Simulation/Backtest fill ledgers onto the portfolio ledger is out of
-  scope for this feature. Later features bind execution into this domain.
-- **FR-010**: The operator MUST have a Portfolio-facing UI under the
-  existing primary Portfolio area that presents holdings and capital
-  reservation in a simple, practical, exchange-style layout (not a
-  professional portfolio-management terminal). General form/feedback/
-  responsive rules inherit from `docs/UI_UX_STANDARDS.md` and constitution
-  XIV.
-- **FR-011**: Amounts MUST have clear labels and units (asset quantity vs
-  quote value). Simulation, local/manual, and any future real-money context
-  MUST remain distinguishable. This feature MUST NOT enable real-money
-  trading.
-- **FR-011a**: Supported holdings SHOULD be valued using existing public
-  market data (Feature 002) in the quote currency (primarily USDT) when a
-  matching public price exists. Prices MUST NEVER be invented. If a holding
-  has no usable public price, its value is unknown: quantity remains
-  visible; that holding MUST be excluded from calculated equity and from
-  weights based on that equity. If a last-known public price exists but is
-  stale, that value MUST remain included in equity and weights with a
-  clear stale indicator. If any holding is unvalued, the UI and the
-  inspection contract MUST indicate that displayed equity is partial /
-  known-value equity rather than silently presenting it as complete.
-  Weights among valued holdings are shares of that known-value equity.
-- **FR-012**: This feature MUST NOT implement: XT private/account
-  authentication or synchronization; real-money execution; leverage; short
-  selling; margin; multi-exchange portfolios; automatic portfolio
-  rebalancing or optimization; Torque grammar/program execution;
-  Grammatical Evolution; autonomous trading; or strategy ranking.
+- **FR-001**: The system MUST provide one authoritative **Simulation
+  Portfolio** accounting model: holdings, total value (equity), quote cash
+  (USDT holding), available, reserved, deployed, realized/unrealized/total
+  P&L, allocations, and positions. Not a separate “capital book” vs “asset
+  book.” `deployed` and `positions` MUST be derived on read from active
+  Feature 003 sessions with a long position (see Clarifications). They MUST
+  NOT be a second operator-editable ledger.
+- **FR-001a**: The operator MUST fund simulation quote cash (USDT) through
+  explicit Portfolio funding. Feature 008 Settings MUST NOT become the
+  portfolio ledger. Funding MUST preserve `quote_cash ≥ reserved`. Funding
+  MUST NOT mean “set equity” once other valued holdings exist.
+- **FR-001b**: Each holding MUST store asset, quantity, and cost basis when
+  known. Inspection MUST show public price, USDT value, and weight when a
+  usable price exists. When cost basis and value exist, show unrealized P&L
+  and return. USDT MUST NOT be given an artificial unrealized P&L. Unknown
+  cost or value → omit P&L/return — do not fabricate.
+- **FR-001c**: The operator MUST NOT record, adjust, or delete non-quote
+  holdings through a normal Portfolio UI or public operator holdings API.
+  Non-USDT holdings MUST be created/updated only when simulated execution
+  applies a fill: BUY decreases USDT and increases the asset (cost basis
+  from the fill); SELL decreases the asset, increases USDT, and updates
+  realized P&L. Feature 009 MUST NOT place real-money or XT private orders.
+- **FR-001d**: Total value MUST be the sum of valued holding market values.
+  P&L figures MUST be coherent with holdings (no double count with
+  allocations). Unvalued holdings → equity labeled partial / known-value.
+- **FR-001e**: Feature 009 provenance is **simulation**. The UI MUST label
+  Simulation Portfolio and MUST NOT present it as a live XT account.
+  Feature 009 MUST NOT call XT private APIs. Feature 012 later introduces a
+  separate Real XT Portfolio on the same holdings domain (`exchange`
+  provenance).
+- **FR-002**: Explicit quote-cash allocations MUST exist for named uses
+  without transferring ownership to strategy logic. `targetRef` MAY be
+  shared across allocations.
+- **FR-003**: `available = quote_cash − reserved`, `reserved ≤ quote_cash`,
+  both ≥ 0. Reservations MUST NOT change non-USDT quantities. Double
+  reservation of the same quote cash MUST be prevented. Cross-allocation
+  spend MUST be preventable by this identity.
+- **FR-004**: Strategies MUST remain advisory. They MUST NEVER write
+  holdings, balances, allocations, or P&L. Trading that affects the
+  Simulation Portfolio MUST follow Strategy → Controller → Risk →
+  Execution → Portfolio/Accounting.
+- **FR-005**: Each allocation has a stable id and reserved size and is a
+  child of the Simulation Portfolio — not a second portfolio.
+- **FR-006**: The operator MAY create, inspect, resize, and release
+  allocations subject to FR-003. The Portfolio UI MUST treat this as a
+  compact/advanced Capital section, not the primary layout.
+- **FR-007**: Persist holdings quantities, cost basis, provenance,
+  funding, and allocations across restart. Prices MAY refresh on read.
+- **FR-007a**: Persist snapshots on meaningful **successful** book changes:
+  funding, simulation fill-driven holding mutations, allocation create/resize/
+  release. MUST NOT snapshot on GET, price ticks, or refused fill-apply. MUST NOT show
+  value-over-time, P&L-over-time, or drawdown in 009 UI. A **current-state**
+  allocation visual (donut or equivalent of present weights) is allowed.
+- **FR-008**: Invalid funding, allocation, or fill-apply updates MUST be
+  rejected with a clear reason and MUST leave last valid **portfolio** state
+  unchanged. A refused fill-apply MUST NOT roll back Feature 003 session
+  journals already written for that fill.
+- **FR-009**: Feature 003/004 session and run journals MUST remain
+  compatible (regression suites stay green). 009 MUST NOT rewrite historical
+  journals. After a successful Feature 003 fill (session journals already
+  recorded), 009 MUST **attempt** `apply_simulation_fill` in the same DB
+  session. If apply would invent negative USDT, the Simulation Portfolio
+  book MUST stay unchanged (no `simulation_fill` snapshot), the hook MUST
+  catch/refuse without aborting the session transaction, and GET MUST expose
+  `warning` (fill-apply text, unless a corrupt-state warning supersedes).
+  Backtest fill ledgers are not migrated in 009.
+- **FR-010**: Portfolio UI under the existing primary Portfolio area:
+  summary cards, current allocation visual, holdings table (cards on narrow
+  viewports). Inherit `docs/UI_UX_STANDARDS.md`. Avoid large explanatory
+  paragraphs, developer jargon, and manual crypto-entry forms.
+- **FR-011**: Clear labels and units (asset quantity vs USDT value).
+  Simulation MUST be distinguishable from any future real-money view. This
+  feature MUST NOT enable real-money trading.
+- **FR-011a**: Value non-USDT holdings with Feature 002 public `{asset}_usdt`
+  quotes. Never invent prices. No usable price → unknown value, not zero;
+  exclude from equity. Stale last-known (Feature 002 60s rule) → include
+  and mark stale. Any unvalued holding → partial equity. Weights are shares
+  of known-value equity.
+- **FR-012**: MUST NOT implement XT private auth/sync, real-money execution,
+  leverage, shorts, margin, multi-exchange portfolios, auto-rebalancing,
+  Torque/GE, autonomous trading, or strategy ranking.
 
 ### Key Entities
 
-- **Portfolio**: The single local accounting container. Owns holdings,
-  allocations, capital categories, provenance, and derived totals. Not a
-  strategy wallet.
-- **Holding**: An asset balance in the portfolio (asset, quantity, cost
-  basis when known, provenance). Market price, market value, weight,
-  unrealized P&L, and return are inspection fields derived from quantity,
-  cost basis, and public market data when available. The quote-currency
-  holding **is** quote cash.
-- **Allocation**: An explicit reservation of quote cash for a named future
-  use. Child of the portfolio; does not own holdings.
-- **Position (pipeline view)**: Open trading exposure produced through
-  Controller → Risk → Execution. Distinct from holdings. Empty/zero
-  deployed in Feature 009 until later binding.
-- **Capital / portfolio snapshot**: Operator-visible coherent view of
-  holdings + capital categories + allocations at a point in time. Feature
-  009 also persists snapshots on meaningful book changes for later
-  analytics; the 009 UI still shows the current book only.
-- **Allocation Target Reference**: Optional non-authoritative label
-  (strategy id or program name). Not a unique ownership key; does not
-  execute trades.
-- **Provenance**: Source of a balance or portfolio book (local/manual,
-  simulation, real-exchange). Display must not collapse these together.
+- **Simulation Portfolio**: The operator-visible 009 accounting container.
+- **Holding**: Asset balance (USDT = quote cash; other assets from sim fills).
+- **Allocation**: Quote-cash reservation; child of the portfolio.
+- **Position**: Open simulated pipeline exposure; distinct from holdings.
+- **Snapshot**: Persisted on meaningful mutations; not shown as history UI.
+- **Provenance**: `simulation` in 009; `exchange` reserved for Feature 012.
 
 ## Success Criteria *(mandatory)*
 
-### Measurable Outcomes
-
-- **SC-001**: An operator can open Portfolio and, within one minute,
-  identify holdings (asset, quantity, value when known), total equity,
-  quote cash, available, reserved, deployed, realized P&L, unrealized P&L,
-  and positions without consulting strategy screens.
-- **SC-002**: In a portfolio with known available quote cash C, the
-  operator can create a valid split of allocations summing to ≤ C, and
-  every attempt to reserve more than allowed is rejected with no change to
-  prior state (verified in automated tests).
-- **SC-003**: After establishing holdings and allocations and reloading,
-  100% of last valid quantities, capital categories, and allocation records
-  remain inspectable (no silent loss of reserved cash or holdings).
+- **SC-001**: Within one minute on Portfolio, an operator can read total
+  value, available USDT, holdings (asset, quantity, value when known),
+  weights, and P&L without opening strategy screens, and can see that this
+  is Simulation — not a live XT account.
+- **SC-002**: Automated tests prove valid allocations summing to ≤ available
+  USDT succeed and over-reservation is rejected with prior state unchanged.
+- **SC-003**: After fund + simulated BUY + allocation + reload, quantities
+  and reservations remain inspectable.
 - **SC-004**: Automated checks prove `available = quote_cash − reserved`,
-  available never goes negative, reserved never exceeds quote cash,
-  double-reservation cannot succeed, and (when all included holdings are
-  valued) equity equals the sum of those holding values without
-  double-counting allocations into equity. When any holding is unvalued,
-  checks prove displayed equity is marked partial / known-value and equals
-  only the sum of valued holdings.
-- **SC-005**: Existing Simulation and Backtest regression suites that encode
-  current session/run accounting remain green after this feature lands.
-- **SC-006**: Portfolio primary workflows for inspect holdings + allocate
-  remain usable around 375px width, with clear units/labels and
-  non-hover-only help where terms are non-obvious.
-- **SC-007**: Given at least two valued holdings, an operator can state
-  each asset’s approximate weight of the portfolio (for example 50% / 30% /
-  15% / 5%) from the Portfolio page without calculating by hand.
-- **SC-008**: When cost basis is unknown or a public price is missing, the
-  operator is not shown a fabricated P&L, return, or market value for that
-  gap. Missing-price holdings stay out of calculated equity; stale
-  last-known prices stay in with a stale indicator; partial equity is
-  labeled as such.
+  equity = sum of valued holdings, allocations are not added into equity,
+  and partial equity is marked when any holding is unvalued.
+- **SC-005**: Simulation and Backtest regression suites stay green.
+- **SC-006**: Primary inspect + fund (+ compact allocate) remain usable
+  around 375px; holdings use cards if a table is too dense; help is not
+  hover-only.
+- **SC-007**: With at least two valued holdings, the operator can read
+  approximate weights from the page (numeric and/or donut) without doing
+  the math by hand.
+- **SC-008**: Missing price or cost does not produce fabricated value, P&L,
+  or return. Stale prices are marked. Partial equity is labeled.
+- **SC-009**: Automated tests prove a simulated BUY/SELL updates USDT and
+  the traded asset when portfolio USDT can absorb the cash effect; that a
+  refused apply leaves journals intact and GET `warning` set; and that no
+  public operator endpoint accepts a manual BTC (or similar) holdings upsert.
 
 ## Assumptions
 
-- **Single local portfolio for v1**: One operator machine, one
-  authoritative local portfolio (no multi-user or multi-portfolio product).
-- **Quote currency**: USDT-oriented, matching existing public market data
-  (USDT-quoted pairs) and Simulation/Backtest money presentation. Roadmap
-  “€500” examples remain illustrative of split scenarios, not a second
-  fiat ledger.
-- **One book**: Quote cash, holdings, equity, reservations, and P&L are
-  views of one accounting model. USDT quantity is quote cash; BTC/ETH are
-  other holdings; equity is the quote-valued sum of holdings.
-- **Reservation vs inventory**: Allocations reserve spendable quote cash.
-  They do not reserve BTC/ETH units and do not create per-strategy
-  sub-wallets of holdings.
-- **Holdings vs positions**: Holdings = balances. Positions = pipeline
-  open trades. Feature 009 shows positions as empty and deployed as 0
-  until later binding. A BTC balance is a holding even when there is no
-  open pipeline position.
-- **Funding vs equity**: Controlled funding changes quote cash (and thus
-  the quote holding). It does not overwrite crypto holdings or set equity
-  independently of valuation.
-- **No execution in 009**: Creating/resizing allocations or recording
-  local/manual holdings does not trade. Local holdings are operator-entered
-  inventory with local provenance. The buy/sell lifecycle is the domain
-  contract for later Simulation / Execution / Feature 012 binding, not an
-  XT private call in this feature.
-- **Local/manual holdings**: The operator may record supported non-quote
-  assets (quantity required, cost basis optional) so Portfolio can show a
-  multi-asset book before execution is bound. These are never labeled as
-  live exchange balances.
-- **Valuation source**: Public market data already available for supported
-  USDT-quoted pairs. Quote asset (USDT) values 1:1 in quote currency.
-  Unsupported assets are not silently given fake prices. No usable price →
-  unknown value, excluded from calculated equity. Stale last-known price →
-  included with a stale indicator. Any unvalued holding → equity labeled
-  partial / known-value.
-- **Analytics honesty**: Current-state totals, weights, and P&L where
-  inputs exist. Persist snapshots on meaningful book changes for later
-  features; do not show equity curves or drawdown in 009; do not snapshot
-  on price refresh alone.
-- **Settings remain defaults**: Feature 008 does not own the portfolio
-  ledger.
-- **Simulation session cash stays session-local** until a later binding
-  feature maps fills into this domain (FR-009).
-- **Long-only / no leverage in v1 constraints**: No short, margin, or
-  leveraged holding semantics.
-- **Primary navigation**: Existing Portfolio area; no new top-level nav.
-- **UI**: Simple exchange-style holdings + allocation panel; inherit
-  `docs/UI_UX_STANDARDS.md`.
-- **Dependencies**: Application shell, public market data, constitution
-  capital protection / advisory strategies / portfolio authority
-  (especially I, II, III–IV, VIII, XIII–XIV, XXXIII–XXXIV). Feature 012
-  will later map private exchange balances into this same domain.
+- One Simulation Portfolio per local operator machine in v1.
+- Quote currency is USDT-oriented.
+- Feature 003 session journals remain the session run record; 009 **attempts**
+  fill→portfolio accounting for **new** Simulation fills. Session starting
+  capital on Auto Trading is not silently overwritten from Settings.
+  Unifying session starting cash with Portfolio available is allowed later
+  but is not Feature 010. When those ledgers diverge, Portfolio GET `warning`
+  is the operator-visible signal; the missed fill is not invented later.
+- Backtest stays on its own run ledger in 009.
+- Allocations reserve USDT only.
+- Long-only / no leverage in 009 holdings semantics.
+- Existing Portfolio nav; no new top-level item.
+- Donut (or equivalent) visualizes **current** weights only.
 
 ## Non-Goals
 
-- XT private account authentication, sync, or live exchange balance import
-- Real-money enablement or execution
-- Leverage, short selling, margin, multi-exchange portfolios
-- Automatic portfolio rebalancing or optimization
-- Torque grammar/runtime and Grammatical Evolution
+- Operator UI or public API to type BTC/ETH/SOL (or other) quantities
+- XT private authentication, sync, or Real XT Portfolio (Feature 012)
+- Real-money enablement
+- Leverage, shorts, margin, multi-exchange books
+- Auto-rebalancing / optimization
+- Torque / GE
 - Autonomous trading
 - Replacing Feature 008 Settings
-- Full rewrite of historical Simulation/Backtest journals onto this ledger
-  in this feature
-- A second, separate asset-portfolio product beside capital reservation
-- Presenting simulated or local/manual balances as a real XT account
-- Inventing historical performance charts in Feature 009 when the UI is
-  current-state only (snapshots may exist for later features; 009 must not
-  present value-over-time or drawdown as operator facts)
-- Periodic price-only portfolio snapshots with no holdings or reservation
-  change
+- Rewriting historical Simulation/Backtest journals
+- Value-over-time or drawdown charts in 009
+- Periodic price-only snapshots
+- Feature 010 Advanced Risk Management

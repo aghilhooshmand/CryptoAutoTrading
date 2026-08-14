@@ -342,45 +342,34 @@ Status: `DONE`
 
 ### Goal
 
-Create one authoritative portfolio/accounting model: exchange-style
-**holdings** (assets, quantities, valuation, P&L) plus explicit **capital
-reservation/allocation**. Not two separate products.
+Create the **Simulation Portfolio**: an exchange-style view of simulation
+quote cash (USDT), holdings created by simulated execution, public
+mark-to-market, P&L, and explicit **quote-cash reservation** for later
+Risk/Torque — not a manual holdings book and not a live XT account.
 
 Required for:
 
-- ordinary trading;
-- operator inspection of what is owned and what it is worth;
-- multiple concurrent strategies;
-- Torque capital splitting;
-- later Simulation and real-money account state mapped into the same domain.
-
-Concepts may include:
+- operator inspection of simulation wealth (total value, available USDT,
+  assets, weights, P&L);
+- fill→accounting so BUY/SELL updates USDT and the traded asset;
+- multiple concurrent programs via reservations;
+- later Feature 012 Real XT Portfolio on the same domain (separate mode).
 
 ```text
-Portfolio
-├── holdings (asset, quantity, cost basis, value, weight, P&L)
-├── total equity / portfolio value
-├── quote cash (USDT holding)
-├── available capital
-├── reserved capital
-├── deployed capital
-├── allocations
-└── positions (pipeline; distinct from holdings)
+Simulation Portfolio
+├── holdings (USDT from funding; BTC/ETH/… from simulated fills)
+├── total value / equity
+├── available / reserved / deployed (capital; secondary UI)
+├── allocations (compact)
+└── positions (open simulated exposure, distinct from holdings)
 ```
 
-Example reservation (quote cash):
+Operator funds **simulation USDT only**. No UI to type BTC/ETH quantities.
+Strategies never write balances. Pipeline: Strategy → Controller → Risk →
+Execution → Portfolio/Accounting.
 
-```text
-500 USDT
-├── 250 reserved → program A
-├── 150 reserved → program B
-└── 100 available
-```
-
-The strategies do not own that money or the holdings.
-
-Feature 012 maps XT private balances into this same domain later; Feature 009
-must not call XT private APIs.
+Feature 012 maps XT private balances later; Feature 009 must not call XT
+private APIs and must not look like a live exchange account.
 
 Status: `IN PROGRESS`
 
