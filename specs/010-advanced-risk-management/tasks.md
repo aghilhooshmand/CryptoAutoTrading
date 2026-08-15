@@ -240,3 +240,13 @@ US1 → US2 → US5 → US3 → US4 → Polish
 - [USn] maps to spec user stories
 - Trading-critical: keep existing risk/max-trades tests green after catalog refactor
 - Propose commits only
+
+---
+
+## Phase 9: Convergence
+
+**Purpose**: Close gaps found after `/speckit-implement` vs spec/plan/contracts.
+
+- [X] T048 [CRITICAL] Fetch Feature 002 public quotes for Portfolio holding assets and pass them into `freeze_portfolio_loss_baseline` (Simulation start) and `apply_portfolio_context` (pipeline Risk tick) so known-value equity / holdings `marketValue` are not empty when quotes exist — per FR-007 / FR-008 / US3 / US4 / plan:Feature 002 quotes (`missing`/`partial` in `backend/app/simulation/portfolio_risk.py`, `backend/app/simulation/pipeline.py`, `backend/app/simulation/session_service.py`)
+- [X] T049 Fix Risk first-fail order for portfolio BUY gates: evaluate allocation remaining then per-symbol before session sizing / dust `insufficient_balance` when portfolio context is enabled — per FR-002a / `contracts/risk-catalog.md` §7–9 (`contradicts` in `backend/app/simulation/control/risk.py`); add/adjust unit precedence coverage
+- [X] T050 Fail closed on bound BUY when `allocation_id` is set but allocation reserved cannot be loaded (do not skip exposure gate) — per FR-005(a) / FR-006 (`partial` in `backend/app/simulation/portfolio_risk.py` / `risk.py`)

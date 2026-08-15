@@ -276,7 +276,7 @@ Execution Abstraction
 |---|---|---|
 | 008 | Trading & Experiment Defaults | DONE |
 | 009 | Portfolio & Capital Allocation Core | DONE |
-| 010 | Advanced Risk Management | IN PROGRESS |
+| 010 | Advanced Risk Management | DONE |
 | 011 | Simulation History & Results | PLANNED |
 | 012 | Execution Abstraction | PLANNED |
 
@@ -400,7 +400,7 @@ Potential areas:
 
 Exact rules must be specified before implementation.
 
-Status: `IN PROGRESS`
+Status: `DONE`
 
 ---
 
@@ -1294,27 +1294,24 @@ Current completed foundation:
 007 → DONE
 008 → DONE
 009 → DONE
+010 → DONE
 ```
 
 Current active milestone:
 
 ```text
-010 → Advanced Risk Management
+011 → Simulation History & Results
 ```
 
 Next planned milestone:
 
 ```text
-011 → Simulation History & Results
+012 → Execution Abstraction
 ```
 
 The near-term objective is therefore:
 
 ```text
-formalize portfolio/capital
-        ↓
-strengthen risk
-        ↓
 simulation history & frozen results
         ↓
 abstract execution

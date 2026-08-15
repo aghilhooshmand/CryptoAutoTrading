@@ -103,8 +103,10 @@ def _portfolio_max_loss_decision(ctx: RiskContext, *, is_buy: bool) -> RiskDecis
 
 
 def _allocation_remaining_ok(ctx: RiskContext, notional: Decimal) -> bool:
-    if ctx.allocation_id is None or ctx.allocation_reserved is None:
+    if ctx.allocation_id is None:
         return True
+    if ctx.allocation_reserved is None:
+        return False  # bound but reserved unknown — fail closed
     deployed = ctx.allocation_deployed or Decimal("0")
     remaining = ctx.allocation_reserved - deployed
     return notional <= remaining
@@ -195,22 +197,22 @@ class RiskManager:
                 message="SELL only while long",
             )
 
-        # Portfolio BUY gates (7–9) — only when enabled and BUY
+        # Portfolio BUY gates (7–9) then session sizing (catalog §9) — only when enabled and BUY
         if ctx.portfolio_context_enabled and is_buy:
-            if ctx.allocated_capital is None or ctx.max_position_size is None:
-                return _reject(R.INSUFFICIENT_BALANCE, message="Missing session sizing for Risk")
-            notional = intended_notional(
-                ctx.cash,
-                ctx.fee_rate,
-                ctx.allocated_capital,
-                ctx.max_position_size,
-            )
-            if is_dust(notional):
-                return _reject(R.INSUFFICIENT_BALANCE)
+            notional: Decimal | None = None
+            if ctx.allocated_capital is not None and ctx.max_position_size is not None:
+                notional = intended_notional(
+                    ctx.cash,
+                    ctx.fee_rate,
+                    ctx.allocated_capital,
+                    ctx.max_position_size,
+                )
 
             # 7. Allocation remaining (bound only)
             if ctx.allocation_id is not None:
-                if not _allocation_remaining_ok(ctx, notional):
+                if ctx.allocation_reserved is None:
+                    return _reject(R.ALLOCATION_EXPOSURE_EXCEEDED)
+                if notional is not None and not _allocation_remaining_ok(ctx, notional):
                     return _reject(R.ALLOCATION_EXPOSURE_EXCEEDED)
 
             # 8. Per-symbol weight (USDT uncapped)
@@ -219,8 +221,14 @@ class RiskManager:
                 and ctx.trade_asset
                 and ctx.trade_asset.lower() != "usdt"
             ):
+                if notional is None:
+                    return _reject(R.PER_SYMBOL_EXPOSURE_EXCEEDED)
                 weight = _projected_post_buy_weight(ctx, notional)
                 if weight is None or weight > ctx.per_symbol_max_weight:
                     return _reject(R.PER_SYMBOL_EXPOSURE_EXCEEDED)
+
+            # 9. Session sizing / dust
+            if notional is None or is_dust(notional):
+                return _reject(R.INSUFFICIENT_BALANCE)
 
         return RiskDecision(True)

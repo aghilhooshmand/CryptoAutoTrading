@@ -91,3 +91,37 @@ def test_allocation_beats_per_symbol():
     )
     dec = rm.review(StrategySignal(SignalSide.BUY, 1, None, None), ctx)
     assert dec.reason_code == "allocation_exposure_exceeded"
+
+
+def test_allocation_beats_insufficient_when_dust_would_also_fail():
+    """Catalog §7 before §9: bound oversize reports allocation, not dust."""
+    rm = RiskManager()
+    ctx = _base(
+        cash=Decimal("500"),
+        start_equity=Decimal("500"),
+        target_net_profit_amount=Decimal("1000"),
+        max_session_loss_amount=Decimal("1000"),
+        allocated_capital=Decimal("500"),
+        max_position_size=Decimal("500"),
+        allocation_id="a1",
+        allocation_reserved=Decimal("0"),
+        allocation_deployed=Decimal("0"),
+    )
+    dec = rm.review(StrategySignal(SignalSide.BUY, 1, None, None), ctx)
+    assert dec.reason_code == "allocation_exposure_exceeded"
+
+
+def test_bound_missing_reserved_fail_closed():
+    rm = RiskManager()
+    ctx = _base(
+        cash=Decimal("500"),
+        start_equity=Decimal("500"),
+        allocated_capital=Decimal("500"),
+        max_position_size=Decimal("500"),
+        allocation_id="a1",
+        allocation_reserved=None,
+        allocation_deployed=Decimal("0"),
+    )
+    dec = rm.review(StrategySignal(SignalSide.BUY, 1, None, None), ctx)
+    assert not dec.approved
+    assert dec.reason_code == "allocation_exposure_exceeded"

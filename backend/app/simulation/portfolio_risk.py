@@ -70,11 +70,15 @@ def holdings_value_views(snapshot: dict) -> list[HoldingValueView]:
     return out
 
 
-def freeze_portfolio_loss_baseline(db: Session, row: SimulationSessionRow) -> None:
+def freeze_portfolio_loss_baseline(
+    db: Session,
+    row: SimulationSessionRow,
+    quotes: dict[str, QuoteView] | None = None,
+) -> None:
     """Persist baseline kind/value at start when portfolio max-loss is configured."""
     if not row.portfolio_max_loss_rate and not row.portfolio_max_loss_amount:
         return
-    snap = portfolio_svc.build_snapshot(db)
+    snap = portfolio_svc.build_snapshot(db, quotes=quotes)
     if snap.get("equityComplete") is True and snap.get("equity") is not None:
         kind = "equity"
         value = d(snap["equity"])
@@ -87,6 +91,14 @@ def freeze_portfolio_loss_baseline(db: Session, row: SimulationSessionRow) -> No
     if row.portfolio_max_loss_amount is None and row.portfolio_max_loss_rate:
         amount = value * d(row.portfolio_max_loss_rate)
         row.portfolio_max_loss_amount = identity.money_str(amount)
+
+
+async def load_holding_quotes(db: Session) -> dict[str, QuoteView]:
+    """Feature 002 public quotes for current Portfolio holding assets."""
+    from app.portfolio import repository as portfolio_repo
+    from app.portfolio.valuation import fetch_quotes
+
+    return await fetch_quotes(portfolio_repo.holding_assets(db))
 
 
 def apply_portfolio_context(

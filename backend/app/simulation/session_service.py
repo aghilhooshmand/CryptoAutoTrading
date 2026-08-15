@@ -23,7 +23,7 @@ from app.simulation.execution.port import ExecutionIntent, SimulationExecutionEn
 from app.simulation.money import DEFAULT_FEE_RATE, DEFAULT_SLIPPAGE_RATE, as_str, d
 from app.portfolio import repository as portfolio_repo
 from app.simulation.control import reasons as risk_reasons
-from app.simulation.portfolio_risk import freeze_portfolio_loss_baseline, portfolio_available_amount
+from app.simulation.portfolio_risk import freeze_portfolio_loss_baseline, load_holding_quotes, portfolio_available_amount
 from app.simulation.state_machine import SessionState, transition
 from app.strategy.params import StrategyParamError
 from app.strategy.registry import UnknownStrategyError, is_known_strategy_id, validate_and_materialize
@@ -268,7 +268,8 @@ async def start_session_async(
     row.state = SessionState.RUNNING.value
     row.started_at = now
     row.updated_at = now
-    freeze_portfolio_loss_baseline(db, row)
+    quotes = await load_holding_quotes(db)
+    freeze_portfolio_loss_baseline(db, row, quotes=quotes)
     db.commit()
     db.refresh(row)
     from app.simulation.worker import ensure_worker_running
