@@ -278,7 +278,7 @@ Execution Abstraction
 | 009 | Portfolio & Capital Allocation Core | DONE |
 | 010 | Advanced Risk Management | DONE |
 | 011 | Simulation History & Results | DONE |
-| 012 | Execution Abstraction | IN PROGRESS |
+| 012 | Execution Abstraction | DONE |
 
 ---
 

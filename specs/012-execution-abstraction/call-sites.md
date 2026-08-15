@@ -1,26 +1,27 @@
 # Call-site inventory: Execution Abstraction (012)
 
 **Date**: 2026-08-15  
+**Updated**: 2026-08-15 (post-implement / convergence T042)  
 **Purpose**: Durable inventory of fill-related call sites for Feature 012.
 Update this file when wiring changes; do **not** duplicate as a stale comment
 in `backend/app/execution/__init__.py`.
 
 ## Production strategy-fill / forced-close paths
 
-| Site | Role | Today | 012 target |
-|------|------|-------|------------|
-| `backend/app/simulation/pipeline.py` | Simulation strategy fills after Risk | Builds `ExecutionIntent`; `SimulationExecutionEngine.execute` | Keep `execute`; engine from `app.execution`; journal + Portfolio apply **after** fill |
-| `backend/app/simulation/session_service.py` | Simulation forced-close / flatten fill | Uses `SimulationExecutionEngine` / `ExecutionIntent` | Keep mode-owned flatten orchestration; fill via Simulation adapter `execute` |
-| `backend/app/backtest/engine.py` | Historical strategy fills + `_flatten` | `HistoricalExecutionAdapter.buy` / `.sell`; next-open `reference_price` in engine | Adapters from `app.execution`; `buy`/`sell` wrappers MUST call `execute` only; engine keeps next-open / flatten refs + journals |
-| `backend/app/backtest/execution.py` | Historical adapter module | Full duplicated fill math + `HistoricalFillResult` | **Re-export only** from `app.execution.historical` (optional `HistoricalFillResult = FillResult` alias) |
-| `backend/app/simulation/execution/port.py` | Simulation port + engine | Full fill math + `ExecutionEngine` Protocol | **Re-export only** from `app.execution` (no local fill bodies) |
-| `backend/app/simulation/execution/simulation.py` | Re-export helper | Re-exports from port | Re-export from `app.execution` |
+| Site | Role | Current state (post-012) |
+|------|------|--------------------------|
+| `backend/app/simulation/pipeline.py` | Simulation strategy fills after Risk | Builds `ExecutionIntent`; calls `SimulationExecutionEngine.execute` (import via shim `app.simulation.execution.port` → `app.execution`); journal + Portfolio apply **after** fill |
+| `backend/app/simulation/session_service.py` | Simulation forced-close / flatten fill | Mode-owned flatten orchestration; fill via `SimulationExecutionEngine.execute` (shim → `app.execution`) |
+| `backend/app/backtest/engine.py` | Historical strategy fills + `_flatten` | Sets next-open / flatten `reference_price` in engine; calls `HistoricalExecutionAdapter.buy` / `.sell` which **only** wrap `self.execute` → shared economics; journals stay in engine |
+| `backend/app/backtest/execution.py` | Historical adapter module | **Re-export only** from `app.execution.historical` (`HistoricalExecutionAdapter`, `HistoricalFillResult = FillResult` alias); zero local fill math |
+| `backend/app/simulation/execution/port.py` | Simulation port shim | **Re-export only** from `app.execution` (`ExecutionIntent`, `FillResult`, `ExecutionEngine`, `SimulationExecutionEngine`); zero local fill math |
+| `backend/app/simulation/execution/simulation.py` | Simulation shim | **Re-export only** from `app.execution` |
 
 ## Comparison (must not add a third fill path)
 
 | Site | Role | Path |
 |------|------|------|
-| `backend/app/comparison/service.py` | Multi-leg comparison | `backtest_svc.run_leg_with_prefetched_candles` → `run_engine` → `HistoricalExecutionAdapter` |
+| `backend/app/comparison/service.py` | Multi-leg comparison | `backtest_svc.run_leg_with_prefetched_candles` → `run_engine` → `HistoricalExecutionAdapter` (`app.execution` via backtest shim) |
 | `backend/app/backtest/service.py` | Leg / run entry | Calls `run_engine` |
 
 Comparison MUST NOT import fill math or invent a separate execution adapter.
@@ -39,6 +40,6 @@ backend/app/execution/
   port.py          # ExecutionIntent, FillResult, ExecutionEngine
   economics.py     # Shared buy/sell sizing + rejects (no price fetch)
   simulation.py    # SimulationExecutionEngine (runtime name; constitution “SimulationExecutionAdapter” is conceptual)
-  historical.py    # HistoricalExecutionAdapter
-  real.py          # RealExecutionAdapter stub
+  historical.py    # HistoricalExecutionAdapter (execute + buy/sell → execute only)
+  real.py          # RealExecutionAdapter stub → real_execution_unavailable
 ```

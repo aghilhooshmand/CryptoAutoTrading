@@ -287,3 +287,12 @@ docs(012): mark Execution Abstraction DONE
 - Do not merge flatten/journal/Portfolio into `economics.py` by default
 - Call-site inventory lives in `specs/012-execution-abstraction/call-sites.md`, not package `__init__` comments
 - Behavior gate failures → fix adapter/wiring; do not “fix” by editing golden expectations unless a pre-existing bug is explicitly scoped
+
+---
+
+## Phase 9: Convergence
+
+**Purpose**: Close remaining gaps found by `/speckit-converge` against post-implement code and docs (2026-08-15).
+
+- [x] T041 Update Phase B summary table in `docs/ROADMAP.md` so Feature 012 status is `DONE` (section body already `DONE`; table still `IN PROGRESS`) per T039 / plan polish (partial)
+- [x] T042 Refresh `specs/012-execution-abstraction/call-sites.md` “Today” / status columns to match post-012 reality (re-export-only shims, shared `app.execution` adapters, wrappers→`execute`) per T002 / plan:call-sites (partial)
