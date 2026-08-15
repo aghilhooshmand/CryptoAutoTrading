@@ -12,7 +12,7 @@ analyze remediation I1/U1/U2)
 Correction tasks T044–T087 are complete. Feature 009 is marked **DONE** on
 `docs/ROADMAP.md`. Feature 010 remains PLANNED until started separately.
 
-**Input**: User description: "Revise Feature 009 to a Simulation Portfolio that behaves like a normal crypto exchange portfolio. Operator may fund only simulation quote cash (primarily USDT). Do not provide UI or operator API to manually record BTC/ETH/SOL. Non-USDT holdings appear only when simulated executions create them (BUY decreases USDT and increases the asset; SELL reverses and updates realized P&L). Strategies never modify balances. Pipeline: Strategy → Controller → Risk → Execution → Portfolio/Accounting. Value with Feature 002 public prices; never invent prices. Keep capital reservation for future Risk/Torque but do not make it the dominant UI. Clear SIMULATION state; Feature 012 later adds a separate Real XT Portfolio. Persist snapshots on meaningful state changes; no fake history charts. Modern exchange-style UI per docs/UI_UX_STANDARDS.md."
+**Input**: User description: "Revise Feature 009 to a Simulation Portfolio that behaves like a normal crypto exchange portfolio. Operator may fund only simulation quote cash (primarily USDT). Do not provide UI or operator API to manually record BTC/ETH/SOL. Non-USDT holdings appear only when simulated executions create them (BUY decreases USDT and increases the asset; SELL reverses and updates realized P&L). Strategies never modify balances. Pipeline: Strategy → Controller → Risk → Execution → Portfolio/Accounting. Value with Feature 002 public prices; never invent prices. Keep capital reservation for future Risk/Torque but do not make it the dominant UI. Clear SIMULATION state; Feature 013 later adds a separate Real XT Portfolio. Persist snapshots on meaningful state changes; no fake history charts. Modern exchange-style UI per docs/UI_UX_STANDARDS.md."
 
 ## Clarifications
 
@@ -38,7 +38,7 @@ History/valuation clarifications from that session remain in force:
 - Feature 009 is the **Simulation Portfolio** only. Operator-facing name: Simulation Portfolio. Not a bookkeeping sandbox.
 - Operator may fund/add **simulation quote cash only** (primarily USDT). No normal UI (and no public operator API) to type in BTC, ETH, SOL, or other crypto quantities.
 - Simulated BUY/SELL through the established pipeline **attempts** to update holdings (USDT and the traded asset, cost basis, realized P&L). Feature 003 session journals remain the session record even if the Simulation Portfolio refuses the apply.
-- Feature 012 later adds a clearly separate **Real XT Portfolio** on the same domain with different provenance — not mixed into 009.
+- Feature 013 later adds a clearly separate **Real XT Portfolio** on the same domain with different provenance — not mixed into 009.
 - Capital allocations remain in the model for future Risk/Torque but are a secondary, compact UI — not the dominant Portfolio experience.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -258,7 +258,7 @@ visible, value unknown, equity partial. No value-over-time or drawdown chart.
   allocations). Unvalued holdings → equity labeled partial / known-value.
 - **FR-001e**: Feature 009 provenance is **simulation**. The UI MUST label
   Simulation Portfolio and MUST NOT present it as a live XT account.
-  Feature 009 MUST NOT call XT private APIs. Feature 012 later introduces a
+  Feature 009 MUST NOT call XT private APIs. Feature 013 later introduces a
   separate Real XT Portfolio on the same holdings domain (`exchange`
   provenance).
 - **FR-002**: Explicit quote-cash allocations MUST exist for named uses
@@ -320,7 +320,7 @@ visible, value unknown, equity partial. No value-over-time or drawdown chart.
 - **Allocation**: Quote-cash reservation; child of the portfolio.
 - **Position**: Open simulated pipeline exposure; distinct from holdings.
 - **Snapshot**: Persisted on meaningful mutations; not shown as history UI.
-- **Provenance**: `simulation` in 009; `exchange` reserved for Feature 012.
+- **Provenance**: `simulation` in 009; `exchange` reserved for Feature 013.
 
 ## Success Criteria *(mandatory)*
 
@@ -368,7 +368,7 @@ visible, value unknown, equity partial. No value-over-time or drawdown chart.
 ## Non-Goals
 
 - Operator UI or public API to type BTC/ETH/SOL (or other) quantities
-- XT private authentication, sync, or Real XT Portfolio (Feature 012)
+- XT private authentication, sync, or Real XT Portfolio (Feature 013)
 - Real-money enablement
 - Leverage, shorts, margin, multi-exchange books
 - Auto-rebalancing / optimization

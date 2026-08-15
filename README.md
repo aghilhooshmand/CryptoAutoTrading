@@ -193,6 +193,6 @@ npm test
 
 Do not expect real-money XT order placement, private XT trading APIs, WebSocket
 streaming, multi-session concurrency, news / Fear & Greed sentiment,
-futures/margin/leverage, authentication, or a Real XT Portfolio (Feature 012).
+futures/margin/leverage, authentication, or a Real XT Portfolio (Feature 013).
 Feature 009 provides the **Simulation Portfolio** only (simulation USDT funding,
 fill-driven holdings, public mark-to-market — not live exchange balances).

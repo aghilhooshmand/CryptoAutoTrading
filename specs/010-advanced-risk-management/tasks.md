@@ -177,7 +177,7 @@ completion workflow.
 - [X] T043 Execute automated checks in `specs/010-advanced-risk-management/quickstart.md`
 - [X] T044 [P] UI review vs `docs/UI_UX_STANDARDS.md` (375px, help not hover-only, Simulation obvious)
 - [X] T045 Confirm no XT private / real-money / daily loss / drawdown-stop / wallet unification / second Risk package
-- [X] T046 Keep Feature 010 `IN PROGRESS` in `docs/ROADMAP.md`; do not mark DONE; do not start Feature 011
+- [X] T046 Keep Feature 010 `IN PROGRESS` in `docs/ROADMAP.md`; do not mark DONE; do not start Feature 012 — Execution Abstraction as part of Feature 010
 - [X] T047 Propose commit message (do not auto-commit)
 
 ---

@@ -39,7 +39,7 @@ One balance per asset.
 | `quantity` | Decimal string, strictly > 0 | yes |
 | `averageCost` | Quote per unit; null if unknown | no |
 | `realizedPnl` | Decimal string; updated on simulated SELL | yes |
-| `provenance` | `simulation` in 009 (`exchange` reserved for 012) | yes |
+| `provenance` | `simulation` in 009 (`exchange` reserved for 013) | yes |
 | `createdAt` / `updatedAt` | ISO | yes |
 
 Inspection-only: `price`, `priceStatus`, `marketValue`, `weight`,

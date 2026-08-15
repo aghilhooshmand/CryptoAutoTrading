@@ -123,7 +123,7 @@ No XT private. No Feature 010.
 
 PASS. Fill apply is Portfolio/Accounting after Execution, not a strategy
 write. Refused apply does not invent negative USDT and does not undo Feature
-003 journals (FR-009 attempt). Feature 012 still owns XT private. Feature
+003 journals (FR-009 attempt). Feature 013 still owns XT private. Feature
 010 not started (including per-allocation deployed limits).
 
 ## Project Structure

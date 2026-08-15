@@ -47,7 +47,7 @@ Simulation form fields + Settings optional defaults + journal reason display.
 extra distributed systems
 
 **Constraints**: Spec FR-001–FR-012 and clarify locks. One Risk authority.
-No XT private. No Feature 011 rewrite. No daily/drawdown stops. Dual ledger.
+No XT private. No Feature 012 rewrite. No daily/drawdown stops. Dual ledger.
 
 **Scale/Scope**: One active Simulation; small N allocations/holdings
 

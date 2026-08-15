@@ -391,6 +391,6 @@ shows the original effective risk configuration.
 - Daily / calendar loss limits
 - Portfolio drawdown **stop** (report metric may remain on Backtest)
 - Unifying session starting cash with Portfolio available into one wallet
-- Execution abstraction redesign (Feature 011) beyond clarifying Risk boundaries
+- Execution abstraction redesign (Feature 012) beyond clarifying Risk boundaries
 - Multi-exchange, leverage, shorts, margin
 - Replacing Feature 008 Settings semantics

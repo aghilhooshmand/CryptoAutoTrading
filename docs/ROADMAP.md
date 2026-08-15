@@ -267,6 +267,8 @@ Portfolio / Capital Allocation
    ↓
 Risk
    ↓
+Simulation History & Results
+   ↓
 Execution Abstraction
 ```
 
@@ -275,7 +277,8 @@ Execution Abstraction
 | 008 | Trading & Experiment Defaults | DONE |
 | 009 | Portfolio & Capital Allocation Core | DONE |
 | 010 | Advanced Risk Management | IN PROGRESS |
-| 011 | Execution Abstraction | PLANNED |
+| 011 | Simulation History & Results | PLANNED |
+| 012 | Execution Abstraction | PLANNED |
 
 ---
 
@@ -353,7 +356,7 @@ Required for:
   assets, weights, P&L);
 - fill→accounting so BUY/SELL updates USDT and the traded asset;
 - multiple concurrent programs via reservations;
-- later Feature 012 Real XT Portfolio on the same domain (separate mode).
+- later Feature 013 Real XT Portfolio on the same domain (separate mode).
 
 ```text
 Simulation Portfolio
@@ -368,7 +371,7 @@ Operator funds **simulation USDT only**. No UI to type BTC/ETH quantities.
 Strategies never write balances. Pipeline: Strategy → Controller → Risk →
 Execution → Portfolio/Accounting.
 
-Feature 012 maps XT private balances later; Feature 009 must not call XT
+Feature 013 maps XT private balances later; Feature 009 must not call XT
 private APIs and must not look like a live exchange account.
 
 Status: `DONE`
@@ -401,7 +404,50 @@ Status: `IN PROGRESS`
 
 ---
 
-## 011 — Execution Abstraction
+## 011 — Simulation History & Results
+
+### Goal
+
+Make Simulation sessions behave like saved runs/logs: list, reopen, inspect,
+freeze terminal economics when valuation is valid, and delete with confirmation
+— without changing Feature 003 lifecycle semantics or Feature 010 Risk rules,
+and without automatic resume after backend restart.
+
+In scope:
+
+- list persisted Simulation sessions;
+- distinguish running, stopped, failed/interrupted states;
+- open any historical Simulation;
+- inspect effective configuration actually used;
+- inspect symbol, timeframe, strategy and effective strategy parameters;
+- inspect starting capital;
+- inspect trades and decision journal (including Risk rejection reasons);
+- inspect timestamps and stop/completion reason;
+- persist/freeze final run economics at termination when a valid valuation is
+  available (ending equity/value, P&L, return, fees/slippage and related
+  metrics) so later market prices cannot rewrite historical results;
+- delete historical simulations with explicit confirmation and safe rules for
+  active/bound sessions;
+- preserve that frontend navigation, remount, and browser refresh do not stop
+  an active backend Simulation.
+
+Out of scope:
+
+- automatic resume after backend restart;
+- crash recovery/reconciliation;
+- rebuilding workers after process restart;
+- automatic continuation of `unsafe_unflattened` sessions;
+- multi-active Simulation support;
+- Feature 010 Risk semantic changes.
+
+Backend restart recovery/resume remains for Feature 014 — Live Paper-Trading
+Hardening.
+
+Status: `PLANNED`
+
+---
+
+## 012 — Execution Abstraction
 
 ### Goal
 
@@ -418,7 +464,7 @@ Trading Intent → ├─ SimulationExecutionAdapter
 
 Controller and Risk should not care which execution mode is active.
 
-Feature 011 should consolidate existing historical/simulation semantics without
+Feature 012 should consolidate existing historical/simulation semantics without
 changing their established behavior.
 
 Status: `PLANNED`
@@ -434,13 +480,13 @@ autonomous real-money trading.
 
 | ID | Feature | Status |
 |---|---|---|
-| 012 | XT Account / Private API Integration | PLANNED |
-| 013 | Live Paper-Trading Hardening | PLANNED |
-| 014 | Real-Money Manual/Confirmed Execution | PLANNED |
+| 013 | XT Account / Private API Integration | PLANNED |
+| 014 | Live Paper-Trading Hardening | PLANNED |
+| 015 | Real-Money Manual/Confirmed Execution | PLANNED |
 
 ---
 
-## 012 — XT Account / Private API Integration
+## 013 — XT Account / Private API Integration
 
 ### Goal
 
@@ -483,7 +529,7 @@ Status: `PLANNED`
 
 ---
 
-## 013 — Live Paper-Trading Hardening
+## 014 — Live Paper-Trading Hardening
 
 ### Goal
 
@@ -509,7 +555,7 @@ Status: `PLANNED`
 
 ---
 
-## 014 — Real-Money Manual/Confirmed Execution
+## 015 — Real-Money Manual/Confirmed Execution
 
 ### Goal
 
@@ -541,7 +587,7 @@ Requirements should include:
 
 ### Important
 
-Feature 014 is NOT autonomous trading.
+Feature 015 is NOT autonomous trading.
 
 Status: `PLANNED`
 
@@ -558,13 +604,13 @@ Torque is a program layer, not another trading engine.
 
 | ID | Feature | Status |
 |---|---|---|
-| 015 | Torque Trading Program Core | PLANNED |
-| 016 | Torque Capital Allocation | PLANNED |
-| 017 | Torque Signal Composition | PLANNED |
+| 016 | Torque Trading Program Core | PLANNED |
+| 017 | Torque Capital Allocation | PLANNED |
+| 018 | Torque Signal Composition | PLANNED |
 
 ---
 
-## 015 — Torque Trading Program Core
+## 016 — Torque Trading Program Core
 
 ### Goal
 
@@ -608,7 +654,7 @@ T1 ───────── T2 ───────── T3
      RSI           MACD
 ```
 
-Exact Torque syntax belongs in Feature 015.
+Exact Torque syntax belongs in Feature 016.
 
 ### Architectural rule
 
@@ -628,7 +674,7 @@ Status: `PLANNED`
 
 ---
 
-## 016 — Torque Capital Allocation
+## 017 — Torque Capital Allocation
 
 ### Goal
 
@@ -663,13 +709,13 @@ Conceptually:
 
 Both may operate during the same historical/live interval.
 
-Feature 016 MUST reuse Feature 009 capital allocation.
+Feature 017 MUST reuse Feature 009 capital allocation.
 
 Status: `PLANNED`
 
 ---
 
-## 017 — Torque Signal Composition
+## 018 — Torque Signal Composition
 
 ### Goal
 
@@ -722,15 +768,15 @@ programs.
 
 | ID | Feature | Status |
 |---|---|---|
-| 018 | Grammatical Evolution Search | PLANNED |
-| 019 | Evolution Experiments & Results | PLANNED |
-| 020 | Train / Validation / Test | PLANNED |
-| 021 | Advanced Fitness | PLANNED |
-| 022 | Regime-Aware Programs | PLANNED |
+| 019 | Grammatical Evolution Search | PLANNED |
+| 020 | Evolution Experiments & Results | PLANNED |
+| 021 | Train / Validation / Test | PLANNED |
+| 022 | Advanced Fitness | PLANNED |
+| 023 | Regime-Aware Programs | PLANNED |
 
 ---
 
-## 018 — Grammatical Evolution Search
+## 019 — Grammatical Evolution Search
 
 ### Goal
 
@@ -784,13 +830,13 @@ where both use comparable:
 
 Higher fitness is better.
 
-Exact fitness and GE mechanics must be specified in Feature 018.
+Exact fitness and GE mechanics must be specified in Feature 019.
 
 Status: `PLANNED`
 
 ---
 
-## 019 — Evolution Experiments & Results
+## 020 — Evolution Experiments & Results
 
 ### Goal
 
@@ -830,7 +876,7 @@ Status: `PLANNED`
 
 ---
 
-## 020 — Train / Validation / Test
+## 021 — Train / Validation / Test
 
 ### Goal
 
@@ -857,7 +903,7 @@ Status: `PLANNED`
 
 ---
 
-## 021 — Advanced Fitness
+## 022 — Advanced Fitness
 
 ### Goal
 
@@ -895,7 +941,7 @@ Status: `PLANNED`
 
 ---
 
-## 022 — Regime-Aware Programs
+## 023 — Regime-Aware Programs
 
 ### Goal
 
@@ -931,11 +977,11 @@ Status: `PLANNED`
 
 | ID | Feature | Status |
 |---|---|---|
-| 023 | Autonomous Real-Money Trading | PLANNED |
+| 024 | Autonomous Real-Money Trading | PLANNED |
 
 ---
 
-## 023 — Autonomous Real-Money Trading
+## 024 — Autonomous Real-Money Trading
 
 ### Goal
 
@@ -1050,45 +1096,48 @@ Do not implement these merely because they are listed here.
 010 Advanced Risk Management
         │
         ▼
-011 Execution Abstraction
+011 Simulation History & Results
+        │
+        ▼
+012 Execution Abstraction
         │
         ├──────────────────────┐
         ▼                      │
-012 XT Private Integration     │
+013 XT Private Integration     │
         │                      │
         ▼                      │
-013 Paper-Trading Hardening    │
+014 Paper-Trading Hardening    │
         │                      │
         ▼                      │
-014 Confirmed Real Execution   │
+015 Confirmed Real Execution   │
         │                      │
         └──────────┬───────────┘
                    ▼
-          015 Torque Program Core
+          016 Torque Program Core
                    │
                    ▼
-          016 Torque Capital Allocation
+          017 Torque Capital Allocation
                    │
                    ▼
-          017 Torque Signal Composition
+          018 Torque Signal Composition
                    │
                    ▼
-          018 GE Search
+          019 GE Search
                    │
                    ▼
-          019 Experiment Management
+          020 Experiment Management
                    │
                    ▼
-          020 Train / Validation / Test
+          021 Train / Validation / Test
                    │
                    ▼
-          021 Advanced Fitness
+          022 Advanced Fitness
                    │
                    ▼
-          022 Regime-Aware Programs
+          023 Regime-Aware Programs
                    │
                    ▼
-          023 Autonomous Real Trading
+          024 Autonomous Real Trading
 ```
 
 This diagram describes the preferred development path.
@@ -1148,7 +1197,7 @@ It does not receive its own Controller, Risk, Execution, or Accounting engine.
 
 ## Gate A — Before Real Orders
 
-Before Feature 014:
+Before Feature 015:
 
 - execution abstraction must work;
 - private XT integration must work;
@@ -1160,7 +1209,7 @@ Before Feature 014:
 
 ## Gate B — Before GE
 
-Before Feature 018:
+Before Feature 019:
 
 - Torque programs must execute deterministically;
 - Torque must reuse Backtest;
@@ -1172,7 +1221,7 @@ Before Feature 018:
 
 ## Gate C — Before Autonomous Real Money
 
-Before Feature 023:
+Before Feature 024:
 
 - real execution must already work with confirmation;
 - paper trading must be hardened;
@@ -1256,7 +1305,7 @@ Current active milestone:
 Next planned milestone:
 
 ```text
-011 → Execution Abstraction
+011 → Simulation History & Results
 ```
 
 The near-term objective is therefore:
@@ -1265,6 +1314,8 @@ The near-term objective is therefore:
 formalize portfolio/capital
         ↓
 strengthen risk
+        ↓
+simulation history & frozen results
         ↓
 abstract execution
         ↓

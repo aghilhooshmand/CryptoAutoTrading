@@ -113,7 +113,7 @@ USDT has no artificial unrealized P&L.
 
 **Decision**: `bookProvenance` and new/updated holdings use `simulation`.
 UI: “Simulation Portfolio”, Simulation badge/mode — never “XT account”.
-Enum still allows `exchange` for Feature 012. Do not write `local_manual`
+Enum still allows `exchange` for Feature 013. Do not write `local_manual`
 going forward.
 
 ## Decision 8: Extend existing package; compact allocations

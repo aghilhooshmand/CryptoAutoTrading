@@ -999,35 +999,36 @@ TRADING INFRASTRUCTURE
 008  Trading & Experiment Defaults
 009  Portfolio & Capital Allocation Core
 010  Advanced Risk Management
-011  Execution Abstraction
+011  Simulation History & Results
+012  Execution Abstraction
 
 
 CONTROLLED LIVE TRADING
 
-012  XT Account / Private API Integration
-013  Live Paper-Trading Hardening
-014  Real-Money Manual/Confirmed Execution
+013  XT Account / Private API Integration
+014  Live Paper-Trading Hardening
+015  Real-Money Manual/Confirmed Execution
 
 
 TORQUE PROGRAMMABLE TRADING
 
-015  Torque Trading Program Core
-016  Torque Capital Allocation
-017  Torque Signal Composition
+016  Torque Trading Program Core
+017  Torque Capital Allocation
+018  Torque Signal Composition
 
 
 EVOLUTIONARY SEARCH
 
-018  Grammatical Evolution Search
-019  Evolution Experiments & Results
-020  Train / Validation / Test
-021  Advanced Fitness
-022  Regime-Aware Programs
+019  Grammatical Evolution Search
+020  Evolution Experiments & Results
+021  Train / Validation / Test
+022  Advanced Fitness
+023  Regime-Aware Programs
 
 
 AUTONOMOUS TRADING
 
-023  Autonomous Real-Money Trading
+024  Autonomous Real-Money Trading
 ```
 
 This sequence is intentional.
@@ -1109,7 +1110,7 @@ Period B:
     70% Dual EMA
 ```
 
-The exact syntax and semantics will be specified during Features 015–017.
+The exact syntax and semantics will be specified during Features 016–018.
 
 ---
 
@@ -1248,7 +1249,9 @@ The immediate sequence is:
         ↓
 010 Advanced Risk Management
         ↓
-011 Execution Abstraction
+011 Simulation History & Results
+        ↓
+012 Execution Abstraction
 ```
 
 These features are important before Torque.
@@ -1257,7 +1260,7 @@ In particular, Torque capital allocation should not invent its own wallet or acc
 
 Torque should not invent its own risk system. It should reuse Feature 010.
 
-Torque should not invent historical/simulation/real execution. It should reuse Feature 011.
+Torque should not invent historical/simulation/real execution. It should reuse Feature 012.
 
 This reuse is a central architectural objective.
 

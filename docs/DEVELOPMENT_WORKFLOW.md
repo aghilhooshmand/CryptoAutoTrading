@@ -890,7 +890,7 @@ Run Configuration
 Persisted Historical Truth
 ```
 
-This rule becomes particularly important for Features 008, 018, and 019.
+This rule becomes particularly important for Features 008, 019, and 020.
 
 ---
 
@@ -917,7 +917,7 @@ Extensive Validation
 Autonomous Real Execution
 ```
 
-Feature 023 is the explicit autonomous-real-money boundary.
+Feature 024 is the explicit autonomous-real-money boundary.
 
 ---
 
