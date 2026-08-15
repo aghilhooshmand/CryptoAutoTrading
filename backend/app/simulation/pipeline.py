@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -35,6 +36,13 @@ INTERVAL_SECONDS = {
 }
 
 
+def _as_utc(dt: datetime) -> datetime:
+    """SQLite often returns naive datetimes; clock is always UTC-aware."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 
 async def _closed_candles(symbol: str, timeframe: str, clock: Clock) -> list[CandleClose]:
     series = await get_market_data_service().get_candles(symbol, timeframe)
@@ -62,7 +70,7 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
         return
 
     if row.started_at is not None:
-        elapsed = (clock.now() - row.started_at).total_seconds()
+        elapsed = (clock.now() - _as_utc(row.started_at)).total_seconds()
         if elapsed >= row.duration_seconds:
             await stop_session_async(db, row.id, "duration_elapsed", clock=clock)
             return
