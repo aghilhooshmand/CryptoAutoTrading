@@ -33,6 +33,7 @@ One bounded simulated trading run. At most one session may be in `RUNNING` or
 | `fee_rate` | decimal string | Fraction, default `0.001` |
 | `slippage_rate` | decimal string | Fraction, default `0.0005` |
 | `strategy_id` | string | Fixed `dual_ema_9_21` for Feature 003 |
+| `decision_log_mode` | enum string \| null | `important_only` \| `full_audit`. Effective config. NULL/missing → treat as `full_audit` (legacy). New sessions default `important_only`. Never rewrite historical decision rows when adding this column. |
 | `cash` | decimal string | Current simulated cash |
 | `position_side` | enum | `flat` \| `long` |
 | `position_qty` | decimal string | `0` when flat |
@@ -109,9 +110,16 @@ Not necessarily persisted as its own table; embedded in Decision Journal.
 | `fast_ema` | decimal string \| null | |
 | `slow_ema` | decimal string \| null | |
 
-**Rules**: Every closed-candle evaluation produces one row (including HOLD).
-Rejected and approved non-HOLD rows required. Forced flatten SHOULD add a
-`forced` row.
+**Rules** (amended Decision Log Mode 2026-08-15):
+
+- Every closed candle is still evaluated; `last_processed_candle_open_time`
+  advances even when no Decision Journal row is written.
+- **`full_audit`** (and legacy NULL mode): every closed-candle evaluation
+  produces one row (including HOLD). Rejected and approved non-HOLD rows
+  required. Forced flatten SHOULD add a `forced` row.
+- **`important_only`**: do **not** insert a row for ordinary HOLD (including
+  warm-up HOLD). MUST insert rows for approved, rejected, and forced outcomes.
+  Do not invent a separate event table.
 
 ---
 

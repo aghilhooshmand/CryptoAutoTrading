@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -13,6 +14,7 @@ from app.simulation.accounting import liquidation_equity, session_net_pnl
 from app.simulation.clock import Clock
 from app.simulation.control.controller import TradingController
 from app.simulation.control.risk import UNSAFE_QUOTE_LIMIT, RiskContext, RiskManager
+from app.simulation.decision_log_mode import should_persist_hold
 from app.simulation.execution.port import ExecutionIntent, SimulationExecutionEngine
 from app.simulation.money import as_str, d
 from app.simulation.session_service import (
@@ -33,6 +35,13 @@ INTERVAL_SECONDS = {
     "4h": 14400,
     "1d": 86400,
 }
+
+
+def _as_utc(dt: datetime) -> datetime:
+    """SQLite often returns naive datetimes; clock is always UTC-aware."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 
@@ -62,7 +71,7 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
         return
 
     if row.started_at is not None:
-        elapsed = (clock.now() - row.started_at).total_seconds()
+        elapsed = (clock.now() - _as_utc(row.started_at)).total_seconds()
         if elapsed >= row.duration_seconds:
             await stop_session_async(db, row.id, "duration_elapsed", clock=clock)
             return
@@ -136,18 +145,19 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
 
     ctrl = controller.review(SessionState(row.state), signal)
     if signal.side == SignalSide.HOLD:
-        add_decision(
-            db,
-            row,
-            signal="HOLD",
-            outcome="hold",
-            candle_open_time=signal.candle_open_time,
-            reason_code=signal.reason_code,
-            reason_message=None,
-            fast_ema=as_str(signal.fast_ema) if signal.fast_ema is not None else None,
-            slow_ema=as_str(signal.slow_ema) if signal.slow_ema is not None else None,
-            clock=clock,
-        )
+        if should_persist_hold(row.decision_log_mode):
+            add_decision(
+                db,
+                row,
+                signal="HOLD",
+                outcome="hold",
+                candle_open_time=signal.candle_open_time,
+                reason_code=signal.reason_code,
+                reason_message=None,
+                fast_ema=as_str(signal.fast_ema) if signal.fast_ema is not None else None,
+                slow_ema=as_str(signal.slow_ema) if signal.slow_ema is not None else None,
+                clock=clock,
+            )
         row.last_processed_candle_open_time = newest.open_time
         db.commit()
         return
@@ -169,7 +179,9 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
         db.commit()
         return
 
-    rctx = RiskContext(
+    from app.simulation.portfolio_risk import apply_portfolio_context, load_holding_quotes
+
+    rctx_kwargs = dict(
         position_side=row.position_side,
         cash=d(row.cash),
         qty=d(row.position_qty),
@@ -183,6 +195,9 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
         mark_price=mark,
         mark_safe=safe,
     )
+    quotes = await load_holding_quotes(db)
+    apply_portfolio_context(rctx_kwargs, db=db, row=row, quotes=quotes)
+    rctx = RiskContext(**rctx_kwargs)
     risk_dec = risk.review(signal, rctx)
     if not risk_dec.approved:
         add_decision(

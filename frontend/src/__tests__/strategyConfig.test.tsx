@@ -113,11 +113,23 @@ vi.mock("../services/strategiesApi", async () => {
   };
 });
 
-function Harness({ initial }: { initial?: StrategyConfigValue }) {
+function Harness({
+  initial,
+  preferredStrategy,
+}: {
+  initial?: StrategyConfigValue;
+  preferredStrategy?: StrategyConfigValue | null;
+}) {
   const [value, setValue] = useState<StrategyConfigValue>(
     initial ?? defaultStrategyConfig(),
   );
-  return <StrategyConfigFields value={value} onChange={setValue} />;
+  return (
+    <StrategyConfigFields
+      value={value}
+      onChange={setValue}
+      preferredStrategy={preferredStrategy}
+    />
+  );
 }
 
 describe("strategy config fields", () => {
@@ -165,6 +177,44 @@ describe("strategy config fields", () => {
     expect(screen.getByTestId("strategy-param-period")).toHaveValue(14);
     expect(screen.getByTestId("strategy-param-overbought")).toHaveValue(70);
     expect(screen.getByTestId("strategy-param-oversold")).toHaveValue(30);
+  });
+
+  it("restores preferred Settings params when selecting that Rule again", async () => {
+    const user = userEvent.setup();
+    const preferred = {
+      strategyId: "dual_ema",
+      strategyParams: { fastPeriod: 10, slowPeriod: 21 },
+    };
+    render(
+      <Harness
+        initial={preferred}
+        preferredStrategy={preferred}
+      />,
+    );
+    await waitFor(() => screen.getByTestId("strategy-id"));
+    expect(screen.getByTestId("strategy-param-fastPeriod")).toHaveValue(10);
+
+    await user.selectOptions(screen.getByTestId("strategy-id"), "rsi");
+    expect(screen.getByTestId("strategy-param-period")).toHaveValue(14);
+
+    await user.selectOptions(screen.getByTestId("strategy-id"), "dual_ema");
+    expect(screen.getByTestId("strategy-param-fastPeriod")).toHaveValue(10);
+    expect(screen.getByTestId("strategy-param-slowPeriod")).toHaveValue(21);
+  });
+
+  it("remembers draft params when switching Rule away and back", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await waitFor(() => screen.getByTestId("strategy-param-fastPeriod"));
+    await user.clear(screen.getByTestId("strategy-param-fastPeriod"));
+    await user.type(screen.getByTestId("strategy-param-fastPeriod"), "10");
+    expect(screen.getByTestId("strategy-param-fastPeriod")).toHaveValue(10);
+
+    await user.selectOptions(screen.getByTestId("strategy-id"), "rsi");
+    expect(screen.getByTestId("strategy-param-period")).toHaveValue(14);
+
+    await user.selectOptions(screen.getByTestId("strategy-id"), "dual_ema");
+    expect(screen.getByTestId("strategy-param-fastPeriod")).toHaveValue(10);
   });
 });
 

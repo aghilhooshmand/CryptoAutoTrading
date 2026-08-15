@@ -5,6 +5,7 @@
  * Slippage is a model estimate for adverse fills — XT does not publish a fixed slippage schedule.
  *
  * Absolute USDT amounts convert against max position size (per-trade notional proxy).
+ * Percent points (e.g. 0.20) convert to fraction rates (0.002) for the engine.
  */
 
 export const XT_SPOT_FEE_RATE = "0.002"; // 0.20% VIP0 spot
@@ -35,6 +36,20 @@ export function usdtAmountToRate(
   const n = Number(notional);
   if (!Number.isFinite(a) || !Number.isFinite(n) || n <= 0 || a < 0) return null;
   return stripTrailingZeros((a / n).toFixed(8));
+}
+
+/** Fraction 0.002 → "0.2" (editable percent points, no % sign). */
+export function rateToPercentPoints(rate: string): string | null {
+  const r = Number(rate);
+  if (!Number.isFinite(r) || r < 0) return null;
+  return stripTrailingZeros((r * 100).toFixed(8));
+}
+
+/** Percent points "0.2" → fraction "0.002". */
+export function percentPointsToRate(points: string): string | null {
+  const p = Number(points);
+  if (!Number.isFinite(p) || p < 0) return null;
+  return stripTrailingZeros((p / 100).toFixed(8));
 }
 
 /** Fraction 0.002 → "0.20%" */

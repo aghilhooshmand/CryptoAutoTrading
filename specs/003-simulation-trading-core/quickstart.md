@@ -75,7 +75,9 @@ Full BUY notional uses
 
 1. With session running, wait for at least one **closed** candle evaluation
    (use FakeClock in automated tests; manually, shorter timeframe helps).
-2. Observe Decision Journal entries for `HOLD` and any `BUY`/`SELL`.
+2. Observe Decision Journal per `decisionLogMode`: under `full_audit`, HOLD and
+   BUY/SELL rows; under `important_only`, no ordinary HOLD rows while
+   `lastProcessedCandleOpenTime` still advances and session stays RUNNING.
 3. Confirm no balance change on `HOLD`; any fill appears in Trade Journal and
    only after approval path (no strategy-only mutation).
 

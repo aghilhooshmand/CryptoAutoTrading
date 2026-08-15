@@ -40,6 +40,7 @@ describe("simulation journals and economics", () => {
     render(
       <>
         <DecisionJournal
+          decisionLogMode="full_audit"
           items={[
             {
               id: "d1",
@@ -77,5 +78,11 @@ describe("simulation journals and economics", () => {
     );
     expect(screen.getByTestId("decision-journal")).toHaveTextContent("HOLD");
     expect(screen.getByTestId("trade-journal")).toHaveTextContent("BUY");
+  });
+
+  it("labels important_only journal without fabricating HOLDs", () => {
+    render(<DecisionJournal items={[]} decisionLogMode="important_only" />);
+    expect(screen.getByTestId("decision-journal")).toHaveTextContent("Important decisions only");
+    expect(screen.getByTestId("decision-log-mode-note")).toBeInTheDocument();
   });
 });

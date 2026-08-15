@@ -41,7 +41,38 @@ def client(tmp_path, monkeypatch):
         with patch("app.simulation.pipeline.get_market_data_service", return_value=mock_svc):
             with patch("app.simulation.worker.ensure_worker_running"):
                 with TestClient(app) as c:
+                    # Feature 010: create/start require Portfolio available ≥ allocated.
+                    c.put("/portfolio/funding", json={"cash": "100000"})
                     yield c
+
+
+def test_create_defaults_decision_log_mode_important_only(client):
+    created = client.post("/simulation/sessions", json=_body()).json()
+    assert created["decisionLogMode"] == "important_only"
+    again = client.get(f"/simulation/sessions/{created['id']}").json()
+    assert again["decisionLogMode"] == "important_only"
+
+
+def test_create_accepts_full_audit_decision_log_mode(client):
+    created = client.post("/simulation/sessions", json=_body(decisionLogMode="full_audit")).json()
+    assert created["decisionLogMode"] == "full_audit"
+
+
+def test_get_legacy_null_decision_log_mode_presents_full_audit(client, tmp_path, monkeypatch):
+    from app.db.models import SimulationSessionRow
+
+    created = client.post("/simulation/sessions", json=_body()).json()
+    sid = created["id"]
+    db = db_session.SessionLocal()
+    try:
+        row = db.get(SimulationSessionRow, sid)
+        assert row is not None
+        row.decision_log_mode = None
+        db.commit()
+    finally:
+        db.close()
+    again = client.get(f"/simulation/sessions/{sid}").json()
+    assert again["decisionLogMode"] == "full_audit"
 
 
 def test_journals_and_economics_shape(client):
@@ -209,3 +240,93 @@ def test_start_and_active(client):
     other = client.post("/simulation/sessions", json=_body()).json()
     r2 = client.post(f"/simulation/sessions/{other['id']}/start")
     assert r2.status_code == 409
+
+
+def test_create_rejects_when_allocated_exceeds_available(client):
+    # Fixture funds 100000; reserve most so available < 500.
+    client.put("/portfolio/funding", json={"cash": "1000"})
+    client.post(
+        "/portfolio/allocations",
+        json={"label": "sleeve", "reservedSize": "400"},
+    )
+    r = client.post(
+        "/simulation/sessions",
+        json=_body(startingCapital="700", allocatedCapital="700", maxPositionSize="700"),
+    )
+    assert r.status_code == 400
+    err = r.json()["detail"]["error"]
+    assert err["code"] == "insufficient_portfolio_available"
+    assert "available" in err["message"].lower()
+
+
+def test_create_ok_when_allocated_fits_available(client):
+    client.put("/portfolio/funding", json={"cash": "1000"})
+    client.post(
+        "/portfolio/allocations",
+        json={"label": "sleeve", "reservedSize": "400"},
+    )
+    r = client.post(
+        "/simulation/sessions",
+        json=_body(startingCapital="600", allocatedCapital="600", maxPositionSize="600"),
+    )
+    assert r.status_code == 201, r.text
+    data = r.json()
+    assert data["allocatedCapital"] == "600"
+
+
+def test_create_persists_optional_risk_fields(client):
+    client.put("/portfolio/funding", json={"cash": "1000"})
+    alloc = client.post(
+        "/portfolio/allocations",
+        json={"label": "bound", "reservedSize": "200"},
+    ).json()["allocations"][0]
+    r = client.post(
+        "/simulation/sessions",
+        json=_body(
+            startingCapital="200",
+            allocatedCapital="200",
+            maxPositionSize="200",
+            allocationId=alloc["id"],
+            portfolioMaxLossRate="0.05",
+            perSymbolMaxWeight="0.25",
+        ),
+    )
+    assert r.status_code == 201, r.text
+    data = r.json()
+    assert data["allocationId"] == alloc["id"]
+    assert data["portfolioMaxLossRate"] == "0.05"
+    assert data["perSymbolMaxWeight"] == "0.25"
+
+
+def test_start_rejects_when_available_shrunk(client):
+    client.put("/portfolio/funding", json={"cash": "1000"})
+    created = client.post(
+        "/simulation/sessions",
+        json=_body(startingCapital="600", allocatedCapital="600", maxPositionSize="600"),
+    ).json()
+    client.post(
+        "/portfolio/allocations",
+        json={"label": "later", "reservedSize": "500"},
+    )
+    r = client.post(f"/simulation/sessions/{created['id']}/start")
+    assert r.status_code == 400
+    assert r.json()["detail"]["error"]["code"] == "insufficient_portfolio_available"
+
+
+def test_start_freezes_portfolio_loss_baseline(client):
+    client.put("/portfolio/funding", json={"cash": "1000"})
+    created = client.post(
+        "/simulation/sessions",
+        json=_body(
+            startingCapital="500",
+            allocatedCapital="500",
+            maxPositionSize="500",
+            portfolioMaxLossRate="0.1",
+        ),
+    ).json()
+    started = client.post(f"/simulation/sessions/{created['id']}/start")
+    assert started.status_code == 200, started.text
+    data = started.json()
+    assert data["portfolioLossBaselineKind"] in ("equity", "quote_cash")
+    assert data["portfolioLossBaselineValue"] is not None
+    assert data["portfolioMaxLossAmount"] is not None

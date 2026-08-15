@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   type CandleInterval,
   MAX_BACKTEST_CANDLES,
@@ -13,6 +13,11 @@ import {
   MIN_COMPARISON_LEGS,
   validateLegCount,
 } from "../../services/comparisonApi";
+import { getSettings } from "../../services/settingsApi";
+import {
+  comparisonSecondaryLegStarter,
+  settingsToSharedSeed,
+} from "../settings/mapSettingsToForm";
 import { COST_DEFAULTS } from "../shared/CostRateFields";
 import { CostRateFields } from "../shared/CostRateFields";
 import {
@@ -20,7 +25,6 @@ import {
   defaultStrategyConfig,
   type StrategyConfigValue,
 } from "../strategy/StrategyConfigFields";
-import { defaultParamsFor, FALLBACK_STRATEGIES } from "../../services/strategiesApi";
 
 const INTERVALS: CandleInterval[] = ["1m", "5m", "15m", "1h", "4h", "1d"];
 
@@ -54,16 +58,49 @@ export function ComparisonConfigForm({ disabled, busy, error, onSubmit }: Props)
   const [maxTrades, setMaxTrades] = useState("");
   const [feeRate, setFeeRate] = useState(COST_DEFAULTS.feeRate);
   const [slippageRate, setSlippageRate] = useState(COST_DEFAULTS.slippageRate);
-  const [legs, setLegs] = useState<StrategyConfigValue[]>(() => {
-    const dual = defaultStrategyConfig();
-    const rsiInfo = FALLBACK_STRATEGIES.find((s) => s.id === "rsi");
-    const rsi: StrategyConfigValue = rsiInfo
-      ? { strategyId: "rsi", strategyParams: defaultParamsFor(rsiInfo) }
-      : dual;
-    return [dual, rsi];
-  });
+  const [legs, setLegs] = useState<StrategyConfigValue[]>(() => [
+    defaultStrategyConfig(),
+    comparisonSecondaryLegStarter(),
+  ]);
+  const [preferredStrategy, setPreferredStrategy] = useState<StrategyConfigValue | null>(null);
   const [legErrors, setLegErrors] = useState<(string | null)[]>([null, null]);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [seeded, setSeeded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const settings = await getSettings();
+        if (cancelled || seeded) return;
+        const seed = settingsToSharedSeed(settings);
+        setSymbol(seed.symbol);
+        setTimeframe(seed.timeframe as CandleInterval);
+        setStartingCapital(seed.startingCapital);
+        setAllocatedCapital(seed.allocatedCapital);
+        setMaxPositionSize(seed.maxPositionSize);
+        setProfitRate(seed.targetNetProfitRate);
+        setLossRate(seed.maxSessionLossRate);
+        setMaxTrades(seed.maxTrades);
+        setFeeRate(seed.feeRate);
+        setSlippageRate(seed.slippageRate);
+        setPreferredStrategy(seed.strategy);
+        setLegs((prev) => {
+          const next = [...prev];
+          next[0] = seed.strategy;
+          if (next.length < 2) next.push(comparisonSecondaryLegStarter());
+          return next;
+        });
+        setSeeded(true);
+      } catch {
+        if (!cancelled) setSeeded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once on fresh mount
+  }, []);
 
   // Stable per-index handlers so StrategyConfigFields effects do not loop.
   const legValidationHandlers = useMemo(
@@ -195,6 +232,7 @@ export function ComparisonConfigForm({ disabled, busy, error, onSubmit }: Props)
               value={leg}
               onChange={(next) => updateLeg(index, next)}
               onValidationError={legValidationHandlers[index]}
+              preferredStrategy={preferredStrategy}
               variant="backtest"
             />
           </div>

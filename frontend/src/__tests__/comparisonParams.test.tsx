@@ -11,6 +11,28 @@ import {
 function mockFetch() {
   return vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
+    if (url.includes("/settings")) {
+      return new Response(
+        JSON.stringify({
+          symbol: "btc_usdt",
+          timeframe: "1h",
+          startingCapital: "1000",
+          allocatedCapital: "1000",
+          maxPositionSize: "1000",
+          feeRate: "0.002",
+          slippageRate: "0.0005",
+          targetNetProfitRate: null,
+          maxSessionLossRate: null,
+          maxTrades: null,
+          strategyId: "dual_ema",
+          strategyParams: { fastPeriod: 9, slowPeriod: 21 },
+          updatedAt: null,
+          source: "starters",
+          warning: null,
+        }),
+        { status: 200 },
+      );
+    }
     if (url.includes("/strategies")) {
       return new Response(JSON.stringify({ strategies: FALLBACK_STRATEGIES }), {
         status: 200,

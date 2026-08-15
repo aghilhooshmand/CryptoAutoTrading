@@ -34,6 +34,7 @@
 - Validation iteration 1 (2026-08-09): All items pass.
 - Clarification session 2026-08-09 (5/5): long-only full position; dual MA crossover; hard-stop force close if safe price; closed-candle evaluation; defaults 0.10% fee + 0.05% adverse slippage per side (overridable).
 - Clarification continuation 2026-08-09 (+4): manual stop force-close; allocated ≤ starting; Decision Journal includes HOLD; max_position_size ≤ allocated.
+- **Amendment 2026-08-15 Decision Log Mode**: FR-010 superseded — durable HOLD only under `full_audit`; new default `important_only`; see clarifications + FR-010/FR-010a/FR-005. Implementation tasks T075–T079. Feature 004 Backtest unchanged.
 - Plan update 2026-08-09: hard-limit NET uses **liquidation equity** while LONG; `max_trades` is strategy-driven with one forced-close exception; no real-money engine module in Feature 003.
 - Plan update 2026-08-09 (2): `allocated_capital` enforceable in sizing; profit/max-loss are % of allocated with stored derived amounts; UI shows % and currency.
 - Session NET P&L hard-limit rule defined in FR-014 / FR-014a (liquidation equity vs derived absolute thresholds; actual exit costs applied once; max_trades semantics).

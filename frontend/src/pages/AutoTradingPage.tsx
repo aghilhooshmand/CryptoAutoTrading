@@ -4,6 +4,7 @@ import { EconomicsPanel } from "../features/simulation/EconomicsPanel";
 import { SessionConfigForm } from "../features/simulation/SessionConfigForm";
 import { SessionStatusPanel } from "../features/simulation/SessionStatusPanel";
 import { SimulationBadge } from "../features/simulation/SimulationBadge";
+import { SimulationHistoryList } from "../features/simulation/SimulationHistoryList";
 import { TradeJournal } from "../features/simulation/TradeJournal";
 import { useSimulationSession } from "../features/simulation/useSimulationSession";
 import { BacktestConfigForm } from "../features/backtest/BacktestConfigForm";
@@ -16,11 +17,16 @@ import { ComparisonConfigForm } from "../features/comparison/ComparisonConfigFor
 import { ComparisonList } from "../features/comparison/ComparisonList";
 import { ComparisonResultsTable } from "../features/comparison/ComparisonResultsTable";
 import { useComparison } from "../features/comparison/useComparison";
+import { SettingsPanel } from "../features/settings/SettingsPanel";
 
-type AutoTradingTab = "simulation" | "backtest" | "comparison";
+type AutoTradingTab = "simulation" | "backtest" | "comparison" | "settings";
 
 export function AutoTradingPage() {
   const [tab, setTab] = useState<AutoTradingTab>("simulation");
+  // Bump after successful create so forms remount and re-seed from Settings (FR-004).
+  const [simFormKey, setSimFormKey] = useState(0);
+  const [backtestFormKey, setBacktestFormKey] = useState(0);
+  const [comparisonFormKey, setComparisonFormKey] = useState(0);
 
   const {
     session,
@@ -82,6 +88,17 @@ export function AutoTradingPage() {
         >
           Comparison
         </button>
+        <button
+          type="button"
+          role="tab"
+          id="tab-settings"
+          aria-selected={tab === "settings"}
+          aria-controls="panel-settings"
+          className={tab === "settings" ? "is-active" : undefined}
+          onClick={() => setTab("settings")}
+        >
+          Settings
+        </button>
       </div>
 
       <div
@@ -98,9 +115,13 @@ export function AutoTradingPage() {
         </p>
 
         <SessionConfigForm
+          key={simFormKey}
           disabled={configDisabled}
           onSubmit={(body) => {
-            void createAndStart(body);
+            void (async () => {
+              const ok = await createAndStart(body);
+              if (ok) setSimFormKey((k) => k + 1);
+            })();
           }}
           error={error}
         />
@@ -122,8 +143,10 @@ export function AutoTradingPage() {
           tradeCount={session?.tradeCount}
         />
 
-        <DecisionJournal items={decisions} />
+        <DecisionJournal items={decisions} decisionLogMode={session?.decisionLogMode} />
         <TradeJournal items={trades} />
+
+        <SimulationHistoryList refreshKey={simFormKey} />
       </div>
 
       <div
@@ -141,10 +164,18 @@ export function AutoTradingPage() {
         </p>
 
         <BacktestConfigForm
+          key={backtestFormKey}
           busy={backtest.busy}
           error={backtest.error}
           onSubmit={(body) => {
-            void backtest.runBacktest(body);
+            void (async () => {
+              try {
+                await backtest.runBacktest(body);
+                setBacktestFormKey((k) => k + 1);
+              } catch {
+                /* error already set on hook */
+              }
+            })();
           }}
         />
 
@@ -179,10 +210,18 @@ export function AutoTradingPage() {
         </p>
 
         <ComparisonConfigForm
+          key={comparisonFormKey}
           busy={comparison.busy}
           error={comparison.error}
           onSubmit={(body) => {
-            void comparison.runComparison(body);
+            void (async () => {
+              try {
+                await comparison.runComparison(body);
+                setComparisonFormKey((k) => k + 1);
+              } catch {
+                /* error already set on hook */
+              }
+            })();
           }}
         />
 
@@ -203,6 +242,17 @@ export function AutoTradingPage() {
             void comparison.removeComparison(id);
           }}
         />
+      </div>
+
+      <div
+        id="panel-settings"
+        role="tabpanel"
+        aria-labelledby="tab-settings"
+        hidden={tab !== "settings"}
+        className="auto-trading-panel"
+      >
+        <h2 className="auto-trading-panel-title">Settings</h2>
+        <SettingsPanel />
       </div>
     </section>
   );

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -20,6 +21,21 @@ from app.simulation.accounting import (
 from app.simulation.clock import Clock, SystemClock
 from app.simulation.execution.port import ExecutionIntent, SimulationExecutionEngine
 from app.simulation.money import DEFAULT_FEE_RATE, DEFAULT_SLIPPAGE_RATE, as_str, d
+from app.portfolio import repository as portfolio_repo
+from app.simulation.control import reasons as risk_reasons
+from app.simulation.portfolio_risk import freeze_portfolio_loss_baseline, load_holding_quotes, portfolio_available_amount
+from app.simulation.decision_log_mode import (
+    effective_decision_log_mode,
+    parse_create_decision_log_mode,
+)
+from app.simulation.final_result import (
+    SOURCE_RECOVERY,
+    SOURCE_STOP,
+    ensure_final_result_backfill,
+    final_result_summary,
+    parse_final_result,
+    persist_final_result,
+)
 from app.simulation.state_machine import SessionState, transition
 from app.strategy.params import StrategyParamError
 from app.strategy.registry import UnknownStrategyError, is_known_strategy_id, validate_and_materialize
@@ -28,6 +44,9 @@ from app.strategy.serialize import (
     dumps_params,
     effective_params_for_row,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class SessionError(Exception):
@@ -78,6 +97,58 @@ def create_session(db: Session, body: dict, clock: Clock | None = None) -> Simul
 
     _validate_capital(starting, allocated, max_pos)
 
+    # Feature 010: allocated must fit Portfolio available at create.
+    try:
+        available = portfolio_available_amount(db)
+    except Exception as exc:  # noqa: BLE001
+        raise SessionError(
+            risk_reasons.INSUFFICIENT_PORTFOLIO_AVAILABLE,
+            risk_reasons.message_for(risk_reasons.INSUFFICIENT_PORTFOLIO_AVAILABLE),
+            400,
+        ) from exc
+    if allocated > available:
+        raise SessionError(
+            risk_reasons.INSUFFICIENT_PORTFOLIO_AVAILABLE,
+            risk_reasons.message_for(risk_reasons.INSUFFICIENT_PORTFOLIO_AVAILABLE),
+            400,
+        )
+
+    allocation_id = body.get("allocationId")
+    if allocation_id is not None and allocation_id != "":
+        allocation_id = str(allocation_id)
+        alloc = portfolio_repo.get_allocation(db, allocation_id)
+        if alloc is None:
+            raise SessionError("not_found", "Allocation not found", 400)
+    else:
+        allocation_id = None
+
+    portfolio_max_loss_rate = None
+    portfolio_max_loss_amount = None
+    if body.get("portfolioMaxLossRate") not in (None, ""):
+        try:
+            portfolio_max_loss_rate = as_str(d(body["portfolioMaxLossRate"]))
+            if d(portfolio_max_loss_rate) <= 0:
+                raise SessionError("invalid_config", "portfolioMaxLossRate must be > 0")
+        except (ValueError, TypeError) as exc:
+            raise SessionError("invalid_config", f"Invalid portfolioMaxLossRate: {exc}") from exc
+    if body.get("portfolioMaxLossAmount") not in (None, ""):
+        try:
+            portfolio_max_loss_amount = as_str(d(body["portfolioMaxLossAmount"]))
+            if d(portfolio_max_loss_amount) <= 0:
+                raise SessionError("invalid_config", "portfolioMaxLossAmount must be > 0")
+        except (ValueError, TypeError) as exc:
+            raise SessionError("invalid_config", f"Invalid portfolioMaxLossAmount: {exc}") from exc
+
+    per_symbol_max_weight = None
+    if body.get("perSymbolMaxWeight") not in (None, ""):
+        try:
+            w = d(body["perSymbolMaxWeight"])
+            if not (Decimal("0") < w <= Decimal("1")):
+                raise SessionError("invalid_config", "perSymbolMaxWeight must be > 0 and ≤ 1")
+            per_symbol_max_weight = as_str(w)
+        except (ValueError, TypeError) as exc:
+            raise SessionError("invalid_config", f"Invalid perSymbolMaxWeight: {exc}") from exc
+
     symbol = str(body["symbol"])
     timeframe = str(body["timeframe"])
     if timeframe not in ALLOWED_INTERVALS:
@@ -95,6 +166,11 @@ def create_session(db: Session, body: dict, clock: Clock | None = None) -> Simul
         raise SessionError(exc.code, exc.message, 400) from exc
     except StrategyParamError as exc:
         raise SessionError(exc.code, exc.message, 400) from exc
+
+    try:
+        decision_log_mode = parse_create_decision_log_mode(body.get("decisionLogMode"))
+    except ValueError as exc:
+        raise SessionError("invalid_config", str(exc), 400) from exc
 
     now = _now(clock)
     target_amt = allocated * target_rate
@@ -127,6 +203,11 @@ def create_session(db: Session, body: dict, clock: Clock | None = None) -> Simul
         cumulative_slippage_cost="0",
         cumulative_gross_realized="0",
         position_flatten_status="n/a",
+        allocation_id=allocation_id,
+        portfolio_max_loss_rate=portfolio_max_loss_rate,
+        portfolio_max_loss_amount=portfolio_max_loss_amount,
+        per_symbol_max_weight=per_symbol_max_weight,
+        decision_log_mode=decision_log_mode,
         created_at=now,
         updated_at=now,
     )
@@ -175,6 +256,26 @@ async def start_session_async(
             400,
         )
 
+    # Feature 010: re-check Portfolio available at start; freeze max-loss baseline.
+    try:
+        available = portfolio_available_amount(db)
+    except Exception as exc:  # noqa: BLE001
+        raise SessionError(
+            risk_reasons.INSUFFICIENT_PORTFOLIO_AVAILABLE,
+            risk_reasons.message_for(risk_reasons.INSUFFICIENT_PORTFOLIO_AVAILABLE),
+            400,
+        ) from exc
+    if d(row.allocated_capital) > available:
+        raise SessionError(
+            risk_reasons.INSUFFICIENT_PORTFOLIO_AVAILABLE,
+            risk_reasons.message_for(risk_reasons.INSUFFICIENT_PORTFOLIO_AVAILABLE),
+            400,
+        )
+    if row.allocation_id:
+        alloc = portfolio_repo.get_allocation(db, row.allocation_id)
+        if alloc is None:
+            raise SessionError("not_found", "Bound allocation no longer exists", 400)
+
     try:
         await get_market_data_service().get_quote(row.symbol)
     except Exception as exc:  # noqa: BLE001
@@ -185,6 +286,8 @@ async def start_session_async(
     row.state = SessionState.RUNNING.value
     row.started_at = now
     row.updated_at = now
+    quotes = await load_holding_quotes(db)
+    freeze_portfolio_loss_baseline(db, row, quotes=quotes)
     db.commit()
     db.refresh(row)
     from app.simulation.worker import ensure_worker_running
@@ -253,6 +356,19 @@ def _apply_fill(
     )
     db.add(trade)
     row.updated_at = now
+    try:
+        from app.portfolio import service as portfolio_svc
+
+        portfolio_svc.try_apply_simulation_fill(
+            db,
+            symbol=row.symbol,
+            side=side,
+            qty=qty,
+            cash_delta=fill.cash_delta,
+            fill_price=fill.fill_price,
+        )
+    except Exception:
+        logger.exception("Simulation Portfolio fill apply failed; session journals kept")
     return trade
 
 
@@ -383,9 +499,157 @@ async def stop_session_async(
     row.state = SessionState.STOPPED.value
     row.stopped_at = _now(clock)
     row.updated_at = row.stopped_at
+    mark: Decimal | None = None
+    safe = False
+    m_eq: Decimal | None = None
+    if row.position_side == "long":
+        mark, safe = await _safe_mark(row.symbol)
+        if safe and mark is not None:
+            m_eq = mark_equity(d(row.cash), d(row.position_qty), mark, row.position_side)
+    persist_final_result(
+        db,
+        row,
+        source=SOURCE_STOP,
+        frozen_at=row.stopped_at,
+        mark_price=mark,
+        mark_safe=safe,
+        mark_equity=m_eq,
+    )
     db.commit()
     db.refresh(row)
     return row
+
+
+def _history_list_item(row: SimulationSessionRow) -> dict:
+    fr = parse_final_result(row.final_result_json)
+    return {
+        "id": row.id,
+        "state": row.state,
+        "symbol": row.symbol,
+        "timeframe": row.timeframe,
+        "strategyId": display_strategy_id(row.strategy_id),
+        "startedAt": row.started_at.isoformat().replace("+00:00", "Z") if row.started_at else None,
+        "stoppedAt": row.stopped_at.isoformat().replace("+00:00", "Z") if row.stopped_at else None,
+        "stopReason": row.stop_reason,
+        "createdAt": row.created_at.isoformat().replace("+00:00", "Z") if row.created_at else None,
+        "finalResultSummary": final_result_summary(fr),
+    }
+
+
+def list_sessions(
+    db: Session,
+    *,
+    state: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> dict:
+    if limit < 1 or limit > 100:
+        raise SessionError("invalid_query", "limit must be between 1 and 100", 400)
+    if offset < 0:
+        raise SessionError("invalid_query", "offset must be >= 0", 400)
+    allowed = {
+        SessionState.CONFIGURED.value,
+        SessionState.RUNNING.value,
+        SessionState.STOPPING.value,
+        SessionState.STOPPED.value,
+    }
+    if state is not None and state not in allowed:
+        raise SessionError(
+            "invalid_query",
+            "state must be one of: CONFIGURED, RUNNING, STOPPING, STOPPED",
+            400,
+        )
+
+    query = db.query(SimulationSessionRow)
+    if state is not None:
+        query = query.filter(SimulationSessionRow.state == state)
+    total = query.count()
+    rows = (
+        query.order_by(
+            SimulationSessionRow.created_at.desc(),
+            SimulationSessionRow.id.desc(),
+        )
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    sessions = []
+    for row in rows:
+        if row.state == SessionState.STOPPED.value and not row.final_result_json:
+            ensure_final_result_backfill(db, row)
+        sessions.append(_history_list_item(row))
+    return {
+        "sessions": sessions,
+        "totalCount": total,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+def _portfolio_binding_blocks_delete(db: Session, row: SimulationSessionRow) -> bool:
+    if not row.allocation_id:
+        return False
+    alloc = portfolio_repo.get_allocation(db, row.allocation_id)
+    if alloc is not None:
+        try:
+            reserved = d(alloc.reserved_size)
+        except Exception:  # noqa: BLE001
+            reserved = Decimal("0")
+        if reserved > 0:
+            return True
+    if row.position_side == "long" and row.cost_basis:
+        try:
+            if d(row.cost_basis) > 0:
+                return True
+        except Exception:  # noqa: BLE001
+            return True
+    return False
+
+
+def delete_session(db: Session, session_id: str) -> None:
+    row = get_session(db, session_id)
+    if row.state in (SessionState.RUNNING.value, SessionState.STOPPING.value):
+        raise SessionError(
+            "session_active",
+            "Cannot delete a RUNNING or STOPPING session",
+            409,
+        )
+    if _portfolio_binding_blocks_delete(db, row):
+        raise SessionError(
+            "portfolio_binding_active",
+            "Cannot delete while Portfolio reserved or deployed capital is bound to this session",
+            409,
+        )
+    db.query(DecisionJournalRow).filter(DecisionJournalRow.session_id == session_id).delete(
+        synchronize_session=False
+    )
+    db.query(TradeJournalRow).filter(TradeJournalRow.session_id == session_id).delete(
+        synchronize_session=False
+    )
+    db.delete(row)
+    db.commit()
+
+
+def _stopped_economics_from_freeze(row: SimulationSessionRow, freeze: dict) -> dict:
+    """Authoritative ending economics from freeze — no live mark drift."""
+    return {
+        "startEquity": row.starting_capital,
+        "cash": freeze.get("cash", row.cash),
+        "markEquity": None,
+        "markNetPnl": None,
+        "unrealizedGross": None,
+        "liquidationEquity": freeze.get("endingEquity"),
+        "grossPnl": row.cumulative_gross_realized,
+        "fees": freeze.get("fees", row.cumulative_fees),
+        "slippageCost": freeze.get("slippageCost", row.cumulative_slippage_cost),
+        "netPnl": freeze.get("netPnl"),
+        "targetNetProfitRate": row.target_net_profit_rate,
+        "targetNetProfitAmount": row.target_net_profit_amount,
+        "maxSessionLossRate": row.max_session_loss_rate,
+        "maxSessionLossAmount": row.max_session_loss_amount,
+        "markPrice": None,
+        "markSafe": False,
+    }
 
 
 async def economics_dict(row: SimulationSessionRow) -> dict:
@@ -432,7 +696,24 @@ async def economics_dict(row: SimulationSessionRow) -> dict:
     }
 
 
-async def session_to_dict(row: SimulationSessionRow) -> dict:
+async def session_to_dict(row: SimulationSessionRow, *, db: Session | None = None) -> dict:
+    final_result = None
+    if row.state == SessionState.STOPPED.value:
+        if db is not None:
+            final_result = ensure_final_result_backfill(db, row)
+        else:
+            final_result = parse_final_result(row.final_result_json)
+            if final_result is None:
+                # Caller without db: build in-memory ledger backfill without commit
+                from app.simulation.final_result import build_final_result, SOURCE_BACKFILL
+
+                final_result = build_final_result(row, source=SOURCE_BACKFILL, frozen_at=row.stopped_at)
+
+    if row.state == SessionState.STOPPED.value and final_result is not None:
+        economics = _stopped_economics_from_freeze(row, final_result)
+    else:
+        economics = await economics_dict(row)
+
     return {
         "id": row.id,
         "mode": row.mode,
@@ -452,6 +733,13 @@ async def session_to_dict(row: SimulationSessionRow) -> dict:
         "durationSeconds": row.duration_seconds,
         "feeRate": row.fee_rate,
         "slippageRate": row.slippage_rate,
+        "allocationId": row.allocation_id,
+        "portfolioMaxLossRate": row.portfolio_max_loss_rate,
+        "portfolioMaxLossAmount": row.portfolio_max_loss_amount,
+        "portfolioLossBaselineKind": row.portfolio_loss_baseline_kind,
+        "portfolioLossBaselineValue": row.portfolio_loss_baseline_value,
+        "perSymbolMaxWeight": row.per_symbol_max_weight,
+        "decisionLogMode": effective_decision_log_mode(row.decision_log_mode),
         "cash": row.cash,
         "positionSide": row.position_side,
         "positionQty": row.position_qty,
@@ -462,6 +750,7 @@ async def session_to_dict(row: SimulationSessionRow) -> dict:
         "stopReason": row.stop_reason,
         "positionFlattenStatus": row.position_flatten_status,
         "lastProcessedCandleOpenTime": row.last_processed_candle_open_time,
-        "economics": await economics_dict(row),
+        "economics": economics,
+        "finalResult": final_result,
         "label": "SIMULATION",
     }

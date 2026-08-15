@@ -91,13 +91,20 @@ Create a session in `CONFIGURED`.
   "maxTrades": 20,
   "durationSeconds": 3600,
   "feeRate": "0.001",
-  "slippageRate": "0.0005"
+  "slippageRate": "0.0005",
+  "decisionLogMode": "important_only"
 }
 ```
 
 `strategyId` is **required** as of Feature 005 (canonical `dual_ema`; see
 supersession note under Defaults). Optional `strategyParams` may be omitted to
 apply registry defaults for that strategy.
+
+Optional `decisionLogMode`: `"important_only"` \| `"full_audit"`. When omitted
+on **create**, server MUST persist effective **`important_only`** for new
+sessions (typically seeded from Settings default). Invalid value → `400`
+`invalid_config`. Legacy rows with NULL mode behave as `full_audit` on read
+and for persistence gating.
 
 `allocatedCapital` is required for enforceable sizing (MUST NOT deploy above it).
 If omitted, server MAY default it to `startingCapital`, but the field remains
@@ -211,6 +218,7 @@ Full session resource + embedded economics snapshot when computable.
   "durationSeconds": 3600,
   "feeRate": "0.001",
   "slippageRate": "0.0005",
+  "decisionLogMode": "important_only",
   "cash": "500",
   "positionSide": "flat",
   "positionQty": "0",
@@ -250,13 +258,23 @@ informational. When mark unsafe while long: `netPnl`, `liquidationEquity`, and
 mark fields that require a price MAY be `null` with `markSafe: false`.
 
 `lastProcessedCandleOpenTime` is the duplicate-candle cursor: the same closed
-candle MUST NOT be evaluated twice.
+candle MUST NOT be evaluated twice. It MUST advance for processed HOLD candles
+even when `decisionLogMode` is `important_only` and no HOLD Decision Journal
+row is written.
+
+`decisionLogMode` is effective configuration. GET responses MUST return the
+effective mode (`important_only` or `full_audit`); legacy NULL storage MUST be
+presented as `full_audit`.
 
 Hypothetical liquidation costs used to evaluate profit/loss stops are not
 separate ledger entries; an actual forced close applies fee/slippage once.
 ---
 
 ## `GET /simulation/sessions/{id}/decisions`
+
+Returns **durably persisted** Decision Journal rows only (no fabricated HOLDs).
+Under `important_only`, ordinary HOLD evaluations do not appear. Under
+`full_audit`, HOLD rows appear as historically required.
 
 ### Query
 
@@ -317,7 +335,7 @@ Same pagination idea as decisions.
 |------|----------|
 | FR-001, FR-020 | `mode` simulation; `label: SIMULATION`; real money rejected |
 | FR-004 | `session_already_active` on second start |
-| FR-010–011 | decisions + trades endpoints |
+| FR-010–011 | decisions + trades; decisionLogMode gates durable HOLD |
 | FR-005 | capital nesting `0 < maxSize ≤ allocated ≤ starting`; rates + amounts persisted |
 | FR-005a | BUY sizing `min(affordable, allocated, maxSize)` |
 | FR-006a | persist `lastProcessedCandleOpenTime`; no duplicate candle eval |

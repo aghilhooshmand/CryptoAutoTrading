@@ -13,8 +13,11 @@ canonical id `dual_ema`, editable periods defaulting to 9/21) for Simulation
 and Backtest. Feature `006-additional-strategies` adds RSI, MACD, Bollinger
 Bands, and Breakout on the same registry (five strategies total). Feature
 `007-strategy-comparison` adds fair multi-strategy comparison under Auto
-Trading (shared candles, 2–5 legs, no automatic winner). Real-money
-trading, sentiment, and auth remain out of scope.
+Trading (shared candles, 2–5 legs, no automatic winner). Feature
+`008-trading-experiment-defaults` centralizes reusable operator defaults.
+Feature `009-portfolio-capital-allocation` adds the **Simulation Portfolio**
+(fund USDT, fill-driven holdings, public valuation, compact capital
+reservation). Real-money trading, sentiment, and auth remain out of scope.
 
 ## Prerequisites
 
@@ -63,7 +66,7 @@ npm run dev
 Frontend URL: `http://127.0.0.1:5173`
 
 Vite proxies `/health`, `/market`, `/simulation`, `/backtest`, `/strategies`,
-and `/comparisons` to the backend.
+`/comparisons`, `/settings`, and `/portfolio` to the backend.
 Open the frontend URL and use Dashboard **Refresh** to load XT public market data
 (manual refresh is required; auto-refresh is optional polish and not required).
 
@@ -138,6 +141,21 @@ curl -sS http://127.0.0.1:8000/comparisons
 Feature 007 validation guide:
 [`specs/007-strategy-comparison/quickstart.md`](specs/007-strategy-comparison/quickstart.md)
 
+## Trading defaults (Feature 008)
+
+Reusable operator defaults live under **Auto Trading → Settings** (not a fourth
+primary nav). Explicit Save / Reset; defaults only seed **fresh** Simulation,
+Backtest, and Comparison forms (comparison: first strategy leg only). Changing
+Settings never rewrites historical runs or starts trading.
+
+```bash
+# open http://127.0.0.1:5173/auto-trading → Settings tab
+curl -sS http://127.0.0.1:8000/settings
+```
+
+Feature 008 validation guide:
+[`specs/008-trading-experiment-defaults/quickstart.md`](specs/008-trading-experiment-defaults/quickstart.md)
+
 ## Backend health
 
 ```bash
@@ -174,6 +192,7 @@ npm test
 ## Out of scope
 
 Do not expect real-money XT order placement, private XT trading APIs, WebSocket
-streaming, multi-session concurrency, multi-strategy selection, news / Fear &
-Greed sentiment, futures/margin/leverage, authentication, or a full portfolio
-product (Portfolio shows only a thin active-simulation summary).
+streaming, multi-session concurrency, news / Fear & Greed sentiment,
+futures/margin/leverage, authentication, or a Real XT Portfolio (Feature 013).
+Feature 009 provides the **Simulation Portfolio** only (simulation USDT funding,
+fill-driven holdings, public mark-to-market — not live exchange balances).

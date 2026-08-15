@@ -1,368 +1,688 @@
-<!--
-Sync Impact Report
-- Version change: 1.1.0 → 1.2.0
-- Modified principles:
-  - V. Explicit Session Boundaries — added explicit historical-backtest
-    exception (window replaces duration; optional profit/loss/max trades for
-    offline backtests only; Feature 003/live simulation bounds unchanged)
-- Added sections / principles: none
-- Removed sections: none
-- Follow-up TODOs: cascade into specs/004-backtesting-core (spec/plan/research/
-  data-model/contracts/tasks) — applied with this amendment
--->
-
 # CryptoAutoTrading Constitution
 
-## Core Principles
+## Purpose
 
-### I. Capital Protection First
-Capital protection MUST take priority over profit seeking in every design,
-configuration, and runtime decision. Features that increase return potential
-MUST NOT weaken risk controls, session bounds, or fail-safe behavior.
+CryptoAutoTrading is a research-driven cryptocurrency trading platform designed
+to support market observation, strategy development, simulation, historical
+backtesting, controlled experimentation, Grammatical Evolution (GE), and,
+eventually, carefully controlled real-money trading.
 
-**Rationale**: Preserving capital is the precondition for continued trading;
-profit without protection is unacceptable product behavior.
+The system MUST evolve incrementally from observable and testable components
+toward higher levels of automation.
 
-### II. Simulation Before Real Money
-The system MUST support both SIMULATION and REAL-MONEY modes. Development,
-validation, strategy evaluation, and acceptance MUST begin in simulation.
-Real-money trading is a separate later capability and MUST NEVER activate
-automatically, by default, or as a silent side effect of configuration or
-deployment.
+Safety, reproducibility, traceability, and architectural consistency take
+priority over rapid addition of trading features.
 
-**Rationale**: Simulation is the mandatory proving ground before capital risk.
+---
 
-### III. Controlled Trading Pipeline
-Strategies MUST NEVER place orders directly. The required flow is:
+## I. Capital Protection First
 
-Market Data → Strategy Engine → Trading Signal → Trading Controller →
-Risk Manager → Execution Engine → Simulation or XT
+Capital protection MUST take precedence over profit maximization.
 
-Bypassing any stage of this pipeline is forbidden.
+Every trading mode that can modify a portfolio MUST enforce explicit risk and
+capital constraints.
 
-**Rationale**: Separation of signal generation from control, risk, and
-execution keeps authority and auditability enforceable.
+A strategy, Torque program, GE individual, UI component, or external service
+MUST NOT bypass risk controls.
 
-### IV. Controller and Risk Authority
-The Trading Controller and Risk Manager MUST always retain authority to
-reject strategy signals. Strategy output is advisory input only; rejection
-is a first-class, expected outcome.
+Invalid, incomplete, inconsistent, stale, or unsafe trading state MUST fail
+closed.
 
-**Rationale**: Unfiltered strategy autonomy is incompatible with capital
-protection.
+---
 
-### V. Explicit Session Boundaries
-Every trading session MUST support explicit, enforceable boundaries including
-at least:
+## II. Simulation Before Real Money
 
-- allocated capital
-- position-size limit
-- profit target
-- maximum loss
-- maximum number of trades
-- trading-session duration
-- strategy signal timeframe
+Trading behavior MUST be validated through simulation and/or historical
+backtesting before equivalent behavior becomes eligible for real-money
+execution.
 
-Sessions MUST NOT run without these bounds defined and enforced.
+New strategies, execution rules, risk rules, Torque constructs, or evolved
+programs MUST NOT move directly from implementation to autonomous real-money
+trading.
 
-**Historical backtest exception**: For **offline historical backtesting only**,
-the following replaces or relaxes the live-session list above and MUST NOT be
-read as weakening Feature 003 or any live simulation / real-money session:
+Real-money capability MUST be introduced incrementally.
 
-- A historical **start/end window** replaces live **trading-session duration**.
-- **Profit target**, **maximum loss**, and **maximum number of trades** MAY be
-  optional backtest inputs (when omitted, those early-exit / trade-cap bounds
-  MUST NOT apply).
-- Allocated capital, position-size limit, and strategy signal timeframe remain
-  required for backtests, together with starting capital and the capital
-  nesting invariant used by the product.
+---
 
-Live simulation and any future real-money sessions MUST continue to require
-the full bound set (including duration, profit target, maximum loss, and
-maximum trades) with no optional carve-out.
+## III. Single Trading Pipeline
 
-**Rationale**: Bounded sessions make risk measurable and stoppable. Offline
-backtests are bounded by a historical window and capital nesting; optional
-early-exit and trade caps are evaluation choices, not a license to run live
-sessions without full bounds.
+All trading decisions MUST follow the authoritative pipeline:
 
-### VI. Net P&L Accounting
-Session profit and loss MUST be based on NET P&L where possible, including
-trading fees and slippage, not price movement alone.
+Market Data
+    ↓
+Strategy / Torque Program
+    ↓
+Controller
+    ↓
+Risk
+    ↓
+Execution
+    ↓
+Accounting / Portfolio
+    ↓
+Decision Journal / Reporting
 
-**Rationale**: Gross price P&L misstates real outcomes and can encourage unsafe
-decisions.
+No feature may create a second independent trading engine.
 
-### VII. Decision Traceability
-Every material trading decision MUST be traceable. The system MUST maintain
-both a Trade Journal and a Decision Journal, including rejected signals and
-the reason for each rejection.
+Strategies and Torque programs produce trading intent only.
 
-**Rationale**: Without journals, risk behavior cannot be audited or improved.
+Controller, Risk, Execution, and Accounting remain authoritative.
 
-### VIII. Fail Safe on Uncertainty
-When critical data is missing, stale, or inconsistent, or when execution state
-is uncertain, the system MUST fail safely: reject or suspend trading rather
-than guess, interpolate critically, or continue as if healthy.
+---
 
-**Rationale**: Guessing under uncertainty risks uncontrolled capital loss.
+## IV. Controller and Risk Authority
 
-### IX. Emergency Trading Stop
-The system MUST provide an emergency trading stop that immediately halts new
-trading activity under operator control.
+Strategies are advisory only.
 
-**Rationale**: Operators need a decisive kill switch when conditions degrade.
+A strategy MAY produce BUY, SELL, or HOLD intent and diagnostics.
 
-### X. Intentional Simplicity
-The application MUST remain intentionally simple and trackable. Prefer clear,
-conventional designs over clever or opaque complexity. Complexity MUST be
-justified by an explicit requirement.
+A strategy MUST NOT directly:
 
-**Rationale**: Simplicity improves correctness, auditability, and safe change.
+- mutate cash;
+- mutate positions;
+- create authoritative fills;
+- bypass Controller;
+- bypass Risk;
+- call private exchange trading APIs.
 
-### XI. Conventional Strategies First
-Development MUST start with understandable, conventional trading strategies.
-AI/ML strategies are future experimental features and, if introduced, MUST
-obey exactly the same Trading Controller, Risk Manager, session bounds, and
-journaling rules as conventional strategies.
+Torque and GE-generated programs are subject to the same rule.
 
-**Rationale**: Familiar strategies are easier to validate; experiments must not
-escape the control plane.
+Controller and Risk MUST remain between generated trading intent and execution.
 
-### XII. Evidence, Not Guarantees
-Backtesting and simulation provide evidence, not guarantees of future
-profitability. No UI copy, report, metric label, or marketing-facing text MAY
-imply guaranteed profit.
+---
 
-**Rationale**: Overclaiming creates false confidence and unsafe user behavior.
+## V. Explicit Trading Boundaries
 
-## Product & Technology Constraints
+Every live or simulated trading session MUST define explicit operational
+boundaries appropriate to that mode.
 
-### XIII. Primary UI Areas
-The main UI MUST have exactly three primary areas:
+These MAY include:
 
-- Dashboard
-- Auto Trading
-- Portfolio
+- allocated capital;
+- maximum position size;
+- maximum trades;
+- profit target;
+- maximum loss;
+- duration;
+- explicit stop conditions.
 
-New top-level primary areas MUST NOT be added without a constitutional
-amendment.
+Historical backtests use an explicit start/end historical window in place of a
+live-session duration.
 
-**Rationale**: A fixed information architecture keeps the product trackable
-and phone-usable.
+Backtest early-exit controls such as maximum trades, profit target, and maximum
+loss MAY be optional when the feature specification explicitly permits it.
 
-### XIV. Responsive User Experience
-All user-facing functionality MUST be responsive and usable from a phone as
-well as desktop.
+Historical evaluation MUST remain bounded.
 
-**Rationale**: Operators must be able to monitor and stop trading on mobile.
+---
 
-### XV. Technology Stack
-- Backend MUST be Python.
-- Frontend MUST be React.
-- Persistence MUST be SQL-based. SQLite is acceptable for local development;
-  PostgreSQL MAY be used later on a server.
+## VI. Net Performance Is Authoritative
 
-**Rationale**: A constrained stack reduces accidental complexity and keeps the
-system operable by a small team.
+Trading performance MUST be evaluated using NET results after applicable costs.
 
-### XVI. Exchange Adapter Isolation
-XT.COM is the first exchange. Exchange-specific implementation MUST be
-isolated behind an exchange adapter so strategies, risk logic, and trading
-control do NOT depend directly on XT APIs or XT-specific types.
+Where applicable, calculations MUST include:
 
-**Rationale**: Adapter boundaries protect the control plane from exchange churn
-and enable future venues without rewriting risk logic.
+- fees;
+- slippage;
+- realized P&L;
+- unrealized P&L;
+- liquidation value.
 
-### XVII. Credential Hygiene
-Exchange API credentials MUST remain backend-only. They MUST NEVER be
-committed to Git or exposed to frontend code, client bundles, or public
-configuration.
+Gross profit alone MUST NOT be presented as authoritative trading performance.
 
-**Rationale**: Credential leakage enables unauthorized trading and fund risk.
+---
 
-### XVIII. Withdrawals Out of Scope
-Withdrawal functionality is outside the trading integration and MUST NOT be
-implemented as part of the core trading path.
+## VII. Decision Traceability
 
-**Rationale**: Narrowing scope reduces attack surface and operational risk.
+Every trading evaluation SHOULD be explainable after execution.
 
-## Market Sentiment Principles
- 
-### XIX. Remove User Emotion From Execution
-The user's personal fear, greed, excitement, or subjective market feeling
-MUST NOT be entered as a routine trading signal.
+Trading sessions and historical runs MUST preserve sufficient information to
+reconstruct important decisions.
 
-**Rationale**: Human emotion is the failure mode this product exists to avoid.
+Where applicable, persisted information SHOULD include:
 
-### XX. Measure Market Sentiment Independently
-CryptoAutoTrading SHOULD independently measure broader market sentiment using external
-data sources where legally and technically practical. Potential inputs MAY
-include Crypto Fear & Greed indexes, cryptocurrency-specific sentiment, news
-sentiment, social/community sentiment, market momentum, volatility, trading
-volume/participation, and other validated public sentiment indicators.
+- strategy or Torque program identity;
+- effective parameters;
+- configuration;
+- signal;
+- Controller decision;
+- Risk decision;
+- rejection reason;
+- execution result;
+- fees and slippage;
+- resulting portfolio state.
 
-**Rationale**: Collective market emotion is data; personal emotion is noise.
+GE experiments MUST preserve enough information to reproduce evaluated
+individuals.
 
-### XXI. Sentiment Provider Adapters
-Prefer free APIs where suitable. Sentiment providers MUST be isolated behind
-replaceable adapters so source changes do not rewrite strategies or risk
-logic.
+---
 
-**Rationale**: Vendor lock-in and source fragility must not contaminate the
-control plane.
+## VIII. Fail-Safe Behavior
 
-### XXII. Sentiment Traceability
-Raw sentiment source, timestamp, original value, and normalized value SHOULD
-be preserved for traceability and later analysis. Historical sentiment used
-during decisions MUST be stored so later comparison is possible among:
+Trading-critical failures MUST fail safely.
 
-- strategy without sentiment
-- strategy with sentiment
-- strategy with conservative sentiment-aware exit rules
+Examples include:
 
-**Rationale**: Sentiment value is only as good as its audit trail and
-comparative evaluation.
+- invalid strategy;
+- invalid strategy parameters;
+- invalid Torque program;
+- unavailable required market data;
+- insufficient historical data;
+- stale data where freshness is required;
+- private API authentication failure;
+- exchange rejection;
+- inconsistent portfolio state;
+- violated capital or risk constraints.
 
-### XXIII. Sentiment Never Bypasses Control
-Sentiment is an input to strategies and trading control. It MUST NEVER bypass
-the Trading Controller or Risk Manager, place orders directly, or weaken
-session bounds.
+The system MUST NOT fabricate fills, prices, balances, or successful execution.
 
-**Rationale**: Sentiment is advisory context, not an execution authority.
+---
 
-### XXIV. Dashboard Market Sentiment
-The Dashboard MUST expose a clear Market Sentiment component so the user can
-see the current state of market fear/greed and related signals.
+## IX. Emergency Stop
 
-**Rationale**: Visibility of measured sentiment replaces subjective guesswork.
+Real-time trading modes MUST provide a reliable emergency-stop mechanism before
+autonomous real-money trading is permitted.
 
-### XXV. Explainable Composite Sentiment
-The architecture MAY eventually calculate an explainable composite sentiment
-score from multiple sources. Any composite MUST remain explainable and
-traceable to underlying inputs.
+Stopping MUST prevent new strategy-driven entries.
 
-**Rationale**: Opaque scores recreate the opacity problem sentiment is meant
-to solve.
+Position handling during stop MUST follow the applicable feature specification
+and risk rules.
 
-### XXVI. Conservative Greed Principle
-CryptoAutoTrading SHOULD investigate a Conservative Greed Principle: when an existing
-position is profitable and external market sentiment is unusually
-optimistic/greedy, the system MAY favor securing an acceptable profit earlier
-instead of trying to capture the final portion of a market rise.
+Historical synchronous backtests do not require a separate emergency stop.
 
-This conservative-exit policy MUST NEVER be described as guaranteeing profit.
-Its effectiveness MUST first be evaluated through backtesting and simulation
-before any real-money reliance.
+---
 
-**Rationale**: Elevated market optimism may increase the risk of adverse
-price movement or reduced future upside. Earlier profit realization is a
-risk-management hypothesis that must be evaluated empirically, not a
-prediction or promise.
+## X. Intentional Simplicity
 
-### Philosophy
-Remove the user's emotion from execution, measure the market's collective
-emotion as data, and use strict risk and execution discipline.
+Prefer the simplest architecture that preserves correctness, safety,
+extensibility, and testability.
 
-## Spec-Driven Development
+Do not introduce distributed systems, queues, workers, WebSockets, plugin
+infrastructure, or additional persistence layers without demonstrated need.
 
-### XXVII. Incremental Spec Kit Workflow
-Development MUST be incremental and spec-driven. Each meaningful feature
-MUST progress through specification, clarification, planning, tasks,
-consistency analysis, implementation, and verification.
+Complexity MUST be justified by a concrete requirement.
 
-**Rationale**: Spec-first delivery prevents silent scope drift and unsafe
-shortcuts in trading-critical work.
+---
 
-### XXVIII. Trading-Critical Tests
-Trading-critical functionality MUST have automated tests covering control,
-risk rejection, session bounds, fail-safe behavior, and journaling where
-applicable.
+## XI. Conventional Strategies First
 
-**Rationale**: Untested trading paths are unacceptable capital risk.
+Before introducing strategy optimization or evolutionary search, the platform
+SHOULD establish a reliable set of conventional deterministic strategies.
 
-### XXIX. Specifications as Source of Truth
-Specifications are the source of truth. Implementation MUST NOT silently
-diverge from approved specs. When reality and the spec conflict, update the
-spec through the amendment/clarification path before or with the code change.
+Strategy implementations MUST use the shared Strategy contract and registry.
 
-**Rationale**: Silent drift destroys auditability and governance.
+Simulation and Backtest MUST use the same strategy implementation.
 
-### XXX. Git Commit Traceability
-Development changes MUST be organized into coherent, reviewable units.
+Strategy-specific execution engines are forbidden.
 
-After completing a meaningful Spec Kit stage or implementation unit that
-changes project files, the development agent MUST propose a concise,
-descriptive Git commit message appropriate for the completed work.
+---
 
-The agent MUST NOT automatically create a Git commit unless explicitly
-instructed by the user.
+## XII. Historical Evidence Is Not a Profit Guarantee
 
-Commit messages SHOULD describe the purpose of the change rather than merely
-list modified files.
+Backtest, comparison, experiment, and GE results are historical evidence only.
 
-Preferred format:
+The UI and documentation MUST NOT imply guaranteed future profitability.
 
-`<type>(<scope>): <short description>`
+Optimization results MUST be treated as susceptible to overfitting.
 
-Examples:
+---
 
-- `docs(constitution): establish CryptoAutoTrading governance principles`
-- `spec(foundation): define application foundation requirements`
-- `spec(foundation): clarify default dashboard navigation`
-- `feat(foundation): add responsive three-area application shell`
-- `feat(api): add backend health endpoint`
-- `test(foundation): add navigation and health checks`
-- `fix(foundation): preserve navigation on direct route refresh`
-- `refactor(exchange): isolate XT integration behind exchange adapter`
+## XIII. Primary Product Areas
 
-Commit types SHOULD normally use:
+The primary application navigation SHOULD remain intentionally small.
 
-- `docs` — documentation or constitution changes
-- `spec` — specification, clarification, plan, or task artifacts
-- `feat` — new functionality
-- `fix` — defect correction
-- `test` — tests
-- `refactor` — structural change without intended behavior change
-- `chore` — tooling, dependencies, or maintenance
+The principal areas are:
 
-Multiple closely related file changes SHOULD normally produce one coherent
-commit rather than one commit per file.
+1. Dashboard
+2. Auto Trading / Trade
+3. Portfolio
 
-**Rationale**: CryptoAutoTrading should maintain a Git history that explains
-how specifications and implementation evolved while keeping commit authority
-under explicit user control.
+Simulation, Backtest, Strategy Comparison, Torque, and related trading tools
+SHOULD normally live within the Auto Trading / Trade domain rather than becoming
+independent primary navigation items unless future product complexity clearly
+justifies restructuring.
+
+---
+
+## XIV. Operator UI and Responsive UX
+
+User-facing features MUST present a clean, modern, consistent operator UI.
+
+Primary operator workflows MUST remain usable on desktop and approximately
+375px phone-width screens.
+
+Forms and controls MUST use clear labels and units. Fields whose meaning is
+not obvious MUST provide short contextual help that is usable by touch, click,
+or keyboard focus — not hover only.
+
+Forms MUST provide clear validation feedback. Long-running or consequential
+actions MUST provide appropriate loading, success, and failure feedback, and
+MUST prevent accidental duplicate submission where relevant.
+
+Destructive or important irreversible actions MUST require confirmation.
+
+Important operating modes such as Simulation and Real Money MUST be clearly
+distinguishable. Real-money capability and warnings MUST be more prominent than
+ordinary navigation.
+
+New UI SHOULD reuse existing project patterns and shared controls rather than
+introducing inconsistent one-off variants.
+
+Detailed form, feedback, and consistency defaults belong in
+`docs/UI_UX_STANDARDS.md`. Feature specifications document only
+feature-specific UI behavior or intentional exceptions.
+
+---
+
+## XV. Technology Baseline
+
+Unless explicitly changed by an approved feature specification:
+
+Backend:
+- Python 3.12+
+- FastAPI
+- SQLAlchemy
+- SQLite for local persistence
+
+Frontend:
+- React
+- TypeScript
+- Vite
+
+Trading-domain numerical values requiring deterministic accounting SHOULD use
+Decimal-safe representations rather than binary floating point.
+
+---
+
+## XVI. Exchange Isolation
+
+Exchange-specific behavior MUST remain behind adapters.
+
+Core strategy, Controller, Risk, Backtest, Torque, GE, and accounting logic
+MUST NOT depend directly on XT-specific types.
+
+---
+
+## XVII. Public and Private Exchange Separation
+
+Public market-data access and private account/trading access MUST remain
+separate concerns.
+
+Features requiring only public market data MUST NOT require exchange
+credentials.
+
+---
+
+## XVIII. Credential Safety
+
+Exchange credentials MUST NOT be committed to source control.
+
+Private credentials MUST be loaded through an approved local configuration or
+secret mechanism.
+
+Real-money permissions SHOULD follow least privilege.
+
+Withdrawal permission SHOULD NOT be required for automated trading.
+
+---
+
+## XIX. Sentiment Is Advisory
+
+Market sentiment, news analysis, social signals, or external AI-derived signals
+MAY influence trading intent in future features.
+
+They MUST NOT directly execute trades or bypass Controller and Risk.
+
+---
+
+## XX. External Information Must Be Traceable
+
+Where external news, sentiment, or analytical sources influence decisions, the
+system SHOULD retain source identity, timestamp, and relevant derived signal
+where practical.
+
+---
+
+## XXI. Stale External Signals Must Be Detectable
+
+Time-sensitive external signals MUST carry sufficient timestamp/freshness
+information to prevent silently treating stale information as current.
+
+---
+
+## XXII. Missing Sentiment Must Not Fabricate Confidence
+
+If sentiment or news data is unavailable, the system MUST represent that state
+explicitly rather than inventing a neutral, positive, or negative signal.
+
+---
+
+## XXIII. Sentiment Must Not Override Risk
+
+No sentiment score, news event, model output, or confidence value may override
+capital or risk constraints.
+
+---
+
+## XXIV. Sentiment Integration Must Be Testable
+
+Any future sentiment-to-trading mapping MUST have deterministic interfaces that
+can be tested independently from external providers.
+
+---
+
+## XXV. Sentiment Providers Must Be Replaceable
+
+Provider-specific APIs SHOULD remain behind adapters or service boundaries so
+the trading pipeline does not depend on a single external provider.
+
+---
+
+## XXVI. Sentiment and News Are Not Execution Engines
+
+Sentiment/news components MAY generate features, scores, classifications, or
+trading intent.
+
+They MUST NOT become independent execution paths.
+
+---
+
+## XXVII. Specification-Driven Development
+
+Material features MUST be specified before implementation.
+
+Feature documentation SHOULD normally include:
+
+- `spec.md`
+- `plan.md`
+- `research.md` where needed
+- `data-model.md` where needed
+- `contracts/` where applicable
+- `quickstart.md`
+- `tasks.md`
+
+Clarifications MUST be reflected in the specification before implementation
+when they materially affect behavior.
+
+Later explicit clarifications take precedence over older conflicting wording.
+
+---
+
+## XXVIII. Trading-Critical Automated Tests
+
+Trading-critical behavior MUST have automated tests.
+
+Depending on the feature, tests MUST cover relevant areas such as:
+
+- strategy signals;
+- parameter validation;
+- Controller behavior;
+- Risk rejection;
+- fill timing;
+- fees and slippage;
+- accounting;
+- capital constraints;
+- stop behavior;
+- duplicate-candle prevention;
+- determinism;
+- historical metrics;
+- persistence;
+- API contracts;
+- pipeline isolation.
+
+A trading-critical feature MUST NOT be considered complete solely because its
+UI works manually.
+
+---
+
+## XXIX. Behavioral Continuity
+
+Refactoring shared trading infrastructure MUST preserve previously specified
+behavior unless a new specification intentionally changes it.
+
+Regression tests SHOULD protect important established behavior.
+
+Shared implementations SHOULD be preferred over forks.
+
+---
+
+## XXX. Git Traceability
+
+Feature implementation SHOULD remain traceable through Git history.
+
+Feature work SHOULD use meaningful commits referencing the relevant feature or
+scope.
+
+Automated tools MAY propose commit messages but MUST NOT commit automatically
+unless explicitly instructed by the operator.
+
+---
+
+## XXXI. Roadmap Synchronization
+
+The project roadmap at `core/roadmap.md` MUST remain synchronized with the
+actual implementation state of the repository.
+
+Every planned material feature MUST have a roadmap entry.
+
+The standard roadmap states are:
+
+- `PLANNED`
+- `IN PROGRESS`
+- `BLOCKED`
+- `DEFERRED`
+- `DONE`
+
+Creating a feature specification MUST add or update its roadmap entry.
+
+Starting implementation SHOULD change the corresponding feature to
+`IN PROGRESS`.
+
+A feature MUST NOT be marked `DONE` merely because implementation code exists.
+
+A feature may be marked `DONE` only after:
+
+1. required implementation is complete;
+2. required automated tests pass;
+3. specification/implementation analysis or convergence has no unresolved
+   blocking issue;
+4. required documentation is updated;
+5. required quickstart/smoke validation is complete.
+
+When a feature reaches `DONE`, the implementation/completion workflow MUST
+update `core/roadmap.md`.
+
+If a completed feature changes the scope, prerequisites, dependencies, or
+ordering of later work, the roadmap MUST be reviewed and updated.
+
+The roadmap records direction, sequencing, dependency, and status.
+
+Detailed behavioral requirements remain authoritative in the corresponding
+`specs/NNN-*/` documentation.
+
+---
+
+## XXXII. Execution Abstraction
+
+Execution behavior MUST be abstracted from decision generation.
+
+The system SHOULD support execution implementations appropriate to mode, such
+as:
+
+- HistoricalExecutionAdapter
+- SimulationExecutionAdapter
+- RealExecutionAdapter
+
+Controller and Risk SHOULD operate independently of the concrete execution
+adapter.
+
+Historical, simulation, and real trading MUST NOT require separate strategy
+engines.
+
+---
+
+## XXXIII. Settings Are Defaults, Not Historical Truth
+
+Application settings MAY provide reusable operator defaults.
+
+Settings MUST NOT silently alter already-created trading sessions, backtests,
+comparisons, Torque programs, or experiments.
+
+At creation time, effective configuration MUST be materialized and persisted
+with the run/session where reproducibility requires it.
+
+Changing a default affects future configurations only unless the operator
+explicitly edits an allowed configuration.
+
+---
+
+## XXXIV. Portfolio and Capital Allocation Authority
+
+Capital allocation MUST be represented explicitly rather than being hidden
+inside strategies.
+
+Multiple strategies or Torque program branches MAY operate over separate
+allocations, but total allocation MUST respect available capital and global
+risk constraints.
+
+Strategies MUST NOT independently create or invent capital.
+
+Portfolio/accounting state remains authoritative.
+
+---
+
+## XXXV. Torque Is a Trading Program Layer, Not a Second Engine
+
+Torque may describe compositions of strategies, parameters, time windows,
+capital allocations, and signal-composition logic.
+
+Torque programs MUST ultimately produce trading intent that enters the same:
+
+Controller → Risk → Execution → Accounting
+
+pipeline used by conventional strategies.
+
+Torque MUST NOT directly mutate balances or positions or call exchange trading
+APIs.
+
+The Torque language and grammar SHOULD remain sufficiently general for
+Grammatical Evolution to generate valid programs.
+
+---
+
+## XXXVI. Grammatical Evolution Searches Programs, Not Execution Paths
+
+Grammatical Evolution MAY search over valid Torque programs, strategy choices,
+strategy parameters, capital allocation, temporal composition, and other
+explicitly permitted grammar constructs.
+
+GE MUST NOT generate code that bypasses the authoritative trading pipeline.
+
+Every evaluated individual MUST be reproducible from its genotype, grammar,
+effective configuration, market-data window, and evaluation settings.
+
+---
+
+## XXXVII. Fitness Must Be Explicit and Reproducible
+
+Every evolutionary experiment MUST define its fitness function explicitly.
+
+Fitness inputs and evaluation data MUST be persisted or reproducibly
+identifiable.
+
+A baseline such as Buy & Hold MAY be incorporated into fitness.
+
+For example, an initial Torque trading fitness may use:
+
+    fitness = strategy_program_net_profit - buy_and_hold_net_profit
+
+but future specifications MAY extend this with risk, drawdown, robustness,
+turnover, or other objectives.
+
+Fitness MUST use cost-aware results when the evaluated trading path incurs
+fees or slippage.
+
+---
+
+## XXXVIII. Prevent Optimization Leakage
+
+Training/optimization data MUST be distinguishable from validation and final
+test data before claims about evolved trading quality are made.
+
+GE MUST NOT select individuals using final test-period performance.
+
+Future Train / Validation / Test features MUST preserve this separation.
+
+---
+
+## XXXIX. Real-Money Automation Requires Explicit Enablement
+
+Real-money automated trading MUST be disabled by default.
+
+Real-money capability MUST require explicit operator enablement and clearly
+distinguishable UI state.
+
+Before autonomous real-money trading is allowed, the system MUST have:
+
+- private exchange integration;
+- execution abstraction;
+- account reconciliation;
+- capital allocation controls;
+- risk controls;
+- emergency stop;
+- deterministic decision traceability;
+- failure/retry handling;
+- tested simulation/paper behavior;
+- explicit real-money configuration.
+
+A backtest, simulation, strategy comparison, Torque result, or GE result MUST
+never automatically activate real-money trading.
+
+---
+
+## XL. Reuse Before Duplication
+
+New trading features MUST reuse established domain components where their
+semantics match.
+
+In particular, future Torque and GE functionality SHOULD reuse:
+
+- market data;
+- strategy registry;
+- Controller;
+- Risk;
+- execution adapters;
+- accounting;
+- portfolio/capital allocation;
+- backtesting;
+- decision journals;
+- metrics.
+
+Duplicating these components specifically for Torque/GE requires explicit
+justification.
+
+---
 
 ## Governance
 
-This constitution supersedes informal conventions, ad-hoc shortcuts, and
-conflicting local practices for CryptoAutoTrading.
+This constitution is the highest-level engineering and product governance
+document for CryptoAutoTrading.
 
-### Amendment Procedure
-1. Propose the change with rationale, affected principles, and migration
-   impact (code, specs, tests, UX copy).
-2. Update `.specify/memory/constitution.md` with concrete principle text
-   (no unexplained placeholders).
-3. Bump `CONSTITUTION_VERSION` using semantic versioning:
-   - MAJOR: backward-incompatible removals or redefinitions of principles
-   - MINOR: new principle/section or materially expanded guidance
-   - PATCH: clarifications, wording, typos, non-semantic refinements
-4. Set **Last Amended** to the amendment date (ISO `YYYY-MM-DD`).
-5. Cascade updates into active feature specs, plans, and tasks when those
-   artifacts conflict with the new text.
+Feature specifications MUST comply with it.
 
-### Compliance Review
-- Specs, plans, tasks, PRs, and reviews MUST verify alignment with this
-  constitution.
-- Trading pipeline, risk authority, simulation-first, credential hygiene,
-  journaling, fail-safe, and no-guaranteed-profit rules are NON-NEGOTIABLE
-  review gates.
-- Unjustified complexity, direct strategy→exchange coupling, frontend
-  credentials, or auto-activation of real-money mode MUST be rejected.
+If a feature conflicts with a MUST rule, one of the following is required
+before implementation:
 
-### Runtime Guidance
-Use Spec Kit workflows (`/speckit-specify`, `/speckit-clarify`,
-`/speckit-plan`, `/speckit-tasks`, `/speckit-analyze`, `/speckit-implement`)
-for feature delivery. When guidance conflicts, this constitution wins.
+1. change the feature specification;
+2. amend the constitution intentionally; or
+3. document an explicit approved exception if the constitution permits one.
 
-**Version**: 1.2.0 | **Ratified**: 2026-08-08 | **Last Amended**: 2026-08-11
+A plan MUST NOT mark a constitution gate as PASS by informally weakening a
+MUST requirement.
+
+Constitution amendments SHOULD explain why the architectural or product rule
+changed.
+
+Detailed implementation decisions belong in feature specifications and design
+documents rather than being added to this constitution unless they represent
+durable project-wide rules.

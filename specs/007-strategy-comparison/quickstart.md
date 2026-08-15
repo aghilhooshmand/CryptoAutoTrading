@@ -82,8 +82,8 @@ Completed table must not show “best” / “winner” based on return.
 
 ## Done when
 
-- [ ] Synchronous comparison of 2–5 strategies works on shared history
-- [ ] Required metrics including both round-trip and fill counts are visible
-- [ ] Leg backtests inspectable; default history hides comparison origin
-- [ ] Retention caps documented/enforced (10 completed / 5 failed comparisons)
-- [ ] Feature 004 single backtest path unchanged for manual runs
+- [X] Synchronous comparison of 2–5 strategies works on shared history
+- [X] Required metrics including both round-trip and fill counts are visible
+- [X] Leg backtests inspectable; default history hides comparison origin
+- [X] Retention caps documented/enforced (10 completed / 5 failed comparisons)
+- [X] Feature 004 single backtest path unchanged for manual runs

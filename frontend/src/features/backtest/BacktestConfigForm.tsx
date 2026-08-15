@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   type CandleInterval,
   type CreateBacktestRequest,
@@ -8,6 +8,8 @@ import {
   oversizedHistoryMessage,
   validateCapitalNesting,
 } from "../../services/backtestApi";
+import { getSettings } from "../../services/settingsApi";
+import { settingsToSharedSeed } from "../settings/mapSettingsToForm";
 import { COST_DEFAULTS } from "../shared/CostRateFields";
 import { CostRateFields } from "../shared/CostRateFields";
 import {
@@ -45,8 +47,40 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
   const [feeRate, setFeeRate] = useState(COST_DEFAULTS.feeRate);
   const [slippageRate, setSlippageRate] = useState(COST_DEFAULTS.slippageRate);
   const [strategy, setStrategy] = useState<StrategyConfigValue>(defaultStrategyConfig());
+  const [preferredStrategy, setPreferredStrategy] = useState<StrategyConfigValue | null>(null);
   const [strategyError, setStrategyError] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [seeded, setSeeded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const settings = await getSettings();
+        if (cancelled || seeded) return;
+        const seed = settingsToSharedSeed(settings);
+        setSymbol(seed.symbol);
+        setTimeframe(seed.timeframe as CandleInterval);
+        setStartingCapital(seed.startingCapital);
+        setAllocatedCapital(seed.allocatedCapital);
+        setMaxPositionSize(seed.maxPositionSize);
+        setProfitRate(seed.targetNetProfitRate);
+        setLossRate(seed.maxSessionLossRate);
+        setMaxTrades(seed.maxTrades);
+        setFeeRate(seed.feeRate);
+        setSlippageRate(seed.slippageRate);
+        setStrategy(seed.strategy);
+        setPreferredStrategy(seed.strategy);
+        setSeeded(true);
+      } catch {
+        if (!cancelled) setSeeded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once on fresh mount
+  }, []);
 
   const derivedProfit = useMemo(() => {
     const a = Number(allocatedCapital);
@@ -134,6 +168,7 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
         value={strategy}
         onChange={setStrategy}
         onValidationError={setStrategyError}
+        preferredStrategy={preferredStrategy}
         variant="backtest"
       />
 
