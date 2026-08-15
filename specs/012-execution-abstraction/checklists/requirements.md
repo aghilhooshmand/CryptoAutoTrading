@@ -32,5 +32,6 @@
 ## Notes
 
 - Behavior locks for 003/004 parity, next-open vs live Simulation, Portfolio isolation for Backtest, and Real stub-only are encoded in the spec header and FR-004–FR-011 / SC-001–SC-004.
+- Clarification session 2026-08-15 resolved consolidation depth, Real reachability, mandatory shared-contract call sites, Comparison Historical path reuse, and Real stub reason `real_execution_unavailable`.
 - Spec input was taken from Feature 012 conversation context (empty `/speckit-specify` arguments).
-- Ready for `/speckit-clarify` (optional) or `/speckit-plan`.
+- Ready for `/speckit-plan`.
