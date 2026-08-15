@@ -278,7 +278,7 @@ Execution Abstraction
 | 009 | Portfolio & Capital Allocation Core | DONE |
 | 010 | Advanced Risk Management | DONE |
 | 011 | Simulation History & Results | DONE |
-| 012 | Execution Abstraction | PLANNED |
+| 012 | Execution Abstraction | DONE |
 
 ---
 
@@ -467,7 +467,7 @@ Controller and Risk should not care which execution mode is active.
 Feature 012 should consolidate existing historical/simulation semantics without
 changing their established behavior.
 
-Status: `PLANNED`
+Status: `DONE`
 
 ---
 
@@ -1301,20 +1301,18 @@ Current completed foundation:
 Current active milestone:
 
 ```text
-(none — Feature 011 complete; Feature 012 remains PLANNED)
+012 → Execution Abstraction
 ```
 
 Next planned milestone:
 
 ```text
-012 → Execution Abstraction
+013 → XT Account / Private API Integration
 ```
 
 The near-term objective is therefore:
 
 ```text
-simulation history & frozen results
-        ↓
 abstract execution
         ↓
 connect controlled real trading
