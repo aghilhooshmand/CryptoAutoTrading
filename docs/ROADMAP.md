@@ -467,7 +467,7 @@ Controller and Risk should not care which execution mode is active.
 Feature 012 should consolidate existing historical/simulation semantics without
 changing their established behavior.
 
-Status: `IN PROGRESS`
+Status: `DONE`
 
 ---
 

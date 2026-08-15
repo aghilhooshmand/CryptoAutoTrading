@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-15
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description (conversation context for Feature 012 — Execution Abstraction): Formalize one execution interface across Historical, Simulation, and future Real trading so Controller and Risk do not depend on which execution mode is active. Consolidate existing historical and simulation fill semantics without changing established Feature 003 Simulation or Feature 004 Backtest behavior. Historical keeps next-open (and established flatten) fill timing; Simulation keeps existing live-mark execution semantics; Backtest must not gain Portfolio dependency; Real execution is interface/stub only with actual XT/private exchange execution deferred to Feature 013+. Out of scope: XT private API, autonomous real-money trading, Risk semantic changes, Strategy changes, new operator-facing trading workflows.
 

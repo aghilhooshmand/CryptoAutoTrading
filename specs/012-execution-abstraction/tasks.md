@@ -47,8 +47,8 @@ Propose commits only; do not auto-commit. Keep Feature 012 `IN PROGRESS` on
 
 **Purpose**: Package skeleton and inventory of call sites
 
-- [ ] T001 Create `backend/app/execution/` package skeleton (`__init__.py` placeholder exports only — no call-site commentary) per `plan.md`
-- [ ] T002 [P] Keep call-site inventory current in `specs/012-execution-abstraction/call-sites.md` (Simulation pipeline/session_service, Backtest engine/execution, simulation execution shims, Comparison → leg runner → `run_engine`); do **not** put this inventory in `backend/app/execution/__init__.py`
+- [x] T001 Create `backend/app/execution/` package skeleton (`__init__.py` placeholder exports only — no call-site commentary) per `plan.md`
+- [x] T002 [P] Keep call-site inventory current in `specs/012-execution-abstraction/call-sites.md` (Simulation pipeline/session_service, Backtest engine/execution, simulation execution shims, Comparison → leg runner → `run_engine`); do **not** put this inventory in `backend/app/execution/__init__.py`
 
 ---
 
@@ -58,10 +58,10 @@ Propose commits only; do not auto-commit. Keep Feature 012 `IN PROGRESS` on
 
 **⚠️ CRITICAL**: No user story adapter wiring until this phase completes
 
-- [ ] T003 Implement `ExecutionIntent`, `FillResult`, and `ExecutionEngine` Protocol in `backend/app/execution/port.py` per `data-model.md` and `contracts/execution-contract.md` (match existing Simulation `FillResult` field set: `ok`, `reason_code`, `reason_message`, `fill`, `qty`; same shape as today’s `HistoricalFillResult`)
-- [ ] T004 Implement shared buy/sell fill economics + stable reject codes (`invalid_side`, `conflicting_position_state`, `insufficient_balance`) in `backend/app/execution/economics.py` using `app.simulation.accounting` / `position_sizing` / `money` only — consume caller `intent.reference_price`; MUST NOT import candle/quote/market-data modules; MUST NOT select next-open vs live mark
-- [ ] T005 [P] Export public symbols from `backend/app/execution/__init__.py` (`ExecutionIntent`, `FillResult`, `ExecutionEngine`, adapters as needed) — exports only, no inventory comments
-- [ ] T006 [P] Add unit tests in `backend/tests/unit/test_execution_economics.py`: fixed intent matrix; assert shared economics (and later both adapters) match **current** `SimulationExecutionEngine` and `HistoricalExecutionAdapter` field-by-field for `qty`, `FillQuote.notional` / `fee` / `slippage_cost` / `cash_delta` / `fill_price` / `reference_price`, dust handling, BUY/SELL sizing, and `reason_code` — run this dual-oracle **before** deleting old fill bodies
+- [x] T003 Implement `ExecutionIntent`, `FillResult`, and `ExecutionEngine` Protocol in `backend/app/execution/port.py` per `data-model.md` and `contracts/execution-contract.md` (match existing Simulation `FillResult` field set: `ok`, `reason_code`, `reason_message`, `fill`, `qty`; same shape as today’s `HistoricalFillResult`)
+- [x] T004 Implement shared buy/sell fill economics + stable reject codes (`invalid_side`, `conflicting_position_state`, `insufficient_balance`) in `backend/app/execution/economics.py` using `app.simulation.accounting` / `position_sizing` / `money` only — consume caller `intent.reference_price`; MUST NOT import candle/quote/market-data modules; MUST NOT select next-open vs live mark
+- [x] T005 [P] Export public symbols from `backend/app/execution/__init__.py` (`ExecutionIntent`, `FillResult`, `ExecutionEngine`, adapters as needed) — exports only, no inventory comments
+- [x] T006 [P] Add unit tests in `backend/tests/unit/test_execution_economics.py`: fixed intent matrix; assert shared economics (and later both adapters) match **current** `SimulationExecutionEngine` and `HistoricalExecutionAdapter` field-by-field for `qty`, `FillQuote.notional` / `fee` / `slippage_cost` / `cash_delta` / `fill_price` / `reference_price`, dust handling, BUY/SELL sizing, and `reason_code` — run this dual-oracle **before** deleting old fill bodies
 
 **Checkpoint**: Shared contract + economics exist and dual-oracle unit-tested; adapters not yet production-wired
 
@@ -75,18 +75,18 @@ Propose commits only; do not auto-commit. Keep Feature 012 `IN PROGRESS` on
 
 ### Tests
 
-- [ ] T007 [P] [US1] Extend `backend/tests/unit/test_execution_economics.py` (or add `backend/tests/unit/test_execution_adapters_contract.py`) asserting Historical and Simulation adapters both satisfy `ExecutionEngine.execute` for identical intents → identical `FillResult` economics/codes (field-level)
+- [x] T007 [P] [US1] Extend `backend/tests/unit/test_execution_economics.py` (or add `backend/tests/unit/test_execution_adapters_contract.py`) asserting Historical and Simulation adapters both satisfy `ExecutionEngine.execute` for identical intents → identical `FillResult` economics/codes (field-level)
 
 ### Implementation
 
-- [ ] T008 [US1] Implement thin `SimulationExecutionEngine` in `backend/app/execution/simulation.py` whose `execute` delegates to `economics.py` only (no journal/Portfolio/Controller/Risk side effects inside adapter)
-- [ ] T009 [P] [US1] Implement thin `HistoricalExecutionAdapter` in `backend/app/execution/historical.py` with `execute` → `economics`; `buy`/`sell` wrappers MUST build `ExecutionIntent` and call **`self.execute` only** (never call `economics` directly)
-- [ ] T010 [US1] Replace `backend/app/simulation/execution/port.py` and `backend/app/simulation/execution/simulation.py` with **re-export-only** shims to `app.execution` (preserve import paths); **zero** local fill math / `_buy` / `_sell` / `intended_notional` bodies
-- [ ] T011 [US1] Convert `backend/app/backtest/execution.py` to **re-export-only** `HistoricalExecutionAdapter` (+ optional `HistoricalFillResult = FillResult` alias) from `app.execution.historical`; remove duplicated fill math; engine keeps using `.ok` / `.fill` / `.qty` / `.reason_*`
-- [ ] T012 [US1] Wire Simulation strategy fills in `backend/app/simulation/pipeline.py` through `SimulationExecutionEngine.execute` / `ExecutionIntent` — keep journal + Portfolio apply **after** fill in pipeline
-- [ ] T013 [US1] Wire Simulation forced-close fill invocation in `backend/app/simulation/session_service.py` through Simulation adapter **`execute`** — keep flatten orchestration and unsafe-mark handling mode-owned
-- [ ] T014 [US1] Ensure Backtest strategy fills in `backend/app/backtest/engine.py` go through `HistoricalExecutionAdapter` such that every strategy fill reaches **`ExecutionEngine.execute`** (direct `execute` or `buy`/`sell` that only wraps `execute`); keep next-open / flatten reference selection and journals in the engine; `_flatten` may keep using `sell` wrapper
-- [ ] T015 [US1] Run US1 gates until green: `backend/tests/unit/test_execution_economics.py`, `backend/tests/unit/test_backtest_fills.py`, `backend/tests/unit/test_accounting.py`, `backend/tests/unit/test_risk_rejects.py`, `backend/tests/integration/test_simulation_pipeline.py`, `backend/tests/integration/test_backtest_pipeline.py` — **no intentional expectation edits**
+- [x] T008 [US1] Implement thin `SimulationExecutionEngine` in `backend/app/execution/simulation.py` whose `execute` delegates to `economics.py` only (no journal/Portfolio/Controller/Risk side effects inside adapter)
+- [x] T009 [P] [US1] Implement thin `HistoricalExecutionAdapter` in `backend/app/execution/historical.py` with `execute` → `economics`; `buy`/`sell` wrappers MUST build `ExecutionIntent` and call **`self.execute` only** (never call `economics` directly)
+- [x] T010 [US1] Replace `backend/app/simulation/execution/port.py` and `backend/app/simulation/execution/simulation.py` with **re-export-only** shims to `app.execution` (preserve import paths); **zero** local fill math / `_buy` / `_sell` / `intended_notional` bodies
+- [x] T011 [US1] Convert `backend/app/backtest/execution.py` to **re-export-only** `HistoricalExecutionAdapter` (+ optional `HistoricalFillResult = FillResult` alias) from `app.execution.historical`; remove duplicated fill math; engine keeps using `.ok` / `.fill` / `.qty` / `.reason_*`
+- [x] T012 [US1] Wire Simulation strategy fills in `backend/app/simulation/pipeline.py` through `SimulationExecutionEngine.execute` / `ExecutionIntent` — keep journal + Portfolio apply **after** fill in pipeline
+- [x] T013 [US1] Wire Simulation forced-close fill invocation in `backend/app/simulation/session_service.py` through Simulation adapter **`execute`** — keep flatten orchestration and unsafe-mark handling mode-owned
+- [x] T014 [US1] Ensure Backtest strategy fills in `backend/app/backtest/engine.py` go through `HistoricalExecutionAdapter` such that every strategy fill reaches **`ExecutionEngine.execute`** (direct `execute` or `buy`/`sell` that only wraps `execute`); keep next-open / flatten reference selection and journals in the engine; `_flatten` may keep using `sell` wrapper
+- [x] T015 [US1] Run US1 gates until green: `backend/tests/unit/test_execution_economics.py`, `backend/tests/unit/test_backtest_fills.py`, `backend/tests/unit/test_accounting.py`, `backend/tests/unit/test_risk_rejects.py`, `backend/tests/integration/test_simulation_pipeline.py`, `backend/tests/integration/test_backtest_pipeline.py` — **no intentional expectation edits**
 
 **Checkpoint**: MVP — one contract; production Historical + Simulation strategy fills call through it; regressions pass
 
@@ -100,15 +100,15 @@ Propose commits only; do not auto-commit. Keep Feature 012 `IN PROGRESS` on
 
 ### Tests
 
-- [ ] T016 [P] [US2] Confirm / extend coverage in `backend/tests/unit/test_backtest_fills.py` for next-open strategy fill and missing-next-candle `approved_unexecutable` (no invented fill)
-- [ ] T017 [P] [US2] Confirm / extend coverage in `backend/tests/unit/test_forced_close.py` and `backend/tests/integration/test_simulation_pipeline.py` for live/safe mark fills and unsafe/unflattened behavior
+- [x] T016 [P] [US2] Confirm / extend coverage in `backend/tests/unit/test_backtest_fills.py` for next-open strategy fill and missing-next-candle `approved_unexecutable` (no invented fill)
+- [x] T017 [P] [US2] Confirm / extend coverage in `backend/tests/unit/test_forced_close.py` and `backend/tests/integration/test_simulation_pipeline.py` for live/safe mark fills and unsafe/unflattened behavior
 
 ### Implementation
 
-- [ ] T018 [US2] Audit `backend/app/backtest/engine.py` so `reference_price` for strategy fills remains next candle open; adapters never fetch candles/quotes
-- [ ] T019 [US2] Audit `backend/app/simulation/pipeline.py` (and mark helpers it uses) so Simulation `reference_price` remains the established live/safe mark path — not next-open
-- [ ] T020 [US2] Verify flatten orchestration remains mode-owned in `backend/app/backtest/engine.py` (`_flatten`) and `backend/app/simulation/session_service.py` — do not merge flatten into shared economics unless a regression suite proves equivalence (default: do not merge)
-- [ ] T021 [US2] Re-run T016–T017 gates plus `backend/tests/unit/test_backtest_fills.py` / `backend/tests/unit/test_forced_close.py` until green with unchanged expectations
+- [x] T018 [US2] Audit `backend/app/backtest/engine.py` so `reference_price` for strategy fills remains next candle open; adapters never fetch candles/quotes
+- [x] T019 [US2] Audit `backend/app/simulation/pipeline.py` (and mark helpers it uses) so Simulation `reference_price` remains the established live/safe mark path — not next-open
+- [x] T020 [US2] Verify flatten orchestration remains mode-owned in `backend/app/backtest/engine.py` (`_flatten`) and `backend/app/simulation/session_service.py` — do not merge flatten into shared economics unless a regression suite proves equivalence (default: do not merge)
+- [x] T021 [US2] Re-run T016–T017 gates plus `backend/tests/unit/test_backtest_fills.py` / `backend/tests/unit/test_forced_close.py` until green with unchanged expectations
 
 **Checkpoint**: Mode price policies and flatten semantics preserved
 
@@ -122,14 +122,14 @@ Propose commits only; do not auto-commit. Keep Feature 012 `IN PROGRESS` on
 
 ### Tests
 
-- [ ] T022 [P] [US3] Add or extend a focused test (prefer `backend/tests/unit/test_execution_portfolio_isolation.py` or extend an existing backtest+portfolio fixture) asserting Backtest run with fills does not change Portfolio reserved/available/holdings
-- [ ] T023 [P] [US3] Re-run Simulation Portfolio fill-apply related coverage in `backend/tests/contract/test_portfolio_api.py` (paths using `apply_simulation_fill`) to ensure Simulation side effects still work and remain outside shared economics
+- [x] T022 [P] [US3] Add or extend a focused test (prefer `backend/tests/unit/test_execution_portfolio_isolation.py` or extend an existing backtest+portfolio fixture) asserting Backtest run with fills does not change Portfolio reserved/available/holdings
+- [x] T023 [P] [US3] Re-run Simulation Portfolio fill-apply related coverage in `backend/tests/contract/test_portfolio_api.py` (paths using `apply_simulation_fill`) to ensure Simulation side effects still work and remain outside shared economics
 
 ### Implementation
 
-- [ ] T024 [US3] Ensure `backend/app/execution/historical.py` and `backend/app/backtest/engine.py` / `backend/app/backtest/execution.py` do not import or call Portfolio mutation APIs
-- [ ] T025 [US3] Ensure Portfolio apply remains only on Simulation success path in `backend/app/simulation/pipeline.py` (and any existing Portfolio helper modules) — not inside `backend/app/execution/economics.py`
-- [ ] T026 [US3] Run T022–T023 until green
+- [x] T024 [US3] Ensure `backend/app/execution/historical.py` and `backend/app/backtest/engine.py` / `backend/app/backtest/execution.py` do not import or call Portfolio mutation APIs
+- [x] T025 [US3] Ensure Portfolio apply remains only on Simulation success path in `backend/app/simulation/pipeline.py` (and any existing Portfolio helper modules) — not inside `backend/app/execution/economics.py`
+- [x] T026 [US3] Run T022–T023 until green
 
 **Checkpoint**: Portfolio isolation for Historical proven; Simulation apply intact
 
@@ -143,13 +143,13 @@ Propose commits only; do not auto-commit. Keep Feature 012 `IN PROGRESS` on
 
 ### Tests
 
-- [ ] T027 [P] [US4] Run Comparison regression suite: `backend/tests/unit/test_comparison_orchestrator.py`, `backend/tests/integration/test_comparison_shared_candles.py`, `backend/tests/contract/test_comparison_api.py`
+- [x] T027 [P] [US4] Run Comparison regression suite: `backend/tests/unit/test_comparison_orchestrator.py`, `backend/tests/integration/test_comparison_shared_candles.py`, `backend/tests/contract/test_comparison_api.py`
 
 ### Implementation
 
-- [ ] T028 [US4] Verify Comparison in `backend/app/comparison/` reaches Historical fills only via Backtest leg runner (`run_leg_with_prefetched_candles` or equivalent) → `run_engine` → `HistoricalExecutionAdapter` (no direct fill math / no new execution adapter in `app/comparison/`)
-- [ ] T029 [US4] Confirm `run_engine` in `backend/app/backtest/engine.py` uses shared `HistoricalExecutionAdapter` from `app.execution` (via re-export shim or direct import)
-- [ ] T030 [US4] Keep Comparison→Historical path documented in `specs/012-execution-abstraction/call-sites.md` and `quickstart.md` scenario 4 — no Comparison UX/API changes
+- [x] T028 [US4] Verify Comparison in `backend/app/comparison/` reaches Historical fills only via Backtest leg runner (`run_leg_with_prefetched_candles` or equivalent) → `run_engine` → `HistoricalExecutionAdapter` (no direct fill math / no new execution adapter in `app/comparison/`)
+- [x] T029 [US4] Confirm `run_engine` in `backend/app/backtest/engine.py` uses shared `HistoricalExecutionAdapter` from `app.execution` (via re-export shim or direct import)
+- [x] T030 [US4] Keep Comparison→Historical path documented in `specs/012-execution-abstraction/call-sites.md` and `quickstart.md` scenario 4 — no Comparison UX/API changes
 
 **Checkpoint**: No third Historical fill fork; Comparison orchestration untouched
 
@@ -163,14 +163,14 @@ Propose commits only; do not auto-commit. Keep Feature 012 `IN PROGRESS` on
 
 ### Tests
 
-- [ ] T031 [P] [US5] Add `backend/tests/unit/test_real_execution_stub.py`: `execute` → `ok=false`, `reason_code=real_execution_unavailable`, null fill/qty; assert no Portfolio/ledger mutation (no apply helpers called / no side effects)
+- [x] T031 [P] [US5] Add `backend/tests/unit/test_real_execution_stub.py`: `execute` → `ok=false`, `reason_code=real_execution_unavailable`, null fill/qty; assert no Portfolio/ledger mutation (no apply helpers called / no side effects)
 
 ### Implementation
 
-- [ ] T032 [US5] Implement `RealExecutionAdapter` in `backend/app/execution/real.py` per `contracts/execution-contract.md`
-- [ ] T033 [P] [US5] Export Real adapter from `backend/app/execution/__init__.py`
-- [ ] T034 [US5] Negative check: no Real execution mode on Simulation/Backtest create APIs (`backend/app/api/simulation.py`, `backend/app/api/backtest.py`) or frontend create flows — do not add UI; assert absence in `test_real_execution_stub.py` docstring and/or a small API schema/contract assertion; checklist in `quickstart.md`
-- [ ] T035 [US5] Run T031 (and T034 checks) until green
+- [x] T032 [US5] Implement `RealExecutionAdapter` in `backend/app/execution/real.py` per `contracts/execution-contract.md`
+- [x] T033 [P] [US5] Export Real adapter from `backend/app/execution/__init__.py`
+- [x] T034 [US5] Negative check: no Real execution mode on Simulation/Backtest create APIs (`backend/app/api/simulation.py`, `backend/app/api/backtest.py`) or frontend create flows — do not add UI; assert absence in `test_real_execution_stub.py` docstring and/or a small API schema/contract assertion; checklist in `quickstart.md`
+- [x] T035 [US5] Run T031 (and T034 checks) until green
 
 **Checkpoint**: Real stub ready for 013+ attachment; fail-closed; not operator-selectable
 
@@ -180,11 +180,11 @@ Propose commits only; do not auto-commit. Keep Feature 012 `IN PROGRESS` on
 
 **Purpose**: Full quickstart gate, docs status, cleanup
 
-- [ ] T036 Run full quickstart validation from `specs/012-execution-abstraction/quickstart.md` (economics + Real stub + Backtest/Simulation/Portfolio/Comparison gates listed there)
-- [ ] T037 [P] DONE gate for shims: `backend/app/simulation/execution/port.py`, `backend/app/simulation/execution/simulation.py`, and `backend/app/backtest/execution.py` contain **no** local fill implementations (`_buy`/`_sell`/`intended_notional`/`buy_fill` bodies) — re-exports only
-- [ ] T038 [P] Grep review under `backend/app/execution/`: no XT private / order placement; no Controller/Risk/journal-repo/Portfolio-mutation imports; no candle/quote fetch; no divergent second `FillResult` type required for Historical (alias OK)
-- [ ] T039 Update `docs/ROADMAP.md` Feature 012 status to `DONE` only after T036 green (leave `IN PROGRESS` until then)
-- [ ] T040 Mark `specs/012-execution-abstraction/spec.md` Status appropriately; confirm FR-016 (no Risk / Decision Log Mode / History freeze semantic edits) held; ensure tasks checkboxes reflect completion for implement handoff
+- [x] T036 Run full quickstart validation from `specs/012-execution-abstraction/quickstart.md` (economics + Real stub + Backtest/Simulation/Portfolio/Comparison gates listed there)
+- [x] T037 [P] DONE gate for shims: `backend/app/simulation/execution/port.py`, `backend/app/simulation/execution/simulation.py`, and `backend/app/backtest/execution.py` contain **no** local fill implementations (`_buy`/`_sell`/`intended_notional`/`buy_fill` bodies) — re-exports only
+- [x] T038 [P] Grep review under `backend/app/execution/`: no XT private / order placement; no Controller/Risk/journal-repo/Portfolio-mutation imports; no candle/quote fetch; no divergent second `FillResult` type required for Historical (alias OK)
+- [x] T039 Update `docs/ROADMAP.md` Feature 012 status to `DONE` only after T036 green (leave `IN PROGRESS` until then)
+- [x] T040 Mark `specs/012-execution-abstraction/spec.md` Status appropriately; confirm FR-016 (no Risk / Decision Log Mode / History freeze semantic edits) held; ensure tasks checkboxes reflect completion for implement handoff
 
 ---
 
