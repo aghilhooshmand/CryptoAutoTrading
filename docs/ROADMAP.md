@@ -277,7 +277,7 @@ Execution Abstraction
 | 008 | Trading & Experiment Defaults | DONE |
 | 009 | Portfolio & Capital Allocation Core | DONE |
 | 010 | Advanced Risk Management | DONE |
-| 011 | Simulation History & Results | IN PROGRESS |
+| 011 | Simulation History & Results | DONE |
 | 012 | Execution Abstraction | PLANNED |
 
 ---
@@ -443,7 +443,7 @@ Out of scope:
 Backend restart recovery/resume remains for Feature 014 — Live Paper-Trading
 Hardening.
 
-Status: `PLANNED`
+Status: `DONE`
 
 ---
 
@@ -1295,12 +1295,13 @@ Current completed foundation:
 008 → DONE
 009 → DONE
 010 → DONE
+011 → DONE
 ```
 
 Current active milestone:
 
 ```text
-011 → Simulation History & Results
+(none — Feature 011 complete; Feature 012 remains PLANNED)
 ```
 
 Next planned milestone:
