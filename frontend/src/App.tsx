@@ -6,6 +6,7 @@ import { AutoTradingPage } from "./pages/AutoTradingPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
+import { SimulationSessionDetailPage } from "./features/simulation/SimulationSessionDetailPage";
 
 export default function App() {
   return (
@@ -17,6 +18,10 @@ export default function App() {
         />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/auto-trading" element={<AutoTradingPage />} />
+        <Route
+          path="/auto-trading/simulation/:sessionId"
+          element={<SimulationSessionDetailPage />}
+        />
         <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

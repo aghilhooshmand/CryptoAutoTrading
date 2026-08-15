@@ -29,12 +29,11 @@ Validation guide for implementers and reviewers. Not an implementation dump.
 ## Automated checks (preferred)
 
 ```bash
-# Backend — adjust paths to match tasks.md once written
-pytest backend/tests/unit/test_simulation_final_result.py -q
-pytest backend/tests/contract/test_simulation_history_api.py -q
+# Backend
+cd backend && python -m pytest tests/unit/test_simulation_final_result.py tests/contract/test_simulation_history_api.py -q
 
 # Frontend
-# npm/vitest targets for simulationHistory* once added
+cd frontend && npm test -- --run src/__tests__/simulationHistory
 ```
 
 Expected: freeze completeness, ledger-only backfill, list/filter, delete

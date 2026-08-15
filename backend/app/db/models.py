@@ -63,6 +63,8 @@ class SimulationSessionRow(Base):
     per_symbol_max_weight: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # Decision Log Mode amendment — nullable; NULL ⇒ full_audit at runtime
     decision_log_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # Feature 011 — frozen terminal economics (JSON text); null until freeze/backfill
+    final_result_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class DecisionJournalRow(Base):

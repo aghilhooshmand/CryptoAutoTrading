@@ -59,6 +59,7 @@ def init_db() -> None:
         ("portfolio_loss_baseline_value", "TEXT"),
         ("per_symbol_max_weight", "TEXT"),
         ("decision_log_mode", "TEXT"),
+        ("final_result_json", "TEXT"),
     ):
         _ensure_column(engine, "simulation_sessions", col, typ)
     for col, typ in (

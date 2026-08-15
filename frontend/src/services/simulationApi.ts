@@ -58,7 +58,53 @@ export interface SimulationSession {
   positionFlattenStatus: string;
   lastProcessedCandleOpenTime: number | null;
   economics: SessionEconomics;
+  finalResult?: FinalResult | null;
   label: "SIMULATION";
+}
+
+export interface FinalResult {
+  complete: boolean;
+  frozenAt: string;
+  source: "stop" | "recovery" | "backfill";
+  startingCapital: string;
+  endingEquity: string | null;
+  netPnl: string | null;
+  returnPct: string | null;
+  cash: string;
+  fees: string;
+  slippageCost: string;
+  tradeCount: number;
+  strategyFillCount: number;
+  positionFlattenStatus: string;
+  stopReason: string | null;
+  markEquity: string | null;
+  markPrice: string | null;
+}
+
+export interface FinalResultSummary {
+  complete: boolean;
+  netPnl: string | null;
+  returnPct: string | null;
+}
+
+export interface HistoryListItem {
+  id: string;
+  state: SessionState;
+  symbol: string;
+  timeframe: string;
+  strategyId: string;
+  startedAt: string | null;
+  stoppedAt: string | null;
+  stopReason: string | null;
+  createdAt: string | null;
+  finalResultSummary: FinalResultSummary | null;
+}
+
+export interface SessionListResponse {
+  sessions: HistoryListItem[];
+  totalCount: number;
+  limit: number;
+  offset: number;
 }
 
 export interface CreateSessionRequest {
@@ -191,6 +237,28 @@ export async function fetchSession(
 ): Promise<SimulationSession> {
   const response = await fetch(`/simulation/sessions/${id}`, { signal });
   return parseJson<SimulationSession>(response);
+}
+
+export async function listSessions(
+  opts?: { state?: SessionState; limit?: number; offset?: number },
+  signal?: AbortSignal,
+): Promise<SessionListResponse> {
+  const params = new URLSearchParams();
+  if (opts?.state) params.set("state", opts.state);
+  if (opts?.limit != null) params.set("limit", String(opts.limit));
+  if (opts?.offset != null) params.set("offset", String(opts.offset));
+  const qs = params.toString();
+  const response = await fetch(`/simulation/sessions${qs ? `?${qs}` : ""}`, { signal });
+  return parseJson<SessionListResponse>(response);
+}
+
+export async function deleteSession(id: string, signal?: AbortSignal): Promise<void> {
+  const response = await fetch(`/simulation/sessions/${id}`, {
+    method: "DELETE",
+    signal,
+  });
+  if (response.status === 204) return;
+  await parseJson<unknown>(response);
 }
 
 export async function fetchDecisions(

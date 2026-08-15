@@ -19,28 +19,87 @@ const forbiddenTradingContent = [
   /real money \(live\)/i,
 ];
 
+function jsonOk(body: unknown) {
+  return new Response(JSON.stringify(body), { status: 200 });
+}
+
 beforeEach(() => {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo) => {
       const url = String(input);
       if (url.includes("/simulation/sessions/active")) {
-        return { ok: true, json: async () => ({ session: null }) };
+        return jsonOk({ session: null });
+      }
+      if (url.match(/\/simulation\/sessions(\?|$)/) && !url.includes("/active")) {
+        return jsonOk({ sessions: [], totalCount: 0, limit: 50, offset: 0 });
+      }
+      if (url.includes("/settings")) {
+        return jsonOk({
+          symbol: "btc_usdt",
+          timeframe: "1h",
+          startingCapital: "1000",
+          allocatedCapital: "1000",
+          maxPositionSize: "1000",
+          feeRate: "0.002",
+          slippageRate: "0.0005",
+          targetNetProfitRate: null,
+          maxSessionLossRate: null,
+          maxTrades: null,
+          strategyId: "dual_ema",
+          strategyParams: { fastPeriod: 9, slowPeriod: 21 },
+          portfolioMaxLossRate: null,
+          portfolioMaxLossAmount: null,
+          perSymbolMaxWeight: null,
+          preferredAllocationId: null,
+          decisionLogMode: "important_only",
+          updatedAt: null,
+          source: "starters",
+          warning: null,
+        });
+      }
+      if (url.includes("/portfolio")) {
+        return jsonOk({
+          cash: "10000",
+          reserved: "0",
+          available: "10000",
+          deployed: "0",
+          equity: "10000",
+          equityComplete: true,
+          unvaluedAssets: [],
+          positions: [],
+          holdings: [],
+          allocations: [],
+          updatedAt: null,
+          warning: null,
+        });
+      }
+      if (url.includes("/strategies")) {
+        return jsonOk({
+          strategies: [
+            {
+              id: "dual_ema",
+              displayName: "Dual EMA",
+              aliases: [],
+              parameters: [
+                { name: "fastPeriod", type: "int", label: "Fast", default: 9 },
+                { name: "slowPeriod", type: "int", label: "Slow", default: 21 },
+              ],
+              constraints: [],
+            },
+          ],
+        });
       }
       if (url.includes("/market/pairs")) {
-        return {
-          ok: true,
-          json: async () => ({
-            source: "XT",
-            retrievedAt: "2026-08-09T16:00:00.000Z",
-            pairs: [],
-          }),
-        };
+        return jsonOk({
+          source: "XT",
+          retrievedAt: "2026-08-09T16:00:00.000Z",
+          pairs: [],
+        });
       }
-      return {
-        ok: false,
-        json: async () => ({ error: { code: "error", message: "nope" } }),
-      };
+      return new Response(JSON.stringify({ error: { code: "error", message: "nope" } }), {
+        status: 404,
+      });
     }),
   );
 });
@@ -76,7 +135,7 @@ describe("primary navigation", () => {
 
     await user.click(screen.getByRole("link", { name: "Portfolio" }));
     expect(
-      screen.getByRole("heading", { name: "Portfolio" }),
+      screen.getByRole("heading", { name: "Simulation Portfolio" }),
     ).toBeInTheDocument();
     const portfolioLink = screen.getByRole("link", { name: "Portfolio" });
     expect(within(portfolioLink).getByText("Portfolio")).toBeInTheDocument();
@@ -94,7 +153,7 @@ describe("primary navigation", () => {
   it.each([
     ["/dashboard", "Dashboard"],
     ["/auto-trading", "Auto Trading"],
-    ["/portfolio", "Portfolio"],
+    ["/portfolio", "Simulation Portfolio"],
   ] as const)("deep-links %s to %s", async (path, title) => {
     renderAt(path);
     expect(await screen.findByRole("heading", { name: title })).toBeInTheDocument();

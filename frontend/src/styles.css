@@ -1530,3 +1530,95 @@ a {
 .strategy-config__error {
   margin: 0.55rem 0 0;
 }
+
+/* Feature 011 — Simulation History */
+.simulation-history-list {
+  margin-top: 1.5rem;
+}
+
+.sim-history-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sim-history-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.sim-history-items {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.sim-history-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--panel) 40%, #fff);
+  overflow: hidden;
+}
+
+.sim-history-link {
+  flex: 1 1 12rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.75rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.sim-history-title {
+  font-weight: 650;
+}
+
+.sim-history-meta {
+  font-size: 0.9rem;
+  color: color-mix(in srgb, var(--ink) 70%, transparent);
+}
+
+.sim-history-item .danger {
+  margin: 0.4rem;
+  align-self: center;
+}
+
+.sim-history-pager {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.simulation-detail-page .sim-actions {
+  margin: 1rem 0;
+}
+
+.simulation-final-result {
+  margin-top: 1rem;
+}
+
+@media (max-width: 420px) {
+  .sim-history-item {
+    flex-direction: column;
+  }
+
+  .sim-history-item .danger {
+    width: calc(100% - 0.8rem);
+    margin: 0 0.4rem 0.4rem;
+  }
+}

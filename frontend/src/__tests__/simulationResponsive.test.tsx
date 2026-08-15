@@ -63,6 +63,12 @@ function mockFetch() {
         json: async () => ({ session: null }),
       };
     }
+    if (url.match(/\/simulation\/sessions(\?|$)/)) {
+      return {
+        ok: true,
+        json: async () => ({ sessions: [], totalCount: 0, limit: 50, offset: 0 }),
+      };
+    }
     if (url.includes("/market/pairs")) {
       return {
         ok: true,

@@ -48,7 +48,7 @@ async def create_session(body: CreateSessionBody) -> dict[str, Any]:
     db = db_session.SessionLocal()
     try:
         row = svc.create_session(db, body.model_dump(exclude_none=True))
-        return await svc.session_to_dict(row)
+        return await svc.session_to_dict(row, db=db)
     except svc.SessionError as err:
         _raise(err)
         raise  # pragma: no cover
@@ -61,7 +61,7 @@ async def start_session(session_id: str) -> dict[str, Any]:
     db = db_session.SessionLocal()
     try:
         row = await svc.start_session_async(db, session_id)
-        return await svc.session_to_dict(row)
+        return await svc.session_to_dict(row, db=db)
     except svc.SessionError as err:
         _raise(err)
         raise  # pragma: no cover
@@ -74,7 +74,7 @@ async def stop_session(session_id: str) -> dict[str, Any]:
     db = db_session.SessionLocal()
     try:
         row = await svc.stop_session_async(db, session_id, "manual")
-        return await svc.session_to_dict(row)
+        return await svc.session_to_dict(row, db=db)
     except svc.SessionError as err:
         _raise(err)
         raise  # pragma: no cover
@@ -87,7 +87,7 @@ async def emergency_stop(session_id: str) -> dict[str, Any]:
     db = db_session.SessionLocal()
     try:
         row = await svc.stop_session_async(db, session_id, "emergency")
-        return await svc.session_to_dict(row)
+        return await svc.session_to_dict(row, db=db)
     except svc.SessionError as err:
         _raise(err)
         raise  # pragma: no cover
@@ -100,7 +100,23 @@ async def active_session() -> dict[str, Any]:
     db = db_session.SessionLocal()
     try:
         row = svc.get_active_session(db)
-        return {"session": await svc.session_to_dict(row) if row else None}
+        return {"session": await svc.session_to_dict(row, db=db) if row else None}
+    finally:
+        db.close()
+
+
+@router.get("/sessions")
+def list_sessions(
+    state: Optional[str] = Query(None),
+    limit: int = Query(50),
+    offset: int = Query(0),
+) -> dict[str, Any]:
+    db = db_session.SessionLocal()
+    try:
+        return svc.list_sessions(db, state=state, limit=limit, offset=offset)
+    except svc.SessionError as err:
+        _raise(err)
+        raise  # pragma: no cover
     finally:
         db.close()
 
@@ -110,7 +126,19 @@ async def get_session(session_id: str) -> dict[str, Any]:
     db = db_session.SessionLocal()
     try:
         row = svc.get_session(db, session_id)
-        return await svc.session_to_dict(row)
+        return await svc.session_to_dict(row, db=db)
+    except svc.SessionError as err:
+        _raise(err)
+        raise  # pragma: no cover
+    finally:
+        db.close()
+
+
+@router.delete("/sessions/{session_id}", status_code=204)
+def delete_session(session_id: str) -> None:
+    db = db_session.SessionLocal()
+    try:
+        svc.delete_session(db, session_id)
     except svc.SessionError as err:
         _raise(err)
         raise  # pragma: no cover

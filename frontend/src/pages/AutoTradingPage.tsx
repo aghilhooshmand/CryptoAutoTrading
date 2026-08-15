@@ -4,6 +4,7 @@ import { EconomicsPanel } from "../features/simulation/EconomicsPanel";
 import { SessionConfigForm } from "../features/simulation/SessionConfigForm";
 import { SessionStatusPanel } from "../features/simulation/SessionStatusPanel";
 import { SimulationBadge } from "../features/simulation/SimulationBadge";
+import { SimulationHistoryList } from "../features/simulation/SimulationHistoryList";
 import { TradeJournal } from "../features/simulation/TradeJournal";
 import { useSimulationSession } from "../features/simulation/useSimulationSession";
 import { BacktestConfigForm } from "../features/backtest/BacktestConfigForm";
@@ -144,6 +145,8 @@ export function AutoTradingPage() {
 
         <DecisionJournal items={decisions} decisionLogMode={session?.decisionLogMode} />
         <TradeJournal items={trades} />
+
+        <SimulationHistoryList refreshKey={simFormKey} />
       </div>
 
       <div

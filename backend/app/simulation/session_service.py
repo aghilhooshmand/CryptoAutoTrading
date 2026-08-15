@@ -27,7 +27,14 @@ from app.simulation.portfolio_risk import freeze_portfolio_loss_baseline, load_h
 from app.simulation.decision_log_mode import (
     effective_decision_log_mode,
     parse_create_decision_log_mode,
-    should_persist_hold,
+)
+from app.simulation.final_result import (
+    SOURCE_RECOVERY,
+    SOURCE_STOP,
+    ensure_final_result_backfill,
+    final_result_summary,
+    parse_final_result,
+    persist_final_result,
 )
 from app.simulation.state_machine import SessionState, transition
 from app.strategy.params import StrategyParamError
@@ -492,9 +499,157 @@ async def stop_session_async(
     row.state = SessionState.STOPPED.value
     row.stopped_at = _now(clock)
     row.updated_at = row.stopped_at
+    mark: Decimal | None = None
+    safe = False
+    m_eq: Decimal | None = None
+    if row.position_side == "long":
+        mark, safe = await _safe_mark(row.symbol)
+        if safe and mark is not None:
+            m_eq = mark_equity(d(row.cash), d(row.position_qty), mark, row.position_side)
+    persist_final_result(
+        db,
+        row,
+        source=SOURCE_STOP,
+        frozen_at=row.stopped_at,
+        mark_price=mark,
+        mark_safe=safe,
+        mark_equity=m_eq,
+    )
     db.commit()
     db.refresh(row)
     return row
+
+
+def _history_list_item(row: SimulationSessionRow) -> dict:
+    fr = parse_final_result(row.final_result_json)
+    return {
+        "id": row.id,
+        "state": row.state,
+        "symbol": row.symbol,
+        "timeframe": row.timeframe,
+        "strategyId": display_strategy_id(row.strategy_id),
+        "startedAt": row.started_at.isoformat().replace("+00:00", "Z") if row.started_at else None,
+        "stoppedAt": row.stopped_at.isoformat().replace("+00:00", "Z") if row.stopped_at else None,
+        "stopReason": row.stop_reason,
+        "createdAt": row.created_at.isoformat().replace("+00:00", "Z") if row.created_at else None,
+        "finalResultSummary": final_result_summary(fr),
+    }
+
+
+def list_sessions(
+    db: Session,
+    *,
+    state: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> dict:
+    if limit < 1 or limit > 100:
+        raise SessionError("invalid_query", "limit must be between 1 and 100", 400)
+    if offset < 0:
+        raise SessionError("invalid_query", "offset must be >= 0", 400)
+    allowed = {
+        SessionState.CONFIGURED.value,
+        SessionState.RUNNING.value,
+        SessionState.STOPPING.value,
+        SessionState.STOPPED.value,
+    }
+    if state is not None and state not in allowed:
+        raise SessionError(
+            "invalid_query",
+            "state must be one of: CONFIGURED, RUNNING, STOPPING, STOPPED",
+            400,
+        )
+
+    query = db.query(SimulationSessionRow)
+    if state is not None:
+        query = query.filter(SimulationSessionRow.state == state)
+    total = query.count()
+    rows = (
+        query.order_by(
+            SimulationSessionRow.created_at.desc(),
+            SimulationSessionRow.id.desc(),
+        )
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    sessions = []
+    for row in rows:
+        if row.state == SessionState.STOPPED.value and not row.final_result_json:
+            ensure_final_result_backfill(db, row)
+        sessions.append(_history_list_item(row))
+    return {
+        "sessions": sessions,
+        "totalCount": total,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+def _portfolio_binding_blocks_delete(db: Session, row: SimulationSessionRow) -> bool:
+    if not row.allocation_id:
+        return False
+    alloc = portfolio_repo.get_allocation(db, row.allocation_id)
+    if alloc is not None:
+        try:
+            reserved = d(alloc.reserved_size)
+        except Exception:  # noqa: BLE001
+            reserved = Decimal("0")
+        if reserved > 0:
+            return True
+    if row.position_side == "long" and row.cost_basis:
+        try:
+            if d(row.cost_basis) > 0:
+                return True
+        except Exception:  # noqa: BLE001
+            return True
+    return False
+
+
+def delete_session(db: Session, session_id: str) -> None:
+    row = get_session(db, session_id)
+    if row.state in (SessionState.RUNNING.value, SessionState.STOPPING.value):
+        raise SessionError(
+            "session_active",
+            "Cannot delete a RUNNING or STOPPING session",
+            409,
+        )
+    if _portfolio_binding_blocks_delete(db, row):
+        raise SessionError(
+            "portfolio_binding_active",
+            "Cannot delete while Portfolio reserved or deployed capital is bound to this session",
+            409,
+        )
+    db.query(DecisionJournalRow).filter(DecisionJournalRow.session_id == session_id).delete(
+        synchronize_session=False
+    )
+    db.query(TradeJournalRow).filter(TradeJournalRow.session_id == session_id).delete(
+        synchronize_session=False
+    )
+    db.delete(row)
+    db.commit()
+
+
+def _stopped_economics_from_freeze(row: SimulationSessionRow, freeze: dict) -> dict:
+    """Authoritative ending economics from freeze — no live mark drift."""
+    return {
+        "startEquity": row.starting_capital,
+        "cash": freeze.get("cash", row.cash),
+        "markEquity": None,
+        "markNetPnl": None,
+        "unrealizedGross": None,
+        "liquidationEquity": freeze.get("endingEquity"),
+        "grossPnl": row.cumulative_gross_realized,
+        "fees": freeze.get("fees", row.cumulative_fees),
+        "slippageCost": freeze.get("slippageCost", row.cumulative_slippage_cost),
+        "netPnl": freeze.get("netPnl"),
+        "targetNetProfitRate": row.target_net_profit_rate,
+        "targetNetProfitAmount": row.target_net_profit_amount,
+        "maxSessionLossRate": row.max_session_loss_rate,
+        "maxSessionLossAmount": row.max_session_loss_amount,
+        "markPrice": None,
+        "markSafe": False,
+    }
 
 
 async def economics_dict(row: SimulationSessionRow) -> dict:
@@ -541,7 +696,24 @@ async def economics_dict(row: SimulationSessionRow) -> dict:
     }
 
 
-async def session_to_dict(row: SimulationSessionRow) -> dict:
+async def session_to_dict(row: SimulationSessionRow, *, db: Session | None = None) -> dict:
+    final_result = None
+    if row.state == SessionState.STOPPED.value:
+        if db is not None:
+            final_result = ensure_final_result_backfill(db, row)
+        else:
+            final_result = parse_final_result(row.final_result_json)
+            if final_result is None:
+                # Caller without db: build in-memory ledger backfill without commit
+                from app.simulation.final_result import build_final_result, SOURCE_BACKFILL
+
+                final_result = build_final_result(row, source=SOURCE_BACKFILL, frozen_at=row.stopped_at)
+
+    if row.state == SessionState.STOPPED.value and final_result is not None:
+        economics = _stopped_economics_from_freeze(row, final_result)
+    else:
+        economics = await economics_dict(row)
+
     return {
         "id": row.id,
         "mode": row.mode,
@@ -578,6 +750,7 @@ async def session_to_dict(row: SimulationSessionRow) -> dict:
         "stopReason": row.stop_reason,
         "positionFlattenStatus": row.position_flatten_status,
         "lastProcessedCandleOpenTime": row.last_processed_candle_open_time,
-        "economics": await economics_dict(row),
+        "economics": economics,
+        "finalResult": final_result,
         "label": "SIMULATION",
     }
