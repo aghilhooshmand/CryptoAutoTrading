@@ -29,4 +29,5 @@ def product_starter_defaults() -> dict[str, Any]:
         "portfolioMaxLossAmount": None,
         "perSymbolMaxWeight": None,
         "preferredAllocationId": None,
+        "decisionLogMode": "important_only",
     }

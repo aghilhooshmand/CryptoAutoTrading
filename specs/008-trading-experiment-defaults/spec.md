@@ -210,8 +210,10 @@ trading activity.
 - **FR-002**: Settings MUST support defaults for: symbol, timeframe, starting
   capital, allocated capital, maximum position size, fee rate, slippage rate,
   optional target net profit rate, optional maximum loss rate, optional
-  maximum trades, preferred strategy identity, and that strategy’s effective
-  parameters.
+  maximum trades, preferred strategy identity, that strategy’s effective
+  parameters, and **Simulation `decisionLogMode`** default
+  (`important_only` \| `full_audit`; product starter **`important_only`**).
+  `decisionLogMode` applies to **new Simulation creates** only (not Backtest).
 - **FR-003**: Strategy-related Settings MUST be driven by the existing strategy
   registry and each strategy’s dynamic parameter schema. The system MUST NOT
   hard-code strategy-specific Settings fields for individual strategies. When
@@ -328,6 +330,9 @@ trading activity.
 - Settings placement is a secondary surface under Auto Trading (Settings tab),
   consistent with constitution primary-area limits.
 - Simulation-only fields not listed in FR-002 (for example session duration)
-  remain per-form concerns in v1 and are not stored in Settings.
+  remain per-form concerns in v1 and are not stored in Settings — **except**
+  `decisionLogMode`, which is a Simulation Settings default (copied into the
+  session at create as effective configuration; later Settings changes MUST NOT
+  mutate existing sessions).
 - Validation messages should be understandable to the operator and aligned in
   meaning with Simulation/Backtest/Comparison form validation.

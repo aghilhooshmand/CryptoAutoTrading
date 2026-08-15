@@ -25,6 +25,7 @@ const distinctive: OperatorSettings = {
   portfolioMaxLossAmount: null,
   perSymbolMaxWeight: null,
   preferredAllocationId: null,
+  decisionLogMode: "important_only",
   updatedAt: "2026-08-12T00:00:00Z",
   source: "saved",
   warning: null,
@@ -96,6 +97,7 @@ describe("mapSettingsToForm", () => {
     expect(seed.maxSessionLossRate).toBe("");
     expect(seed.maxTrades).toBe("");
     expect(seed.strategy.strategyId).toBe("rsi");
+    expect(seed.decisionLogMode).toBe("important_only");
   });
 
   it("secondary comparison leg is not forced to preferred strategy", () => {
@@ -120,6 +122,7 @@ describe("create form init from Settings", () => {
     expect(screen.getByTestId("sim-starting")).toHaveValue("2500");
     expect(screen.getByTestId("sim-profit-rate")).toHaveValue("");
     expect(screen.getByTestId("sim-loss-rate")).toHaveValue("");
+    expect(screen.getByTestId("sim-decision-log-mode")).toHaveValue("important_only");
   });
 
   it("does not overwrite Simulation draft after Settings load", async () => {

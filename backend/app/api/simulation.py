@@ -33,6 +33,7 @@ class CreateSessionBody(BaseModel):
     portfolioMaxLossRate: Optional[str] = None
     portfolioMaxLossAmount: Optional[str] = None
     perSymbolMaxWeight: Optional[str] = None
+    decisionLogMode: Optional[str] = None
 
 
 def _raise(err: svc.SessionError) -> None:

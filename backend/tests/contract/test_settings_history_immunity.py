@@ -122,6 +122,7 @@ def test_settings_change_does_not_rewrite_simulation(client):
         "slippageRate": "0.0005",
         "strategyId": "dual_ema",
         "strategyParams": {"fastPeriod": 9, "slowPeriod": 21},
+        "decisionLogMode": "full_audit",
     }
     r = client.post("/simulation/sessions", json=body)
     assert r.status_code == 201, r.text
@@ -129,14 +130,53 @@ def test_settings_change_does_not_rewrite_simulation(client):
     sid = session["id"]
     original_fee = session["feeRate"]
     original_starting = session["startingCapital"]
+    original_mode = session["decisionLogMode"]
+    assert original_mode == "full_audit"
 
-    _mutate_settings(client)
+    settings = product_starter_defaults()
+    settings.update(
+        {
+            "feeRate": "0.009",
+            "startingCapital": "9999",
+            "allocatedCapital": "9999",
+            "maxPositionSize": "1000",
+            "decisionLogMode": "important_only",
+        }
+    )
+    assert client.put("/settings", json=settings).status_code == 200
 
     again = client.get(f"/simulation/sessions/{sid}")
     assert again.status_code == 200
     data = again.json()
     assert data["feeRate"] == original_fee
     assert data["startingCapital"] == original_starting
+    assert data["decisionLogMode"] == original_mode
+
+
+def test_settings_default_copies_into_new_simulation_when_sent(client):
+    settings = product_starter_defaults()
+    settings["decisionLogMode"] = "full_audit"
+    assert client.put("/settings", json=settings).status_code == 200
+
+    body = {
+        "symbol": "btc_usdt",
+        "timeframe": "1h",
+        "startingCapital": "500",
+        "allocatedCapital": "500",
+        "maxPositionSize": "500",
+        "targetNetProfitRate": "0.01",
+        "maxSessionLossRate": "0.007",
+        "maxTrades": 20,
+        "durationSeconds": 3600,
+        "feeRate": "0.002",
+        "slippageRate": "0.0005",
+        "strategyId": "dual_ema",
+        "strategyParams": {"fastPeriod": 9, "slowPeriod": 21},
+        "decisionLogMode": "full_audit",
+    }
+    r = client.post("/simulation/sessions", json=body)
+    assert r.status_code == 201, r.text
+    assert r.json()["decisionLogMode"] == "full_audit"
 
 
 def test_settings_change_does_not_rewrite_comparison(client):

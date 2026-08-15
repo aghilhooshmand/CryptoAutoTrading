@@ -61,6 +61,8 @@ class SimulationSessionRow(Base):
     portfolio_loss_baseline_kind: Mapped[str | None] = mapped_column(String(32), nullable=True)
     portfolio_loss_baseline_value: Mapped[str | None] = mapped_column(String(64), nullable=True)
     per_symbol_max_weight: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Decision Log Mode amendment — nullable; NULL ⇒ full_audit at runtime
+    decision_log_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
 
 class DecisionJournalRow(Base):
@@ -193,6 +195,7 @@ class OperatorDefaultsRow(Base):
     portfolio_max_loss_amount: Mapped[str | None] = mapped_column(String(64), nullable=True)
     per_symbol_max_weight: Mapped[str | None] = mapped_column(String(64), nullable=True)
     preferred_allocation_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    decision_log_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
 
 class BacktestDecisionRow(Base):

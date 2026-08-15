@@ -37,6 +37,7 @@ def test_get_empty_returns_starters(client):
     assert data["source"] == "starters"
     assert data["startingCapital"] == "1000"
     assert data["strategyId"] == "dual_ema"
+    assert data["decisionLogMode"] == "important_only"
     assert data["warning"] is None
 
 
@@ -83,12 +84,30 @@ def test_optional_nulls_persist(client):
     assert data["maxTrades"] is None
 
 
+def test_put_decision_log_mode(client):
+    body = _valid_body(decisionLogMode="full_audit")
+    r = client.put("/settings", json=body)
+    assert r.status_code == 200
+    assert r.json()["decisionLogMode"] == "full_audit"
+    again = client.get("/settings").json()
+    assert again["decisionLogMode"] == "full_audit"
+
+
 def test_reset_restores_starters(client):
-    client.put("/settings", json=_valid_body(symbol="eth_usdt", startingCapital="2500", allocatedCapital="2500", maxPositionSize="1000"))
+    client.put(
+        "/settings",
+        json=_valid_body(
+            symbol="eth_usdt",
+            startingCapital="2500",
+            allocatedCapital="2500",
+            maxPositionSize="1000",
+        ),
+    )
     r = client.post("/settings/reset")
     assert r.status_code == 200
     data = r.json()
     assert data["symbol"] == "btc_usdt"
     assert data["startingCapital"] == "1000"
+    assert data["decisionLogMode"] == "important_only"
     assert data["source"] == "saved"
     assert data["updatedAt"]

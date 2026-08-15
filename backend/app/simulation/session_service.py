@@ -24,6 +24,11 @@ from app.simulation.money import DEFAULT_FEE_RATE, DEFAULT_SLIPPAGE_RATE, as_str
 from app.portfolio import repository as portfolio_repo
 from app.simulation.control import reasons as risk_reasons
 from app.simulation.portfolio_risk import freeze_portfolio_loss_baseline, load_holding_quotes, portfolio_available_amount
+from app.simulation.decision_log_mode import (
+    effective_decision_log_mode,
+    parse_create_decision_log_mode,
+    should_persist_hold,
+)
 from app.simulation.state_machine import SessionState, transition
 from app.strategy.params import StrategyParamError
 from app.strategy.registry import UnknownStrategyError, is_known_strategy_id, validate_and_materialize
@@ -155,6 +160,11 @@ def create_session(db: Session, body: dict, clock: Clock | None = None) -> Simul
     except StrategyParamError as exc:
         raise SessionError(exc.code, exc.message, 400) from exc
 
+    try:
+        decision_log_mode = parse_create_decision_log_mode(body.get("decisionLogMode"))
+    except ValueError as exc:
+        raise SessionError("invalid_config", str(exc), 400) from exc
+
     now = _now(clock)
     target_amt = allocated * target_rate
     loss_amt = allocated * loss_rate
@@ -190,6 +200,7 @@ def create_session(db: Session, body: dict, clock: Clock | None = None) -> Simul
         portfolio_max_loss_rate=portfolio_max_loss_rate,
         portfolio_max_loss_amount=portfolio_max_loss_amount,
         per_symbol_max_weight=per_symbol_max_weight,
+        decision_log_mode=decision_log_mode,
         created_at=now,
         updated_at=now,
     )
@@ -556,6 +567,7 @@ async def session_to_dict(row: SimulationSessionRow) -> dict:
         "portfolioLossBaselineKind": row.portfolio_loss_baseline_kind,
         "portfolioLossBaselineValue": row.portfolio_loss_baseline_value,
         "perSymbolMaxWeight": row.per_symbol_max_weight,
+        "decisionLogMode": effective_decision_log_mode(row.decision_log_mode),
         "cash": row.cash,
         "positionSide": row.position_side,
         "positionQty": row.position_qty,

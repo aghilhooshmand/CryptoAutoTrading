@@ -22,6 +22,7 @@ export interface SharedFormSeed {
   portfolioMaxLossAmount: string;
   perSymbolMaxWeight: string;
   preferredAllocationId: string;
+  decisionLogMode: "important_only" | "full_audit";
   strategy: StrategyConfigValue;
 }
 
@@ -51,6 +52,7 @@ export function settingsToSharedSeed(settings: OperatorSettings): SharedFormSeed
     portfolioMaxLossAmount: optionalRateToInput(settings.portfolioMaxLossAmount),
     perSymbolMaxWeight: optionalRateToInput(settings.perSymbolMaxWeight),
     preferredAllocationId: settings.preferredAllocationId ?? "",
+    decisionLogMode: settings.decisionLogMode === "full_audit" ? "full_audit" : "important_only",
     strategy: {
       strategyId: settings.strategyId || "dual_ema",
       strategyParams: { ...(settings.strategyParams || defaultStrategyConfig().strategyParams) },

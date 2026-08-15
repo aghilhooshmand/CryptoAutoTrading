@@ -530,7 +530,7 @@ tests.
 | State transitions | Legal transitions only; no exec in STOPPED |
 | Duplicate candle | Second pass same `open_time` → no re-eval / no second fill |
 | Rejected signals | BUY while LONG, SELL while FLAT, stale data, max trades, etc. journaled |
-| HOLD | Decision journaled; no trade; no balance change |
+| HOLD | Decision journaled under `full_audit`; under `important_only` not durable; no trade; no balance change |
 | Hard stops | Profit/loss via liquidation NET, duration, max trades → STOPPING/STOPPED |
 | max_trades | Strategy fills capped; one forced close may make `trade_count = max_trades + 1` |
 | Unsafe market data | No fabricated prices; reject/suspend |
@@ -580,12 +580,26 @@ demo timeframes (15m+).
 
 ---
 
-## Decision 13: Decision Journal contents
+## Decision 13: Decision Journal contents (amended 2026-08-15)
 
-**Decision**: Every closed-candle evaluation writes a Decision Journal row for
-`HOLD`, **approved** non-HOLD, and **rejected** non-HOLD (with reason). Forced
-closes are Trade Journal events; also record a decision row with
-`signal=SELL`, `outcome=forced` / reason `hard_stop_flatten` when applicable.
+**Decision**: Durable Decision Journal writes depend on effective
+`decision_log_mode` on the Simulation session:
 
-**Rationale**: User-locked requirement that Decision Journal records HOLD,
-approved, and rejected decisions.
+- **`full_audit`** (legacy NULL): every closed-candle evaluation writes a row
+  for `HOLD`, **approved** non-HOLD, and **rejected** non-HOLD (with reason).
+  Forced flatten SHOULD write `forced`.
+- **`important_only`** (default for **new** sessions): do **not** write ordinary
+  HOLD (including warm-up). Still write approved, rejected, and forced.
+  Trade Journal and session stop fields unchanged. No new event table.
+
+Candle processing and `last_processed_candle_open_time` advance regardless of
+whether a HOLD row is written.
+
+**Rationale**: Reduce SQLite growth from ordinary HOLDs while preserving
+important auditability; Settings copy-at-create (Feature 008) supplies the
+default; operator may override per session at create.
+
+**Alternatives considered**: Always journal HOLD — superseded for new default.
+WebSocket/ephemeral HOLD feed — rejected for this amendment. Forced closes
+remain Trade Journal events plus a decision row with `signal=SELL`,
+`outcome=forced` / reason `hard_stop_flatten` when applicable.

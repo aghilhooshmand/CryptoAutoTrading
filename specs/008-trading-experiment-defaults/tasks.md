@@ -306,3 +306,12 @@ Task: "settingsFormInit.test.tsx"
 - [X] T048 [P] Strengthen Comparison form-init test to assert leg 0 uses Settings preferred strategy/params and leg 1+ uses product/registry starters in `frontend/src/__tests__/settingsFormInit.test.tsx` per FR-004 / T020 (partial)
 - [X] T049 [P] Fix orphan CSS declarations after `.settings-form` in `frontend/src/styles.css` (stray rules without a selector) per FR-011 / polish (unrequested)
 - [X] T050 [P] Extend history-immunity coverage to Simulation and/or Comparison create → change Settings → historical artifact unchanged in `backend/tests/contract/test_settings_history_immunity.py` per FR-005 / SC-003 / US3 (partial)
+
+
+## Phase Amendment: Simulation decisionLogMode default (2026-08-15)
+
+**Purpose**: Settings default for Simulation Decision Log Mode (Feature 003 amendment). Docs updated; implementation tasks below.
+
+- [x] T051 Add `decision_log_mode` / API `decisionLogMode` to OperatorDefaults in `backend/app/db/models.py`, `backend/app/settings/`, starters (`important_only`) per amended FR-002 / `contracts/operator-defaults-api.md`
+- [x] T052 [P] Settings UI field + seed Simulation create form; operator override on Simulation form; Settings change MUST NOT mutate existing sessions in `frontend/src/features/settings/` + `frontend/src/features/simulation/SessionConfigForm.tsx`
+- [x] T053 [P] Contract/immunity tests: Settings default copies into new Simulation; Settings change leaves existing session `decisionLogMode` unchanged in `backend/tests/contract/test_settings_history_immunity.py` (+ settings contract as needed)

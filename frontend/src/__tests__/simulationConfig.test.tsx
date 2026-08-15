@@ -25,6 +25,7 @@ const seededSettings = {
   portfolioMaxLossAmount: null,
   perSymbolMaxWeight: null,
   preferredAllocationId: null,
+  decisionLogMode: "important_only",
   updatedAt: null,
   source: "saved" as const,
   warning: null,

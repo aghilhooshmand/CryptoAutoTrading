@@ -46,6 +46,35 @@ def client(tmp_path, monkeypatch):
                     yield c
 
 
+def test_create_defaults_decision_log_mode_important_only(client):
+    created = client.post("/simulation/sessions", json=_body()).json()
+    assert created["decisionLogMode"] == "important_only"
+    again = client.get(f"/simulation/sessions/{created['id']}").json()
+    assert again["decisionLogMode"] == "important_only"
+
+
+def test_create_accepts_full_audit_decision_log_mode(client):
+    created = client.post("/simulation/sessions", json=_body(decisionLogMode="full_audit")).json()
+    assert created["decisionLogMode"] == "full_audit"
+
+
+def test_get_legacy_null_decision_log_mode_presents_full_audit(client, tmp_path, monkeypatch):
+    from app.db.models import SimulationSessionRow
+
+    created = client.post("/simulation/sessions", json=_body()).json()
+    sid = created["id"]
+    db = db_session.SessionLocal()
+    try:
+        row = db.get(SimulationSessionRow, sid)
+        assert row is not None
+        row.decision_log_mode = None
+        db.commit()
+    finally:
+        db.close()
+    again = client.get(f"/simulation/sessions/{sid}").json()
+    assert again["decisionLogMode"] == "full_audit"
+
+
 def test_journals_and_economics_shape(client):
     created = client.post("/simulation/sessions", json=_body()).json()
     sid = created["id"]

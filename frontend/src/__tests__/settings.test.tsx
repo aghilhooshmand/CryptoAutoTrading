@@ -23,6 +23,7 @@ const starters: OperatorSettings = {
   portfolioMaxLossAmount: null,
   perSymbolMaxWeight: null,
   preferredAllocationId: null,
+  decisionLogMode: "important_only",
   updatedAt: null,
   source: "starters",
   warning: null,

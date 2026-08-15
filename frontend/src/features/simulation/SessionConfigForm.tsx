@@ -33,6 +33,7 @@ export interface SessionConfigValues {
   portfolioMaxLossRate: string;
   portfolioMaxLossAmount: string;
   perSymbolMaxWeight: string;
+  decisionLogMode: "important_only" | "full_audit";
 }
 
 interface Props {
@@ -58,6 +59,7 @@ const DEFAULTS: SessionConfigValues = {
   portfolioMaxLossRate: "",
   portfolioMaxLossAmount: "",
   perSymbolMaxWeight: "",
+  decisionLogMode: "important_only",
 };
 
 function FieldLabel({
@@ -123,6 +125,7 @@ export function SessionConfigForm({
           portfolioMaxLossRate: seed.portfolioMaxLossRate,
           portfolioMaxLossAmount: seed.portfolioMaxLossAmount,
           perSymbolMaxWeight: seed.perSymbolMaxWeight,
+          decisionLogMode: seed.decisionLogMode,
         }));
         setStrategy(seed.strategy);
         setPreferredStrategy(seed.strategy);
@@ -217,6 +220,7 @@ export function SessionConfigForm({
       portfolioMaxLossRate: values.portfolioMaxLossRate.trim() || null,
       portfolioMaxLossAmount: values.portfolioMaxLossAmount.trim() || null,
       perSymbolMaxWeight: values.perSymbolMaxWeight.trim() || null,
+      decisionLogMode: values.decisionLogMode,
     });
   }
 
@@ -458,6 +462,29 @@ export function SessionConfigForm({
             onChange={(e) => setField("maxTrades", e.target.value)}
             required
           />
+        </label>
+        <label>
+          <FieldLabel
+            tipLabel="Decision log mode"
+            tipText="Important only skips ordinary HOLD rows in the Decision Journal (default). Full audit records every closed candle including HOLD. Trades and approved/rejected/forced decisions are always kept."
+            tipTestId="tip-decision-log-mode"
+          >
+            Decision log mode
+          </FieldLabel>
+          <select
+            data-testid="sim-decision-log-mode"
+            value={values.decisionLogMode}
+            disabled={disabled}
+            onChange={(e) =>
+              setField(
+                "decisionLogMode",
+                e.target.value as SessionConfigValues["decisionLogMode"],
+              )
+            }
+          >
+            <option value="important_only">Important decisions only</option>
+            <option value="full_audit">Full audit (every candle)</option>
+          </select>
         </label>
         <label>
           <FieldLabel>Duration (seconds)</FieldLabel>

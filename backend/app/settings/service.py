@@ -17,6 +17,10 @@ from sqlalchemy.orm import Session
 from app.market_data.models import ALLOWED_INTERVALS
 from app.settings import repository as repo
 from app.settings.starters import product_starter_defaults
+from app.simulation.decision_log_mode import (
+    DECISION_LOG_IMPORTANT_ONLY,
+    normalize_decision_log_mode,
+)
 from app.simulation.money import as_str, d
 from app.strategy.params import StrategyParamError
 from app.strategy.registry import UnknownStrategyError, validate_and_materialize
@@ -78,6 +82,15 @@ def _optional_max_trades(raw: Any) -> int | None:
     return value
 
 
+def _optional_decision_log_mode(raw: Any) -> str:
+    if raw is None or raw == "":
+        return DECISION_LOG_IMPORTANT_ONLY
+    try:
+        return normalize_decision_log_mode(str(raw))
+    except ValueError as exc:
+        raise SettingsError("invalid_config", str(exc)) from exc
+
+
 def _validate_body(body: dict[str, Any]) -> dict[str, Any]:
     try:
         starting = d(body["startingCapital"])
@@ -114,8 +127,11 @@ def _validate_body(body: dict[str, Any]) -> dict[str, Any]:
         portfolio_max_loss_amount = _optional_rate(body.get("portfolioMaxLossAmount"))
         per_symbol_max_weight = _optional_weight(body.get("perSymbolMaxWeight"))
         preferred_allocation_id = _optional_allocation_id(body.get("preferredAllocationId"))
+        decision_log_mode = _optional_decision_log_mode(body.get("decisionLogMode"))
     except (ValueError, TypeError) as exc:
         raise SettingsError("invalid_config", f"Invalid optional risk fields: {exc}") from exc
+    except SettingsError:
+        raise
 
     try:
         canonical_id, effective_params, _instance = validate_and_materialize(
@@ -144,6 +160,7 @@ def _validate_body(body: dict[str, Any]) -> dict[str, Any]:
         "portfolio_max_loss_amount": portfolio_max_loss_amount,
         "per_symbol_max_weight": per_symbol_max_weight,
         "preferred_allocation_id": preferred_allocation_id,
+        "decision_log_mode": decision_log_mode,
     }
 
 
@@ -165,6 +182,7 @@ def _payload(
     portfolio_max_loss_amount: str | None = None,
     per_symbol_max_weight: str | None = None,
     preferred_allocation_id: str | None = None,
+    decision_log_mode: str = DECISION_LOG_IMPORTANT_ONLY,
     source: str,
     updated_at: str | None,
     warning: str | None = None,
@@ -186,6 +204,7 @@ def _payload(
         "portfolioMaxLossAmount": portfolio_max_loss_amount,
         "perSymbolMaxWeight": per_symbol_max_weight,
         "preferredAllocationId": preferred_allocation_id,
+        "decisionLogMode": decision_log_mode,
         "updatedAt": updated_at,
         "source": source,
         "warning": warning,
@@ -211,6 +230,7 @@ def _starters_response(*, warning: str | None = None) -> dict[str, Any]:
         portfolio_max_loss_amount=body.get("portfolioMaxLossAmount"),
         per_symbol_max_weight=body.get("perSymbolMaxWeight"),
         preferred_allocation_id=body.get("preferredAllocationId"),
+        decision_log_mode=body.get("decisionLogMode") or DECISION_LOG_IMPORTANT_ONLY,
         source="starters",
         updated_at=None,
         warning=warning,
@@ -235,6 +255,7 @@ def _validated_to_payload(validated: dict[str, Any], *, source: str, updated_at:
         portfolio_max_loss_amount=validated.get("portfolio_max_loss_amount"),
         per_symbol_max_weight=validated.get("per_symbol_max_weight"),
         preferred_allocation_id=validated.get("preferred_allocation_id"),
+        decision_log_mode=validated.get("decision_log_mode") or DECISION_LOG_IMPORTANT_ONLY,
         source=source,
         updated_at=updated_at,
         warning=None,
@@ -261,6 +282,7 @@ def _validate_stored_row(row: Any) -> dict[str, Any]:
             "portfolioMaxLossAmount": getattr(row, "portfolio_max_loss_amount", None),
             "perSymbolMaxWeight": getattr(row, "per_symbol_max_weight", None),
             "preferredAllocationId": getattr(row, "preferred_allocation_id", None),
+            "decisionLogMode": getattr(row, "decision_log_mode", None) or DECISION_LOG_IMPORTANT_ONLY,
         }
     )
 
@@ -304,6 +326,7 @@ def put_settings(db: Session, body: dict[str, Any]) -> dict[str, Any]:
         portfolio_max_loss_amount=validated.get("portfolio_max_loss_amount"),
         per_symbol_max_weight=validated.get("per_symbol_max_weight"),
         preferred_allocation_id=validated.get("preferred_allocation_id"),
+        decision_log_mode=validated.get("decision_log_mode"),
     )
     return _validated_to_payload(validated, source="saved", updated_at=_iso(row.updated_at))
 

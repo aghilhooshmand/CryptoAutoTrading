@@ -17,6 +17,13 @@
 - Q: When a Simulation stops without a trustworthy ending equity or P&L, should the system still store a final-result snapshot marked incomplete? → A: Always persist a final-result snapshot; mark it incomplete and keep unverifiable metrics null rather than inventing them.
 - Q: From History, what actions may an operator take on a STOPPED Simulation besides inspect and delete? → A: STOPPED: inspect and delete only (no restart / no “run again” from History).
 - Q: Where should Simulation History appear in the operator UI? → A: History list on the Simulation page, with a dedicated detail route/page for inspecting an individual historical simulation; no new top-level navigation item.
+- Q: Analysis remediation 2026-08-15 — list order? → A: Locked to `created_at DESC, id DESC`.
+- Q: Analysis remediation 2026-08-15 — list pagination? → A: Offset pagination: `limit` default 50, max 100; `offset` default 0; response includes `totalCount`; UI must fetch older sessions (no permanent silent truncate).
+- Q: Analysis remediation 2026-08-15 — STOPPED economics? → A: With `finalResult`, frozen snapshot is sole authoritative ending economics; do not expose drifting live mark-based ending P&L on STOPPED History detail.
+- Q: Analysis remediation 2026-08-15 — CONFIGURED vs STOPPED actions? → A: CONFIGURED may use existing Feature 003 Start; STOPPED is inspect + delete only; no restart/resume of same session id; no second start implementation.
+- Q: Analysis remediation 2026-08-15 — detail route? → A: Locked to `/auto-trading/simulation/:sessionId`.
+- Q: Analysis remediation 2026-08-15 — “recovery” meaning? → A: Existing fail-closed orphan→STOPPED plus result freeze/backfill; does not mean resume/restart/worker recreation.
+- Q: **Decision Log Mode amendment (pre-011)**: How does History treat decision journals? → A: History shows only durably persisted decision-journal records; display effective `decision_log_mode` on detail/config; do not fabricate missing HOLD rows; `full_audit` may be candle-dense, `important_only` intentionally sparse. Backtest unchanged.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -32,10 +39,12 @@ As an operator, I want a clear history of Simulation sessions (including state) 
 
 1. **Given** multiple persisted Simulation sessions in different states, **When** the operator opens Simulation History on the Simulation page, **Then** each session appears with enough identity (at least symbol, timeframe, strategy, state, start/stop times when set) to choose among them.
 2. **Given** a STOPPED (or otherwise terminal) session, **When** the operator opens it from the History list, **Then** they land on a dedicated detail view for that session and see the effective configuration actually used for that run (capital bounds, fee/slippage, duration/max trades, optional Portfolio binding and portfolio risk fields when present), symbol, timeframe, strategy identity, and effective strategy parameters.
-3. **Given** a session with trades and decision journal entries (including Risk rejections), **When** the operator inspects that session from history, **Then** trades and journal entries for that session are visible, including rejection reasons where recorded.
+3. **Given** a session with trades and decision journal entries (including Risk rejections), **When** the operator inspects that session from history, **Then** trades and journal entries for that session are visible (only durably persisted decisions — no fabricated HOLDs), including rejection reasons where recorded, and the effective `decision_log_mode` is visible in configuration/detail.
 4. **Given** a session that has started and/or stopped, **When** the operator views detail, **Then** start time, end time (when stopped), and stop/completion reason (when set) are visible.
 5. **Given** an active RUNNING session, **When** the operator views History, **Then** that session is distinguishable as active/running and can be reached without implying a second simultaneous Simulation is allowed.
-6. **Given** a STOPPED session opened from History, **When** the operator views available actions, **Then** only inspection and (when eligible) delete are offered—not restart or “run again” on that historical session.
+6. **Given** a STOPPED session opened from History at `/auto-trading/simulation/:sessionId`, **When** the operator views available actions, **Then** only inspection and (when eligible) delete are offered—not restart or resume on that historical session.
+7. **Given** a CONFIGURED session opened from History, **When** the operator chooses Start, **Then** the existing Feature 003 start behavior is used (no second start implementation).
+8. **Given** more sessions than one page, **When** the operator requests the next offset page, **Then** older sessions appear (`created_at DESC, id DESC`) and `totalCount` remains consistent.
 
 ---
 
@@ -114,7 +123,8 @@ As an operator on a narrow viewport, I want History list and detail flows to rem
 - Empty history: clear empty state; create/start flow remains available elsewhere as today.
 - Delete of last remaining historical session: list becomes empty; active RUNNING (if any) still listed/reachable.
 - Filter by state with no matches: empty filter result, not an error.
-- Session detail missing journals: show empty trades/decisions, not fabricated rows.
+- Session detail missing journals: show empty trades/decisions, not fabricated rows (including no fabricated HOLDs under `important_only`).
+- History Decision Journal reflects effective `decision_log_mode` (`full_audit` may include HOLD history; `important_only` is sparse by design).
 - Concurrent UI: attempting to start another Simulation while one is RUNNING remains rejected (multi-active still out of scope).
 - Delete while Portfolio binding still has reserved/deployed capital for the session: reject; require normal release/resolution first; never unwind Portfolio via History delete.
 - STOPPED from History: no restart / run-again; new Simulation requires a new session.
@@ -123,14 +133,15 @@ As an operator on a narrow viewport, I want History list and detail flows to rem
 
 ### Functional Requirements
 
-- **FR-001**: Operators MUST be able to list persisted Simulation sessions as a History list on the Simulation page, with each entry showing enough identity to distinguish runs (including state). The product MUST NOT add a new top-level navigation item solely for Simulation History.
+- **FR-001**: Operators MUST be able to list persisted Simulation sessions as a History list on the Simulation page, with each entry showing enough identity to distinguish runs (including state). The product MUST NOT add a new top-level navigation item solely for Simulation History. List MUST be ordered by `created_at DESC`, then `id DESC`, and MUST support offset pagination (`limit` default 50, max 100; `offset` default 0; response `totalCount`) so older sessions remain reachable.
 - **FR-002**: Operators MUST be able to filter or otherwise clearly distinguish sessions by state (at least active/running vs terminal/stopped, and never-started configured when present).
-- **FR-003**: Operators MUST be able to reopen any persisted session for inspection via a dedicated detail route/page, including STOPPED / completed / interrupted sessions and the single active session when present.
-- **FR-024**: Opening a historical session from the Simulation-page History list MUST navigate to a dedicated detail view for that session (config, journals, timestamps, frozen results); returning to the list MUST remain available without using a new top-level nav item.
-- **FR-023**: For STOPPED sessions, History MUST offer inspection and (when delete-eligible) deletion only; History MUST NOT restart a STOPPED session or “run again” under the same historical session identity. New runs require creating a new session via the normal create/start flow.
-- **FR-004**: Session inspection MUST expose the effective configuration actually used for that session (capital and session risk bounds, fee/slippage, duration and max trades, strategy identity and effective parameters, symbol and timeframe, and Feature 009/010 binding and portfolio risk fields when they were set on the session).
+- **FR-003**: Operators MUST be able to reopen any persisted session for inspection via the dedicated detail route `/auto-trading/simulation/:sessionId`, including STOPPED / completed / interrupted sessions and the single active session when present.
+- **FR-024**: Opening a historical session from the Simulation-page History list MUST navigate to `/auto-trading/simulation/:sessionId` (config, journals, timestamps, frozen results); returning to the list MUST remain available without using a new top-level nav item.
+- **FR-023**: For STOPPED sessions, History MUST offer inspection and (when delete-eligible) deletion only; History MUST NOT restart or resume a STOPPED session or “run again” under the same historical session identity. CONFIGURED sessions MAY use the existing Feature 003 Start action (reuse existing start behavior; MUST NOT create a second start implementation). New runs after STOPPED require creating a new session via the normal create/start flow.
+- **FR-025**: For STOPPED sessions with a `finalResult`, that snapshot MUST be the sole authoritative ending economics in History/detail; the system MUST NOT expose current/live mark-based ending equity, net P&L, or return on STOPPED History detail in a form that can drift after termination.
+- **FR-004**: Session inspection MUST expose the effective configuration actually used for that session (capital and session risk bounds, fee/slippage, duration and max trades, strategy identity and effective parameters, symbol and timeframe, **`decision_log_mode`**, and Feature 009/010 binding and portfolio risk fields when they were set on the session).
 - **FR-005**: Session inspection MUST expose the trade journal for that session.
-- **FR-006**: Session inspection MUST expose the decision journal for that session, including Risk rejection reason codes/messages when recorded.
+- **FR-006**: Session inspection MUST expose the decision journal for that session **as durably persisted** (including Risk rejection reason codes/messages when recorded). History MUST NOT fabricate missing HOLD decisions. Under `important_only`, the journal is intentionally sparse; under `full_audit`, candle-by-candle HOLD history may appear. Detail UI MUST show the effective `decision_log_mode`.
 - **FR-007**: Session inspection MUST expose start timestamp, end timestamp when stopped, and stop/completion reason when set.
 - **FR-008**: When a Simulation reaches a terminal STOPPED state, the system MUST persist a frozen final-result snapshot for that session (complete when valid valuation is available at termination; incomplete otherwise).
 - **FR-009**: Frozen final-result snapshots MUST include at least: starting capital, ending equity/value used for the authoritative terminal P&L presentation (null when incomplete), net P&L (null when incomplete), return relative to starting capital (null when incomplete), cumulative fees, cumulative slippage cost, trade count (and strategy fill count when already tracked), position flatten status, stop reason, and a freeze completeness indicator.
@@ -146,7 +157,7 @@ As an operator on a narrow viewport, I want History list and detail flows to rem
 - **FR-017**: Frontend navigation, browser refresh, and Simulation UI remount MUST NOT by themselves stop an active backend Simulation (preserve current reconnect behavior).
 - **FR-018**: Simulation History and detail UI MUST follow `docs/UI_UX_STANDARDS.md` (confirm destructive actions; usable primary flow around 375px; clear labels for SIMULATION vs other modes).
 - **FR-019**: History MUST remain an inspection/persistence layer: Simulation execution and accounting remain the single authoritative engine; History MUST NOT introduce a second accounting engine or alternate fill ledger.
-- **FR-020**: This feature MUST NOT add auto-resume after backend restart, crash recovery/worker reconstruction, Portfolio reconciliation after restart, continuation of `unsafe_unflattened` sessions, multiple simultaneous active Simulations, Feature 010 Risk semantic changes, XT private API usage, or real-money execution.
+- **FR-020**: This feature MUST NOT add auto-resume after backend restart, crash recovery/worker reconstruction, Portfolio reconciliation after restart, continuation of `unsafe_unflattened` sessions, multiple simultaneous active Simulations, Feature 010 Risk semantic changes, XT private API usage, or real-money execution. Existing orphan **recovery** (RUNNING/STOPPING → STOPPED) remains fail-closed and MAY freeze/backfill final results; recovery MUST NOT resume or recreate workers for the stopped session.
 
 ### Key Entities
 
@@ -165,33 +176,34 @@ As an operator on a narrow viewport, I want History list and detail flows to rem
 - **SC-003**: 100% of delete attempts on RUNNING/STOPPING sessions are rejected; 100% of delete attempts while a session’s Portfolio binding still has reserved/deployed capital are rejected without changing Portfolio balances; 100% of confirmed deletes on otherwise eligible STOPPED/CONFIGURED sessions remove that session from subsequent History lists.
 - **SC-004**: After navigation away and full browser refresh during a RUNNING Simulation, the session remains RUNNING and is reachable again without the refresh itself having issued a stop.
 - **SC-005**: Primary History list (Simulation page) → dedicated detail → delete-confirm path is completable on a ~375px-wide viewport without losing access to confirm/cancel or back-to-list actions.
-- **SC-006**: Operators can verify Risk rejection reasons on a historical session that had Risk rejections by reading the decision journal alone (no need to re-run the Simulation).
+- **SC-006**: Operators can verify Risk rejection reasons on a historical session that had Risk rejections by reading the decision journal alone (no need to re-run the Simulation). Operators can see effective `decision_log_mode` and MUST NOT see fabricated HOLD rows that were never persisted.
 
 ## Assumptions
 
-- Feature 003 already persists sessions, trades, and decision journals; Feature 011 primarily adds History listing, deletion rules, terminal freeze, and operator UX on top of that persistence.
+- Feature 003 already persists sessions, trades, and decision journals (subject to effective `decision_log_mode`); Feature 011 primarily adds History listing, deletion rules, terminal freeze, and operator UX on top of that persistence. Decision Log Mode is a Feature 003/008 amendment implemented before Feature 011 code.
 - Authoritative Session NET P&L semantics from Feature 003 (liquidation-style equity when long) remain the basis for what “ending equity/value” means in a complete freeze; informational mark equity may be stored additionally only if it does not replace the authoritative terminal P&L.
 - “Valid valuation” means the same safety conditions Feature 003 already uses for computable liquidation/mark equity at that moment (safe mark when a position is open; flat sessions can freeze from cash).
 - Incomplete freeze is preferred over inventing prices when valuation is invalid at stop; a snapshot is always persisted for STOPPED sessions with unverifiable metrics left null.
 - Pre-011 STOPPED sessions are backfilled from persisted ledger only (never current/new market prices); incomplete when stop-time valuation cannot be reconstructed.
 - No automatic FIFO retention purge of Simulation history in this feature; operators delete explicitly (unlike Backtest’s completed/failed caps).
-- CONFIGURED never-started sessions are included in History (filterable) and are deletable when otherwise eligible; they are not terminal history—existing start flow may still apply when the session is CONFIGURED and platform rules allow. STOPPED sessions are inspect/delete only from History.
+- CONFIGURED never-started sessions are included in History (filterable) and are deletable when otherwise eligible; they are not terminal history—CONFIGURED MAY use existing Feature 003 Start (reuse; no second start stack). STOPPED sessions are inspect/delete only from History (no restart/resume).
 - At most one RUNNING/STOPPING Simulation remains a platform rule; History listing does not relax that rule.
 - Portfolio binding release/unwind continues to follow Features 009/010 lifecycle only — History delete never unwinds Portfolio; delete is rejected while reserved/deployed capital remains for that session’s binding.
-- Backend restart → STOPPED with restart reason remains existing Feature 003/recovery behavior; Feature 011 only makes those sessions inspectable in History.
+- Backend restart → STOPPED with restart reason remains existing Feature 003/recovery behavior; Feature 011 only freezes/backfills results for inspectability. **Recovery** means fail-closed orphan→STOPPED plus freeze — not resume/restart/worker recreation.
 - UI copy continues to label Simulation distinctly from Live Paper and Backtest.
-- History list lives on the Simulation page; individual inspection uses a dedicated detail route/page; no new top-level navigation item for Simulation History.
+- History list lives on the Simulation page; individual inspection uses `/auto-trading/simulation/:sessionId`; no new top-level navigation item for Simulation History.
+- List order locked: `created_at DESC, id DESC`. Offset pagination: limit default 50, max 100; offset default 0; `totalCount` returned.
 
 ### Planning inventory (for `/speckit-plan`; not implementation)
 
 Identified before implementation, locked as planning inputs:
 
-1. **Reusable persisted fields**: Session identity/lifecycle/config/position/economics accumulators (`starting_capital`, fees/slippage cumulatives, trade counts, timestamps, `stop_reason`, `position_flatten_status`, strategy id/params, Feature 009/010 fields); Decision Journal; Trade Journal.
+1. **Reusable persisted fields**: Session identity/lifecycle/config/position/economics accumulators (`starting_capital`, fees/slippage cumulatives, trade counts, timestamps, `stop_reason`, `position_flatten_status`, strategy id/params, **`decision_log_mode`**, Feature 009/010 fields); Decision Journal (mode-gated); Trade Journal.
 2. **Freeze fields**: starting capital; authoritative ending equity/value; net P&L; return; fees; slippage; trade/strategy-fill counts; flatten status; stop reason; completeness flag; freeze time; optional informational mark equity/price only if stored without overriding authoritative P&L. Pre-011 backfill: ledger-only, never current market.
 3. **Deletion rules**: reject RUNNING/STOPPING; reject while Portfolio binding still has reserved/deployed capital for the session; allow STOPPED and CONFIGURED after confirm once binding is clear; cascade session-scoped journals + snapshot; never unwind/rewrite Portfolio via History delete.
-4. **Capability surfaces**: list (optional state filter), get detail (existing reopen enriched with freeze), delete; preserve active-session discovery for reconnect.
-5. **Frontend UX**: History list on Simulation page (no new top-level nav); dedicated detail route/page for inspect; state distinction; frozen results block; delete confirm; STOPPED = inspect/delete only; keep live viewer reconnect; responsive per UI standards.
-6. **Regression tests**: freeze immutability after price change; pre-011 backfill never uses current market; list/filter/detail; delete reject active / reject bound reserved-deployed / allow cleared stopped; refresh does not stop; Risk reject reasons visible on historical session; no Portfolio balance rewrite on history delete.
+4. **Capability surfaces**: list (`state`, `limit`/`offset`/`totalCount`, order `created_at DESC, id DESC`), get detail (existing reopen enriched with freeze; STOPPED ending economics = finalResult only), delete; preserve active-session discovery for reconnect. No resume/restart-historical endpoints.
+5. **Frontend UX**: History list on Simulation page with offset pagination (no new top-level nav); detail route `/auto-trading/simulation/:sessionId`; CONFIGURED may Start (reuse 003); STOPPED = inspect/delete only; show effective `decisionLogMode`; Decision Journal = persisted rows only (no fabricated HOLDs); frozen results block; delete confirm; keep live viewer reconnect; responsive per UI standards.
+6. **Regression tests**: freeze immutability after price change; pre-011 backfill never uses current market; list order/filter/pagination; delete reject active / reject bound reserved-deployed / allow cleared stopped; refresh does not stop; Risk reject reasons visible on historical session; History does not fabricate HOLD rows; no Portfolio balance rewrite on history delete; no resume/restart/worker recreation introduced.
 
 ## Out of Scope
 

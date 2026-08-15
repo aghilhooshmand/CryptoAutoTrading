@@ -142,7 +142,7 @@ export function AutoTradingPage() {
           tradeCount={session?.tradeCount}
         />
 
-        <DecisionJournal items={decisions} />
+        <DecisionJournal items={decisions} decisionLogMode={session?.decisionLogMode} />
         <TradeJournal items={trades} />
       </div>
 

@@ -58,6 +58,7 @@ def init_db() -> None:
         ("portfolio_loss_baseline_kind", "TEXT"),
         ("portfolio_loss_baseline_value", "TEXT"),
         ("per_symbol_max_weight", "TEXT"),
+        ("decision_log_mode", "TEXT"),
     ):
         _ensure_column(engine, "simulation_sessions", col, typ)
     for col, typ in (
@@ -65,6 +66,7 @@ def init_db() -> None:
         ("portfolio_max_loss_amount", "TEXT"),
         ("per_symbol_max_weight", "TEXT"),
         ("preferred_allocation_id", "TEXT"),
+        ("decision_log_mode", "TEXT"),
     ):
         _ensure_column(engine, "operator_defaults", col, typ)
     # Feature 009: leftover portfolio.cash → usdt holding; provenance rewrite.

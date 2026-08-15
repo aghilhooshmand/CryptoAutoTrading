@@ -14,6 +14,7 @@ from app.simulation.accounting import liquidation_equity, session_net_pnl
 from app.simulation.clock import Clock
 from app.simulation.control.controller import TradingController
 from app.simulation.control.risk import UNSAFE_QUOTE_LIMIT, RiskContext, RiskManager
+from app.simulation.decision_log_mode import should_persist_hold
 from app.simulation.execution.port import ExecutionIntent, SimulationExecutionEngine
 from app.simulation.money import as_str, d
 from app.simulation.session_service import (
@@ -144,18 +145,19 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
 
     ctrl = controller.review(SessionState(row.state), signal)
     if signal.side == SignalSide.HOLD:
-        add_decision(
-            db,
-            row,
-            signal="HOLD",
-            outcome="hold",
-            candle_open_time=signal.candle_open_time,
-            reason_code=signal.reason_code,
-            reason_message=None,
-            fast_ema=as_str(signal.fast_ema) if signal.fast_ema is not None else None,
-            slow_ema=as_str(signal.slow_ema) if signal.slow_ema is not None else None,
-            clock=clock,
-        )
+        if should_persist_hold(row.decision_log_mode):
+            add_decision(
+                db,
+                row,
+                signal="HOLD",
+                outcome="hold",
+                candle_open_time=signal.candle_open_time,
+                reason_code=signal.reason_code,
+                reason_message=None,
+                fast_ema=as_str(signal.fast_ema) if signal.fast_ema is not None else None,
+                slow_ema=as_str(signal.slow_ema) if signal.slow_ema is not None else None,
+                clock=clock,
+            )
         row.last_processed_candle_open_time = newest.open_time
         db.commit()
         return

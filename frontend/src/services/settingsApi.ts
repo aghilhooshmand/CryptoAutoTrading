@@ -19,6 +19,7 @@ export interface OperatorSettings {
   portfolioMaxLossAmount: string | null;
   perSymbolMaxWeight: string | null;
   preferredAllocationId: string | null;
+  decisionLogMode: "important_only" | "full_audit";
   updatedAt: string | null;
   source: SettingsSource;
   warning: string | null;

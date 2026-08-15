@@ -42,6 +42,11 @@ export interface SimulationSession {
   durationSeconds: number;
   feeRate: string;
   slippageRate: string;
+  allocationId?: string | null;
+  portfolioMaxLossRate?: string | null;
+  portfolioMaxLossAmount?: string | null;
+  perSymbolMaxWeight?: string | null;
+  decisionLogMode: "important_only" | "full_audit";
   cash: string;
   positionSide: string;
   positionQty: string;
@@ -75,6 +80,7 @@ export interface CreateSessionRequest {
   portfolioMaxLossRate?: string | null;
   portfolioMaxLossAmount?: string | null;
   perSymbolMaxWeight?: string | null;
+  decisionLogMode?: "important_only" | "full_audit";
 }
 
 export interface DecisionItem {

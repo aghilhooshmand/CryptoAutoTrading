@@ -30,6 +30,7 @@ class SettingsBody(BaseModel):
     portfolioMaxLossAmount: Optional[str] = None
     perSymbolMaxWeight: Optional[str] = None
     preferredAllocationId: Optional[str] = None
+    decisionLogMode: Optional[str] = None
 
 
 def _raise(err: svc.SettingsError) -> None:

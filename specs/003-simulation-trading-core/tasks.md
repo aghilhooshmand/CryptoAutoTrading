@@ -296,3 +296,14 @@ Task: "risk.py"
 - [ ] T072 Re-validate session is still `RUNNING` immediately before strategy fill commit (serialize stop vs worker) in `backend/app/simulation/pipeline.py` / `worker.py` and add regression coverage so SC-005 / FR-016 cannot race a post-stop strategy fill (partial)
 - [ ] T073 Move insufficient-balance / dust / allocated-or-max-size binding rejects into `RiskManager` (or Controller) before `SimulationExecutionEngine.execute` in `backend/app/simulation/control/risk.py` per FR-008 / FR-009 (partial)
 - [ ] T074 Idle or stop the simulation worker when no active `RUNNING` session remains (on STOPPED) in `backend/app/simulation/worker.py` / `session_service.py` per plan worker lifecycle T040/T059 (partial)
+
+
+## Phase 10: Amendment — Decision Log Mode (2026-08-15)
+
+**Purpose**: Documented amendment before Feature 011 implement. Specs/contracts already updated; these tasks are for **implementation** (not yet started).
+
+- [x] T075 Add nullable `decision_log_mode` on `SimulationSessionRow` + SQLite ensure in `backend/app/db/models.py` / `backend/app/db/session.py` (NULL → treat as `full_audit`; do not rewrite/delete existing decision rows)
+- [x] T076 Gate HOLD `add_decision` in `backend/app/simulation/pipeline.py` per effective mode; always advance `last_processed_candle_open_time` for processed HOLD; keep approved/rejected/forced persistence
+- [x] T077 Copy/override `decisionLogMode` on create and return on session GET in `backend/app/simulation/session_service.py` / `backend/app/api/simulation.py` (new default `important_only`)
+- [x] T078 [P] Live UI: show logging mode + RUNNING/`lastProcessedCandleOpenTime`; Decision Journal label "Important decisions only" when `important_only`; no WebSocket/SSE/in-memory HOLD journal in `frontend/src/features/simulation/`
+- [x] T079 [P] Tests: important_only skips HOLD row but advances cursor; full_audit persists HOLD; approved/rejected/forced still persist; API returns mode; legacy NULL = full_audit in `backend/tests/integration/test_simulation_pipeline.py` + `backend/tests/contract/test_simulation_api.py` + unit as needed

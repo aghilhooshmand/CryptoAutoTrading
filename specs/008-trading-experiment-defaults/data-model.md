@@ -26,6 +26,7 @@ historical sessions/runs/comparisons.
 | `maxTrades` | Positive int, or unset | no |
 | `strategyId` | Canonical registry id | yes |
 | `strategyParams` | Object matching that strategy’s schema | yes |
+| `decisionLogMode` | `important_only` \| `full_audit` — default for **new Simulations** only | yes (default `important_only`) |
 | `updatedAt` | ISO / ms timestamp of last successful Save or Reset | yes |
 
 **Persistence (logical)**: one SQLite row (e.g. table `operator_defaults` with
@@ -54,6 +55,7 @@ Built-in constant set (code, not a second editable table). Used when:
 | `feeRate` / `slippageRate` | `0.002` / `0.0005` |
 | Optional risk trio | unset |
 | `strategyId` / `strategyParams` | `dual_ema` + registry defaults (`fastPeriod: 9`, `slowPeriod: 21`) |
+| `decisionLogMode` | `important_only` |
 
 ### Effective Configuration (existing — unchanged ownership)
 

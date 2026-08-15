@@ -28,6 +28,7 @@ Comparison create bodies.
   "maxTrades": null,
   "strategyId": "dual_ema",
   "strategyParams": { "fastPeriod": 9, "slowPeriod": 21 },
+  "decisionLogMode": "important_only",
   "updatedAt": "2026-08-12T12:00:00.000Z",
   "source": "saved",
   "warning": null
@@ -37,6 +38,7 @@ Comparison create bodies.
 | Field | Notes |
 |-------|--------|
 | Optional risk / `maxTrades` | `null` or omitted ⇒ unset (not zero) |
+| `decisionLogMode` | `"important_only"` \| `"full_audit"`; product starter **`important_only`**; Simulation create seed only (not Backtest) |
 | `source` | `"saved"` \| `"starters"` (read responses) |
 | `warning` | Optional string when read fail-closed to starters |
 | `updatedAt` | Present for saved rows; may be null/omitted for pure starter responses before first Save/Reset |
@@ -136,9 +138,9 @@ MUST NOT create, stop, or modify trading artifacts.
 
 | Form | Mapping from Settings |
 |------|------------------------|
-| Simulation | Shared market/money/cost/optional risk + strategy; leave unset optionals empty; **do not** invent rates; keep Simulation required validation at submit |
-| Backtest | Same shared fields + strategy; omit unset optionals from create body |
-| Comparison | Shared market/money/cost/optional risk; **leg 0** = Settings strategy/params; **leg 1+** = product/registry starters |
+| Simulation | Shared market/money/cost/optional risk + strategy + **`decisionLogMode`** (default `important_only`); leave unset optionals empty; **do not** invent rates; keep Simulation required validation at submit; operator may override `decisionLogMode` on the create form |
+| Backtest | Same shared fields + strategy; omit unset optionals from create body; **do not** apply `decisionLogMode` to Backtest |
+| Comparison | Shared market/money/cost/optional risk; **leg 0** = Settings strategy/params; **leg 1+** = product/registry starters; **no** `decisionLogMode` |
 
 Apply only on **fresh** draft open / post-create form reset. Never overwrite an
 in-progress draft when Settings change.

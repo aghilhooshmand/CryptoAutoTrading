@@ -34,6 +34,7 @@ function toWriteBody(
     portfolioMaxLossAmount: string;
     perSymbolMaxWeight: string;
     preferredAllocationId: string;
+    decisionLogMode: "important_only" | "full_audit";
   },
   strategy: StrategyConfigValue,
 ): SettingsWriteBody {
@@ -57,6 +58,7 @@ function toWriteBody(
     perSymbolMaxWeight: values.perSymbolMaxWeight.trim() === "" ? null : values.perSymbolMaxWeight,
     preferredAllocationId:
       values.preferredAllocationId.trim() === "" ? null : values.preferredAllocationId,
+    decisionLogMode: values.decisionLogMode,
   };
 }
 
@@ -82,6 +84,7 @@ function applySettingsToState(
     portfolioMaxLossAmount: data.portfolioMaxLossAmount ?? "",
     perSymbolMaxWeight: data.perSymbolMaxWeight ?? "",
     preferredAllocationId: data.preferredAllocationId ?? "",
+    decisionLogMode: data.decisionLogMode === "full_audit" ? "full_audit" : "important_only",
   });
   const nextStrategy = {
     strategyId: data.strategyId,
@@ -108,6 +111,7 @@ function emptyValues() {
     portfolioMaxLossAmount: "",
     perSymbolMaxWeight: "",
     preferredAllocationId: "",
+    decisionLogMode: "important_only" as const,
   };
 }
 
@@ -382,6 +386,23 @@ export function SettingsPanel() {
             placeholder="unset"
             onChange={(e) => setField("preferredAllocationId", e.target.value)}
           />
+        </label>
+        <label>
+          Simulation decision log mode
+          <select
+            data-testid="settings-decision-log-mode"
+            value={values.decisionLogMode}
+            disabled={busy}
+            onChange={(e) =>
+              setField(
+                "decisionLogMode",
+                e.target.value as "important_only" | "full_audit",
+              )
+            }
+          >
+            <option value="important_only">Important decisions only</option>
+            <option value="full_audit">Full audit (every candle)</option>
+          </select>
         </label>
         <div className="sim-cost-fields">
           <CostRateFields

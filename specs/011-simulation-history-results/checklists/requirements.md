@@ -33,8 +33,6 @@
 
 - Validation iteration 1 (2026-08-15): All items pass.
 - Clarification session 2026-08-15: 5 answers integrated; checklist re-validated — still 16/16 passing.
-- Planning inventory under Assumptions documents reuse/freeze/delete/capability/UX/regression inputs for `/speckit-plan` without prescribing stack or endpoints.
-- Capability surfaces are described as operator outcomes (list/filter/reopen/delete/freeze), not transport or framework choices.
-- No extension hooks registered (`.specify/extensions.yml` absent).
-- Roadmap Feature 011 set to **IN PROGRESS**.
-- Ready for `/speckit-plan`.
+- Analyze remediation 2026-08-15: locked sort `created_at DESC, id DESC`; offset pagination; STOPPED finalResult-only ending economics; CONFIGURED Start reuse; route `/auto-trading/simulation/:sessionId`; recovery terminology; FR-020 negative task T045.
+- Decision Log Mode amendment (pre-011 docs): 003 FR-010 superseded; 008 Settings default; 011 History shows mode + persisted journals only. Targeted 011 task update (T001/T017/T043/T048) — full `/speckit-tasks` regeneration not required.
+- Ready for Decision Log Mode **implementation** then `/speckit-implement` for Feature 011 History.

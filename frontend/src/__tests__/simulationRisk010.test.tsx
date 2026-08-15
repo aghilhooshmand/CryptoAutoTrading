@@ -24,6 +24,7 @@ const settings = {
   portfolioMaxLossAmount: null,
   perSymbolMaxWeight: "0.3",
   preferredAllocationId: "alloc-1",
+  decisionLogMode: "important_only" as const,
   updatedAt: null,
   source: "saved" as const,
   warning: null,

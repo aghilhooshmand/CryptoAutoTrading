@@ -34,6 +34,7 @@ def upsert_row(
     portfolio_max_loss_amount: str | None = None,
     per_symbol_max_weight: str | None = None,
     preferred_allocation_id: str | None = None,
+    decision_log_mode: str | None = None,
     updated_at: datetime | None = None,
 ) -> OperatorDefaultsRow:
     now = updated_at or datetime.now(timezone.utc)
@@ -57,6 +58,7 @@ def upsert_row(
     row.portfolio_max_loss_amount = portfolio_max_loss_amount
     row.per_symbol_max_weight = per_symbol_max_weight
     row.preferred_allocation_id = preferred_allocation_id
+    row.decision_log_mode = decision_log_mode
     row.updated_at = now
     db.commit()
     db.refresh(row)

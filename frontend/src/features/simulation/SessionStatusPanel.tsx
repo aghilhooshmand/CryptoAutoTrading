@@ -64,6 +64,28 @@ export function SessionStatusPanel({
           <dd data-testid="sim-state">{session.state}</dd>
         </div>
         <div>
+          <Term
+            tipLabel="Decision log"
+            tipText="Important only skips ordinary HOLD rows. Full audit records every closed candle. Cursor advances either way."
+            tipTestId="tip-decision-log"
+          >
+            Decision log
+          </Term>
+          <dd data-testid="sim-decision-log-mode">
+            {session.decisionLogMode === "important_only"
+              ? "Important decisions only"
+              : "Full audit"}
+          </dd>
+        </div>
+        {session.state === "RUNNING" || session.lastProcessedCandleOpenTime != null ? (
+          <div>
+            <Term>Last processed candle</Term>
+            <dd data-testid="sim-last-candle">
+              {session.lastProcessedCandleOpenTime ?? "—"}
+            </dd>
+          </div>
+        ) : null}
+        <div>
           <Term>Symbol</Term>
           <dd>{session.symbol}</dd>
         </div>
