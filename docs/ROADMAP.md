@@ -6,7 +6,7 @@ CryptoAutoTrading is being developed incrementally from market observation and
 safe historical/simulated trading toward composable Torque trading programs,
 Grammatical Evolution, and eventually carefully controlled autonomous
 real-money trading.
-
+    
 This roadmap defines:
 
 - feature sequence;
