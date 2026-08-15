@@ -277,7 +277,7 @@ Execution Abstraction
 | 008 | Trading & Experiment Defaults | DONE |
 | 009 | Portfolio & Capital Allocation Core | DONE |
 | 010 | Advanced Risk Management | DONE |
-| 011 | Simulation History & Results | PLANNED |
+| 011 | Simulation History & Results | IN PROGRESS |
 | 012 | Execution Abstraction | PLANNED |
 
 ---
