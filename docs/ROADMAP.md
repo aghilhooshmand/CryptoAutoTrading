@@ -481,7 +481,7 @@ autonomous real-money trading.
 | ID | Feature | Status |
 |---|---|---|
 | 013 | XT Account / Private API Integration | DONE |
-| 014 | Live Paper-Trading Hardening | PLANNED |
+| 014 | Live Paper-Trading Hardening | IN PROGRESS |
 | 015 | Real-Money Manual/Confirmed Execution | PLANNED |
 
 ---
@@ -535,6 +535,10 @@ XT Private Adapter
 
 Status: `DONE`
 
+---
+
+## 014 — Live Paper-Trading Hardening
+
 ### Goal
 
 Prove the pipeline can operate safely for longer-running live market sessions
@@ -555,7 +559,7 @@ Areas should include:
 - logging/observability;
 - long-running simulation tests.
 
-Status: `PLANNED`
+Status: `IN PROGRESS`
 
 ---
 
