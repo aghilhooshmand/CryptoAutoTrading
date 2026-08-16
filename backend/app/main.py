@@ -12,6 +12,7 @@ from app.api.portfolio import router as portfolio_router
 from app.api.settings import router as settings_router
 from app.api.simulation import router as simulation_router
 from app.api.strategies import router as strategies_router
+from app.api.xt_account import router as xt_account_router
 from app.db import session as db_session
 from app.simulation.recovery import recover_orphan_sessions
 from app.simulation.worker import ensure_worker_running, stop_worker
@@ -49,6 +50,7 @@ api_router.include_router(backtest_router)
 api_router.include_router(comparison_router)
 api_router.include_router(settings_router)
 api_router.include_router(portfolio_router)
+api_router.include_router(xt_account_router)
 app.include_router(api_router)
 
 
