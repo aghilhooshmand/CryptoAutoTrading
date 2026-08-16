@@ -480,7 +480,7 @@ autonomous real-money trading.
 
 | ID | Feature | Status |
 |---|---|---|
-| 013 | XT Account / Private API Integration | PLANNED |
+| 013 | XT Account / Private API Integration | DONE |
 | 014 | Live Paper-Trading Hardening | PLANNED |
 | 015 | Real-Money Manual/Confirmed Execution | PLANNED |
 
@@ -490,20 +490,28 @@ autonomous real-money trading.
 
 ### Goal
 
-Introduce authenticated account capabilities behind exchange adapters.
+Introduce authenticated **read-only** account capabilities behind a private XT
+adapter (balances, open orders, order status), with fail-closed credentials and
+normalized private errors—without enabling live trading.
 
-Potential scope:
+### MVP scope (Feature 013)
 
-- account authentication;
-- account balances;
-- available balances;
+- account authentication (signed private client);
+- account balances / available + locked;
 - open orders;
-- order status;
+- order status lookup;
+- normalized exchange errors (incl. `timestamp_invalid`, `rate_limited`);
+- bounded rate-limit handling on safe GETs;
+- credential configuration (env/secrets, fail closed);
+- minimal read-only inspect UI separate from Simulation Portfolio.
+
+### Explicitly deferred (not Feature 013)
+
 - order placement adapter;
 - order cancellation;
-- normalized exchange errors;
-- rate-limit handling;
-- credential configuration.
+- RealExecutionAdapter live fills;
+- operator Real trading mode / confirmed execution (Feature 015);
+- crash/restart hardening (Feature 014).
 
 ### Safety
 
@@ -511,7 +519,7 @@ Private API integration does NOT mean autonomous trading.
 
 No strategy should call XT directly.
 
-Target:
+Target (future trading path; RealExecutionAdapter stays unavailable in 013):
 
 ```text
 Strategy
@@ -525,11 +533,7 @@ RealExecutionAdapter
 XT Private Adapter
 ```
 
-Status: `PLANNED`
-
----
-
-## 014 — Live Paper-Trading Hardening
+Status: `DONE`
 
 ### Goal
 
@@ -1296,26 +1300,28 @@ Current completed foundation:
 009 → DONE
 010 → DONE
 011 → DONE
+012 → DONE
+013 → DONE
 ```
 
 Current active milestone:
 
 ```text
-012 → Execution Abstraction
+014 → Live Paper-Trading Hardening
 ```
 
 Next planned milestone:
 
 ```text
-013 → XT Account / Private API Integration
+015 → Real-Money Manual/Confirmed Execution
 ```
 
 The near-term objective is therefore:
 
 ```text
-abstract execution
+harden live paper trading
         ↓
-connect controlled real trading
+connect confirmed real trading
         ↓
 build Torque on mature reusable infrastructure
 ```

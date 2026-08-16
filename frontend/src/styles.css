@@ -440,6 +440,71 @@ a {
   color: #fff;
 }
 
+.real-xt-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  background: #7a2e0b;
+  color: #fff;
+}
+
+.real-xt-panel {
+  margin-top: 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  padding: 0.85rem;
+  background: #fff;
+}
+
+.real-xt-panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+.real-xt-panel h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.real-xt-lookup {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.5rem;
+  max-width: 28rem;
+}
+
+.real-xt-lookup label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.real-xt-page .table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.real-xt-page table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.real-xt-page th,
+.real-xt-page td {
+  text-align: left;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
 .simulation-config,
 .simulation-status,
 .simulation-economics,

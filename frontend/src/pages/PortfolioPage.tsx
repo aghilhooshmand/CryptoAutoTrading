@@ -51,6 +51,11 @@ export function PortfolioPage() {
         <h1 id="portfolio-title">Simulation Portfolio</h1>
         <SimulationBadge />
       </div>
+      <p className="note">
+        Local simulation capital book. For live exchange balances and open orders, open{" "}
+        <Link to="/portfolio/real-xt">Real XT Account</Link> (read-only; separate from this
+        book).
+      </p>
 
       {loadError ? (
         <p className="form-error" role="alert" data-testid="portfolio-load-error">

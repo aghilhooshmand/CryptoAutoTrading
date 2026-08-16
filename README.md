@@ -24,7 +24,11 @@ reservation). Real-money trading, sentiment, and auth remain out of scope.
 - **Python 3.12** (project target; `>=3.12` may work for local development)
 - **Node.js LTS** (includes npm)
 - Network access to `https://sapi.xt.com` for live market data
-- **No XT.COM credentials** (public Spot REST only)
+- **Public market data needs no XT credentials**
+- **Optional (Feature 013)**: `XT_API_KEY` and `XT_API_SECRET` for read-only Real XT
+  account inspect (`/portfolio/real-xt`). Use a **read-scoped** key without withdrawal
+  permission. Never commit real secrets. See `.env.example` and
+  [`specs/013-xt-account-private-api/quickstart.md`](specs/013-xt-account-private-api/quickstart.md).
 
 ## Canonical routes
 
@@ -38,6 +42,9 @@ Opening `/` resolves to Dashboard (`/dashboard`).
 
 Unsupported paths show a dedicated **Not Found** page with primary navigation
 still available (no silent redirect).
+
+**Real XT Account** (Feature 013) is a read-only sub-route under Portfolio:
+`/portfolio/real-xt` — not a fourth primary nav item; separate from Simulation Portfolio.
 
 ## Start locally
 
@@ -66,7 +73,7 @@ npm run dev
 Frontend URL: `http://127.0.0.1:5173`
 
 Vite proxies `/health`, `/market`, `/simulation`, `/backtest`, `/strategies`,
-`/comparisons`, `/settings`, and `/portfolio` to the backend.
+`/comparisons`, `/settings`, `/portfolio`, and `/xt-account` to the backend.
 Open the frontend URL and use Dashboard **Refresh** to load XT public market data
 (manual refresh is required; auto-refresh is optional polish and not required).
 
