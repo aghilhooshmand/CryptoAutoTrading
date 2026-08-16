@@ -19,7 +19,7 @@ T035 and U2 UI standards in T051.
 
 **Organization**: New `backend/app/xt_account/` package + `/xt-account/*` API +
 `/portfolio/real-xt` inspect UI. Propose commits only; do not auto-commit.
-Keep Feature 013 `IN PROGRESS` on `docs/ROADMAP.md` until completion workflow.
+Keep Feature 013 `DONE` on `docs/ROADMAP.md` after acceptance gates (T052).
 
 **Spec locks** (must hold through all tasks):
 - Private read-only MVP; **no** place/cancel methods, routes, or UI actions (FR-015)
@@ -201,7 +201,7 @@ Keep Feature 013 `IN PROGRESS` on `docs/ROADMAP.md` until completion workflow.
 - [x] T049 [P] Update Feature 013 checklist notes in `specs/013-xt-account-private-api/checklists/requirements.md` (analyze remediations applied; implement next)
 - [x] T050 Run full FR-017 automated gates listed in `specs/013-xt-account-private-api/quickstart.md` until green
 - [x] T051 Manual UI pass per `specs/013-xt-account-private-api/quickstart.md` §3 plus ~375px / empty-loading-error checks per `docs/UI_UX_STANDARDS.md` (Simulation Portfolio vs Real XT separation; no trading controls)
-- [ ] T052 Mark Feature 013 DONE in `docs/ROADMAP.md` only after all acceptance gates pass (keep IN PROGRESS until then)
+- [x] T052 Mark Feature 013 DONE in `docs/ROADMAP.md` only after all acceptance gates pass (keep IN PROGRESS until then)
 
 ---
 

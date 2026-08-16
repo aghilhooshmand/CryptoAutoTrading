@@ -37,5 +37,5 @@
 - Clarification session 2026-08-16 complete (5/5): read-only UI; place/cancel unconditional OUT; rate-limit max-1-retry; `timestamp_invalid`; omit zero/zero balances.
 - Plan artifacts present: `plan.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md`.
 - Tasks generated: `tasks.md` (T001–T053). Analyze remediations applied.
-- Implementation complete except ROADMAP DONE (T052) pending final acceptance sign-off.
-- Ready for commit proposal / merge workflow.
+- Implementation + automated gates complete; T052 / ROADMAP DONE applied after convergence.
+- Feature 013 closed; next milestone Feature 014.

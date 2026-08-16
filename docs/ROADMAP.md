@@ -480,7 +480,7 @@ autonomous real-money trading.
 
 | ID | Feature | Status |
 |---|---|---|
-| 013 | XT Account / Private API Integration | IN PROGRESS |
+| 013 | XT Account / Private API Integration | DONE |
 | 014 | Live Paper-Trading Hardening | PLANNED |
 | 015 | Real-Money Manual/Confirmed Execution | PLANNED |
 
@@ -533,11 +533,7 @@ RealExecutionAdapter
 XT Private Adapter
 ```
 
-Status: `IN PROGRESS`
-
----
-
-## 014 — Live Paper-Trading Hardening
+Status: `DONE`
 
 ### Goal
 
@@ -1304,26 +1300,28 @@ Current completed foundation:
 009 → DONE
 010 → DONE
 011 → DONE
+012 → DONE
+013 → DONE
 ```
 
 Current active milestone:
 
 ```text
-012 → Execution Abstraction
+014 → Live Paper-Trading Hardening
 ```
 
 Next planned milestone:
 
 ```text
-013 → XT Account / Private API Integration
+015 → Real-Money Manual/Confirmed Execution
 ```
 
 The near-term objective is therefore:
 
 ```text
-abstract execution
+harden live paper trading
         ↓
-connect controlled real trading
+connect confirmed real trading
         ↓
 build Torque on mature reusable infrastructure
 ```
