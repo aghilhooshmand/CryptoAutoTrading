@@ -2,7 +2,7 @@
 
 **Feature Branch**: `015-controlled-real-execution`  
 **Created**: 2026-08-16  
-**Status**: Draft  
+**Status**: Clarified (session 2026-08-16)
 **Feature ID**: `015`  
 **Input**: Roadmap Controlled Real MVP (MVP-2) after Feature 025 + MVP-1 gate DONE
 
@@ -12,6 +12,47 @@ Stage-1 paper path (Backtest → Simulation) is closed: Features 012–014 froze
 infrastructure, Feature 013 private read path, Feature 025 per-position TP/SL,
 MVP-1 acceptance passed. Feature **015** is the first **Controlled Real**
 milestone on XT. It is **not** autonomous trading.
+
+## Clarifications
+
+### Session 2026-08-16
+
+- Q: Should Controlled Real reuse the existing Simulation session model with a
+  distinct Real mode, or use a separate Real-only session entity? → A: Reuse
+  the same session/pipeline with an explicit Real mode; keep
+  execution/accounting mode-specific. Same Strategy → Controller → Risk →
+  Execution architecture; confirmation gate before exposure-increasing Real
+  orders; no second trading engine. Real sessions MUST NOT write Simulation
+  Portfolio holdings; Real fills/order state MUST come from XT reconciliation;
+  Real vs Simulation provenance MUST stay explicit; Real MUST be unmistakable
+  in API/UI/history; RealExecutionAdapter is the only route from an approved
+  Real intent to XT.
+- Q: For Controlled Real MVP, which XT order style should confirmed entries and
+  automatic exits use? → A: Market orders only for both entries and exits.
+  Submission MUST NEVER be treated as a successful fill; actual XT order/fill
+  state MUST be reconciled. Limit orders are deferred until after Controlled
+  Real MVP is proven.
+- Q: What hard upper bound should Controlled Real MVP enforce for session
+  capital (allocated / max position)? → A: Hard maximum **50 USDT** allocated
+  capital, with maxPositionSize ≤ allocatedCapital. Operator may configure any
+  lower amount. Enforced fail-closed before submitting an XT entry order. MVP
+  safety cap only — raising/removing requires an explicit future product
+  decision after Controlled Real is validated.
+- Q: What should happen if a Real BUY stays waiting for operator confirmation
+  and is never confirmed? → A: Pending confirmation expires after **5
+  minutes**. On expiry, discard the intent without placing any XT order; keep
+  the session running. A future entry requires a fresh Strategy → Controller →
+  Risk cycle. Even within the TTL, confirmation MUST perform final
+  safety/current-state validation immediately before XT submission.
+- Q: After a backend restart while a Controlled Real session was running, what
+  should the system do? → A: Enter a dedicated blocked recovery state. Never
+  auto-resume Real trading. Discard all pending entry confirmations. Reconcile
+  XT balances/orders/fills vs local session via Feature 013. No
+  strategy-generated orders while blocked. Operator must explicitly Resume
+  after reconcile proves safe, or Stop/Flatten using reconciled trustworthy XT
+  state. Resume MUST re-run current safety/risk checks; if reconcile is
+  incomplete/contradictory, Resume stays unavailable (fail closed). Do **not**
+  extend Feature 014 Simulation auto-recovery into Real for this MVP.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -35,9 +76,16 @@ RealExecutionAdapter attempt XT; rejection/cancel leaves no phantom position.
 2. **Given** a pending confirmation, **When** the operator declines or the
    session stops, **Then** no Real fill is invented and no order is left
    assumed open.
-3. **Given** confirmation succeeds, **When** XT accepts the order, **Then**
-   local state is reconciled from exchange/account truth (Feature 013 read
-   path), not from optimism alone.
+3. **Given** a pending confirmation older than 5 minutes, **When** expiry
+   runs, **Then** the intent is discarded with no XT order and the session
+   stays running.
+4. **Given** confirmation succeeds within TTL, **When** final pre-submit
+   validation passes and XT accepts the order, **Then** local state is
+   reconciled from exchange/account truth (Feature 013 read path), not from
+   optimism alone.
+5. **Given** confirm within TTL, **When** final pre-submit validation fails,
+   **Then** no XT order is placed and the pending intent is cleared or
+   rejected fail-closed.
 
 ---
 
@@ -81,12 +129,15 @@ capital caps.
 
 **Acceptance Scenarios**:
 
-1. **Given** Real session create, **When** config violates one-pair / one-
-   position / capital bounds, **Then** create is rejected with a clear reason.
+1. **Given** Real session create, **When** allocatedCapital > 50 USDT or
+   maxPositionSize > allocatedCapital (or multi-pair/position), **Then** create
+   is rejected with a clear reason.
 2. **Given** a valid Real session, **When** operating, **Then** at most one
    open long exists for that session.
 3. **Given** Real mode UI, **When** the operator views Auto Trading, **Then**
    Real is unmistakable vs Simulation (no Portfolio redesign required).
+4. **Given** a pending or confirmed entry path, **When** capital would exceed
+   the 50 USDT MVP cap, **Then** XT entry submission is blocked fail-closed.
 
 ---
 
@@ -112,58 +163,103 @@ matches reconcile outcome; no fabricated fills.
 
 ### Edge Cases
 
-- Confirmation pending while mark becomes unsafe/stale.
+- Confirmation pending while mark becomes unsafe/stale — block confirm via
+  final pre-submit validation; do not place XT order.
+- Pending confirmation TTL (5 minutes) elapses — discard intent; session
+  continues; no XT order.
 - Partial fills / unexpected XT order states (normalize; fail closed where
   unknown).
-- Session stop during waiting-for-confirmation.
+- Session stop during waiting-for-confirmation — discard pending; no XT order.
 - Protective exit and session hard-stop same candle (Feature 025 precedence
   preserved: session/emergency → SL → TP → strategy).
 - Credential missing or Feature 013 errors (`timestamp_invalid`, rate limit).
 - Attempt to enable autonomous (unconfirmed) Real entries — must remain out of
   scope / rejected.
-- Restart during Real session — prefer fail closed / blocked over inventing
-  recovery beyond what 014 patterns safely allow for Real (specify reconcile
-  rules; do not expand 014 paper recovery architecture without need).
+- Limit-order placement requested — reject / unavailable in MVP (market only).
+- Exchange ack without fill confirmation — remain unsettled until reconcile;
+  never promote submission to filled.
+- Restart during Real session — dedicated blocked recovery; never auto-resume;
+  discard pending confirms; XT reconcile via 013; operator Resume (after safe
+  reconcile + safety/risk re-check) or Stop/Flatten; do not reuse 014 Sim
+  auto-recovery (FR-011).
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: Feature 015 MUST enable Controlled Real on the existing single
-  trading pipeline (Controller → Risk → Execution → Portfolio/Accounting); it
-  MUST NOT introduce a second trading engine.
+- **FR-001**: Feature 015 MUST enable Controlled Real on the **same** session
+  and trading pipeline as Simulation (Strategy → Controller → Risk → Execution)
+  with an explicit Real mode; it MUST NOT introduce a second trading engine.
+  Execution and accounting MUST remain mode-specific.
+- **FR-001a**: Real sessions MUST NOT write Simulation Portfolio holdings.
+  Real vs Simulation provenance MUST remain explicit in API, UI, journals, and
+  history. Real mode MUST be unmistakable to operators.
 - **FR-002**: Exposure-increasing Real entries MUST require explicit operator
-  confirmation after Controller and Risk approval.
+  confirmation after Controller and Risk approval, before any XT placement.
+- **FR-002a**: A pending Real BUY confirmation MUST expire after **5 minutes**.
+  On expiry, discard the intent with **no** XT order; the Real session MUST
+  remain running. Any later entry MUST require a fresh Strategy → Controller →
+  Risk approval cycle (not reuse of the expired pending intent).
+- **FR-002b**: Even within the confirmation TTL, operator confirm MUST re-run
+  final safety / current-state validation immediately before XT submission
+  (fail closed if unsafe/stale/invalid).
 - **FR-003**: TP/SL exits, exposure-reducing strategy exits, and emergency/STOP
   flatten (when safely executable) MUST NOT require the entry confirmation
   gate.
 - **FR-004**: Real sessions MUST enforce one trading pair, one open position,
-  and tiny configurable capital bounds (fail closed on invalid config).
-- **FR-005**: RealExecutionAdapter MUST place XT orders only for approved Real
-  intents; Simulation/Backtest paths MUST remain unchanged in behavior intent.
-- **FR-006**: Local Real state MUST be reconciled from XT private read
-  capabilities (Feature 013); the system MUST NOT invent fills, prices, or
-  balances.
-- **FR-007**: Real mode MUST be unmistakable in the operator UI; Portfolio
-  redesign is out of scope.
+  and capital bounds: **allocatedCapital ≤ 50 USDT** (hard MVP safety cap) and
+  **0 < maxPositionSize ≤ allocatedCapital**, fail closed on invalid config.
+  Operators MAY configure any lower allocated amount. Raising or removing the
+  50 USDT cap requires an explicit future product decision after Controlled
+  Real is validated. Cap enforcement MUST run before submitting an XT entry
+  order (including before/at confirmation completion).
+- **FR-005**: **RealExecutionAdapter** MUST be the only route from an approved
+  Real intent to XT. Simulation/Backtest paths MUST remain unchanged in
+  behavior intent and MUST NOT place Real orders.
+- **FR-006**: Local Real fills and order state MUST come from XT reconciliation
+  via Feature 013 private reads (and write acknowledgements as specified in
+  plan); the system MUST NOT invent fills, prices, or balances, and MUST NOT
+  treat Simulation mark/next-open paper fills as Real truth. **Order
+  submission MUST NEVER be treated as a successful fill.**
+- **FR-006a**: Controlled Real MVP MUST use **market orders only** for both
+  exposure-increasing entries and automatic exits (TP/SL, reducing strategy
+  exit, emergency/STOP flatten when safely executable). Limit orders are out
+  of scope until after Controlled Real MVP is proven.
+- **FR-007**: Real mode MUST be unmistakable in the operator UI and history;
+  Portfolio redesign is out of scope.
 - **FR-008**: Feature 015 MUST NOT implement autonomous (unconfirmed) Real
   entries; architecture SHOULD allow a later move to automatic entries under
   hard risk limits without a second pipeline.
 - **FR-009**: Per-position TP/SL semantics from Feature 025 MUST apply to Real
-  protective exits unless a Real-specific fill constraint is explicitly
-  specified and tested.
+  protective **trigger** evaluation unless a Real-specific constraint is
+  explicitly specified; Real **fill** prices MUST follow XT reconciliation
+  (FR-006), not Simulation mark inventiveness.
 - **FR-010**: Automated tests MUST cover confirmation gate, auto exit paths,
-  config bounds, reconcile failure modes, and UI Real distinctness without
-  requiring live XT in unit tests (use fakes/mocks); any live smoke is optional
-  and gated on credentials.
+  config bounds, Portfolio isolation (no Sim portfolio writes), reconcile
+  failure modes, Real blocked-recovery/resume/stop, and UI/API Real
+  distinctness without requiring live XT in unit tests (use fakes/mocks); any
+  live smoke is optional and gated on credentials.
+- **FR-011**: On backend restart, a Controlled Real session MUST enter a
+  dedicated **blocked recovery** state. The system MUST NEVER auto-resume Real
+  trading. All pending entry confirmations MUST be discarded. The system MUST
+  reconcile XT balances, orders/fills, and local session state via Feature 013
+  private capabilities. While blocked, no strategy-generated orders may
+  execute. The operator MUST explicitly **Resume** only after reconciliation
+  proves the state safe, or **Stop/Flatten** using reconciled trustworthy XT
+  state. Resume MUST re-run relevant current safety/risk checks before trading
+  continues; if reconciliation is incomplete or contradictory, Resume MUST
+  remain unavailable (fail closed). Feature 015 MUST NOT extend Feature 014
+  Simulation auto-recovery machinery into Real trading for this MVP.
 
 ### Key Entities
 
-- **RealSession**: Operator-supervised Real session config and lifecycle state
-  (including waiting-for-confirmation).
-- **PendingEntryConfirmation**: Approved BUY awaiting operator confirm/decline.
+- **Session (mode=real)**: Same session lifecycle as Simulation, with Real mode
+  flag/label; includes waiting-for-confirmation when applicable. Does not share
+  Simulation Portfolio holdings mutations.
+- **PendingEntryConfirmation**: Approved exposure-increasing BUY awaiting
+  operator confirm/decline before RealExecutionAdapter.
 - **RealOrderReconcileView**: Normalized XT order/account snapshot used to
-  update local truth.
+  update Real local truth.
 
 ## Success Criteria *(mandatory)*
 
@@ -171,12 +267,21 @@ matches reconcile outcome; no fabricated fills.
   automatic protective or strategy exit on a tiny session in a supervised
   validation pass (or fully mocked equivalent in CI).
 - **SC-002**: No Real BUY reaches XT without confirmation in fixture tests
-  (100% of exposure-increasing cases).
-- **SC-003**: Invalid multi-position / oversized capital configs are rejected
-  before trading starts.
-- **SC-004**: Simulated XT failures never produce invented local fills.
-- **SC-005**: UI clearly distinguishes Real from Simulation without a new
-  primary nav or Portfolio redesign.
+  (100% of exposure-increasing cases); expired pendings never place orders;
+  confirm-time validation failures never place orders.
+- **SC-003**: Invalid multi-position / oversized capital configs (including
+  allocatedCapital > 50 USDT) are rejected before trading starts; XT entry is
+  never submitted when the MVP cap would be violated.
+- **SC-004**: Simulated XT failures and submission-only acks never produce
+  invented local fills; filled state requires reconcile evidence.
+- **SC-007**: Fixture tests reject or omit limit-order Real placement in MVP.
+- **SC-005**: UI and API clearly distinguish Real from Simulation (including
+  history/provenance) without a new primary nav or Portfolio redesign.
+- **SC-006**: Fixture tests prove Real session fills do not mutate Simulation
+  Portfolio holdings.
+- **SC-008**: After simulated restart, Real sessions are blocked (no strategy
+  orders) until explicit Resume after successful reconcile, or Stop/Flatten;
+  incomplete reconcile keeps Resume unavailable.
 
 ## Assumptions
 
@@ -191,8 +296,9 @@ matches reconcile outcome; no fabricated fills.
 
 - Autonomous Real entries
 - Multi-pair / multi-position Real sessions
+- Limit orders (deferred post–Controlled Real MVP)
 - Portfolio UX redesign
 - Torque / GE
-- Expanding Feature 014 paper recovery architecture unless a concrete Real
-  defect requires a minimal shared fix
+- Expanding Feature 014 Simulation auto-recovery into Real (blocked-recovery
+  for Real is specified separately; do not reuse 014 auto-resume)
 - Trailing stops, ticks, volume strategies
