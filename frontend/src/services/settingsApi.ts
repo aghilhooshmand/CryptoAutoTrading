@@ -20,6 +20,8 @@ export interface OperatorSettings {
   perSymbolMaxWeight: string | null;
   preferredAllocationId: string | null;
   decisionLogMode: "important_only" | "full_audit";
+  takeProfitPercent?: string | null;
+  stopLossPercent?: string | null;
   updatedAt: string | null;
   source: SettingsSource;
   warning: string | null;

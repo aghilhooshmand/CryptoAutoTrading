@@ -28,9 +28,20 @@ def test_list_strategies_schema(client):
     assert r.status_code == 200
     data = r.json()
     assert "strategies" in data
-    assert len(data["strategies"]) == 5
+    assert len(data["strategies"]) == 8
     by_id = {s["id"]: s for s in data["strategies"]}
-    assert set(by_id) == {"dual_ema", "rsi", "macd", "bollinger_bands", "breakout"}
+    assert set(by_id) == {
+        "dual_ema",
+        "rsi",
+        "macd",
+        "bollinger_bands",
+        "breakout",
+        "stochastic",
+        "keltner_channel",
+        "roc_momentum",
+    }
+    assert "volume" not in by_id
+    assert not any("volume" in s["id"] for s in data["strategies"])
 
     dual = by_id["dual_ema"]
     assert dual["displayName"] == "Dual EMA"
@@ -59,3 +70,24 @@ def test_list_strategies_schema(client):
     breakout = by_id["breakout"]
     assert breakout["displayName"] == "Breakout"
     assert {p["name"] for p in breakout["parameters"]} == {"lookback"}
+
+    stoch = by_id["stochastic"]
+    assert stoch["displayName"] == "Stochastic"
+    assert {p["name"] for p in stoch["parameters"]} == {
+        "kPeriod",
+        "dPeriod",
+        "overbought",
+        "oversold",
+    }
+
+    keltner = by_id["keltner_channel"]
+    assert keltner["displayName"] == "Keltner Channel"
+    assert {p["name"] for p in keltner["parameters"]} == {"emaPeriod", "atrPeriod", "atrMult"}
+
+    roc = by_id["roc_momentum"]
+    assert roc["displayName"] == "ROC Momentum"
+    assert {p["name"] for p in roc["parameters"]} == {
+        "period",
+        "buyThreshold",
+        "sellThreshold",
+    }

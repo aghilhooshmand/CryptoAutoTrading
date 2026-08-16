@@ -65,10 +65,27 @@ class SimulationSessionRow(Base):
     decision_log_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
     # Feature 011 — frozen terminal economics (JSON text); null until freeze/backfill
     final_result_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Feature 014 — recovery / reconcile
+    recovery_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    recovery_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_recovery_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Feature 025 — protective TP/SL
+    take_profit_percent: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    stop_loss_percent: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    take_profit_price: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    stop_loss_price: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    entry_fill_candle_open_time: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class DecisionJournalRow(Base):
     __tablename__ = "decision_journal"
+    __table_args__ = (
+        UniqueConstraint(
+            "session_id",
+            "candle_open_time",
+            name="uq_decision_journal_session_candle",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     session_id: Mapped[str] = mapped_column(String(36), index=True)
@@ -84,6 +101,14 @@ class DecisionJournalRow(Base):
 
 class TradeJournalRow(Base):
     __tablename__ = "trade_journal"
+    __table_args__ = (
+        UniqueConstraint(
+            "session_id",
+            "candle_open_time",
+            "is_forced_close",
+            name="uq_trade_journal_session_candle_forced",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     session_id: Mapped[str] = mapped_column(String(36), index=True)
@@ -99,6 +124,19 @@ class TradeJournalRow(Base):
     cash_delta: Mapped[str] = mapped_column(String(64))
     is_forced_close: Mapped[bool] = mapped_column(Boolean, default=False)
     candle_open_time: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class SkippedGapAuditRow(Base):
+    """Offline closed-candle skip evidence (Feature 014 FR-010)."""
+
+    __tablename__ = "skipped_gap_audit"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(36), index=True)
+    from_open_time: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    to_open_time: Mapped[int] = mapped_column(Integer)
+    reason: Mapped[str] = mapped_column(String(64), default="offline_gap_skip")
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class BacktestRunRow(Base):
@@ -131,6 +169,9 @@ class BacktestRunRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Feature 025 — protective TP/SL run config
+    take_profit_percent: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    stop_loss_percent: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class StrategyComparisonRow(Base):
@@ -198,6 +239,9 @@ class OperatorDefaultsRow(Base):
     per_symbol_max_weight: Mapped[str | None] = mapped_column(String(64), nullable=True)
     preferred_allocation_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     decision_log_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # Feature 025 — optional protective TP/SL defaults
+    take_profit_percent: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    stop_loss_percent: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class BacktestDecisionRow(Base):

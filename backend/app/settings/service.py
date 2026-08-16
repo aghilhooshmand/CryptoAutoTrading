@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from app.market_data.models import ALLOWED_INTERVALS
 from app.settings import repository as repo
 from app.settings.starters import product_starter_defaults
+from app.execution.tpsl import validate_percents
 from app.simulation.decision_log_mode import (
     DECISION_LOG_IMPORTANT_ONLY,
     normalize_decision_log_mode,
@@ -128,6 +129,10 @@ def _validate_body(body: dict[str, Any]) -> dict[str, Any]:
         per_symbol_max_weight = _optional_weight(body.get("perSymbolMaxWeight"))
         preferred_allocation_id = _optional_allocation_id(body.get("preferredAllocationId"))
         decision_log_mode = _optional_decision_log_mode(body.get("decisionLogMode"))
+        tp_pct, sl_pct = validate_percents(
+            body.get("takeProfitPercent"),
+            body.get("stopLossPercent"),
+        )
     except (ValueError, TypeError) as exc:
         raise SettingsError("invalid_config", f"Invalid optional risk fields: {exc}") from exc
     except SettingsError:
@@ -161,6 +166,8 @@ def _validate_body(body: dict[str, Any]) -> dict[str, Any]:
         "per_symbol_max_weight": per_symbol_max_weight,
         "preferred_allocation_id": preferred_allocation_id,
         "decision_log_mode": decision_log_mode,
+        "take_profit_percent": as_str(tp_pct) if tp_pct is not None else None,
+        "stop_loss_percent": as_str(sl_pct) if sl_pct is not None else None,
     }
 
 
@@ -183,6 +190,8 @@ def _payload(
     per_symbol_max_weight: str | None = None,
     preferred_allocation_id: str | None = None,
     decision_log_mode: str = DECISION_LOG_IMPORTANT_ONLY,
+    take_profit_percent: str | None = None,
+    stop_loss_percent: str | None = None,
     source: str,
     updated_at: str | None,
     warning: str | None = None,
@@ -205,6 +214,8 @@ def _payload(
         "perSymbolMaxWeight": per_symbol_max_weight,
         "preferredAllocationId": preferred_allocation_id,
         "decisionLogMode": decision_log_mode,
+        "takeProfitPercent": take_profit_percent,
+        "stopLossPercent": stop_loss_percent,
         "updatedAt": updated_at,
         "source": source,
         "warning": warning,
@@ -231,6 +242,8 @@ def _starters_response(*, warning: str | None = None) -> dict[str, Any]:
         per_symbol_max_weight=body.get("perSymbolMaxWeight"),
         preferred_allocation_id=body.get("preferredAllocationId"),
         decision_log_mode=body.get("decisionLogMode") or DECISION_LOG_IMPORTANT_ONLY,
+        take_profit_percent=body.get("takeProfitPercent"),
+        stop_loss_percent=body.get("stopLossPercent"),
         source="starters",
         updated_at=None,
         warning=warning,
@@ -256,6 +269,8 @@ def _validated_to_payload(validated: dict[str, Any], *, source: str, updated_at:
         per_symbol_max_weight=validated.get("per_symbol_max_weight"),
         preferred_allocation_id=validated.get("preferred_allocation_id"),
         decision_log_mode=validated.get("decision_log_mode") or DECISION_LOG_IMPORTANT_ONLY,
+        take_profit_percent=validated.get("take_profit_percent"),
+        stop_loss_percent=validated.get("stop_loss_percent"),
         source=source,
         updated_at=updated_at,
         warning=None,
@@ -283,6 +298,8 @@ def _validate_stored_row(row: Any) -> dict[str, Any]:
             "perSymbolMaxWeight": getattr(row, "per_symbol_max_weight", None),
             "preferredAllocationId": getattr(row, "preferred_allocation_id", None),
             "decisionLogMode": getattr(row, "decision_log_mode", None) or DECISION_LOG_IMPORTANT_ONLY,
+            "takeProfitPercent": getattr(row, "take_profit_percent", None),
+            "stopLossPercent": getattr(row, "stop_loss_percent", None),
         }
     )
 
@@ -327,6 +344,8 @@ def put_settings(db: Session, body: dict[str, Any]) -> dict[str, Any]:
         per_symbol_max_weight=validated.get("per_symbol_max_weight"),
         preferred_allocation_id=validated.get("preferred_allocation_id"),
         decision_log_mode=validated.get("decision_log_mode"),
+        take_profit_percent=validated.get("take_profit_percent"),
+        stop_loss_percent=validated.get("stop_loss_percent"),
     )
     return _validated_to_payload(validated, source="saved", updated_at=_iso(row.updated_at))
 

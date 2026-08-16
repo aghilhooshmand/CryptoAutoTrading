@@ -31,6 +31,8 @@ class SettingsBody(BaseModel):
     perSymbolMaxWeight: Optional[str] = None
     preferredAllocationId: Optional[str] = None
     decisionLogMode: Optional[str] = None
+    takeProfitPercent: Optional[str] = None
+    stopLossPercent: Optional[str] = None
 
 
 def _raise(err: svc.SettingsError) -> None:

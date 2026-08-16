@@ -34,6 +34,8 @@ export interface SessionConfigValues {
   portfolioMaxLossAmount: string;
   perSymbolMaxWeight: string;
   decisionLogMode: "important_only" | "full_audit";
+  takeProfitPercent: string;
+  stopLossPercent: string;
 }
 
 interface Props {
@@ -60,6 +62,8 @@ const DEFAULTS: SessionConfigValues = {
   portfolioMaxLossAmount: "",
   perSymbolMaxWeight: "",
   decisionLogMode: "important_only",
+  takeProfitPercent: "",
+  stopLossPercent: "",
 };
 
 function FieldLabel({
@@ -126,6 +130,8 @@ export function SessionConfigForm({
           portfolioMaxLossAmount: seed.portfolioMaxLossAmount,
           perSymbolMaxWeight: seed.perSymbolMaxWeight,
           decisionLogMode: seed.decisionLogMode,
+          takeProfitPercent: seed.takeProfitPercent,
+          stopLossPercent: seed.stopLossPercent,
         }));
         setStrategy(seed.strategy);
         setPreferredStrategy(seed.strategy);
@@ -221,6 +227,8 @@ export function SessionConfigForm({
       portfolioMaxLossAmount: values.portfolioMaxLossAmount.trim() || null,
       perSymbolMaxWeight: values.perSymbolMaxWeight.trim() || null,
       decisionLogMode: values.decisionLogMode,
+      takeProfitPercent: values.takeProfitPercent.trim() || null,
+      stopLossPercent: values.stopLossPercent.trim() || null,
     });
   }
 
@@ -353,6 +361,40 @@ export function SessionConfigForm({
             disabled={disabled}
             onChange={(e) => setField("maxPositionSize", e.target.value)}
             required
+          />
+        </label>
+        <label>
+          <FieldLabel
+            tipLabel="Take-profit %"
+            tipText="Optional. Fraction of entry fill (0.02 = +2%). Absolute level is set when a long opens. Fill uses live mark, not the TP price."
+            tipTestId="tip-take-profit"
+          >
+            Take-profit % (optional)
+          </FieldLabel>
+          <input
+            data-testid="sim-take-profit-percent"
+            inputMode="decimal"
+            value={values.takeProfitPercent}
+            disabled={disabled}
+            placeholder="e.g. 0.02"
+            onChange={(e) => setField("takeProfitPercent", e.target.value)}
+          />
+        </label>
+        <label>
+          <FieldLabel
+            tipLabel="Stop-loss %"
+            tipText="Optional. Fraction of entry fill (0.01 = −1%). Absolute level is set when a long opens. Fill uses live mark, not the SL price."
+            tipTestId="tip-stop-loss"
+          >
+            Stop-loss % (optional)
+          </FieldLabel>
+          <input
+            data-testid="sim-stop-loss-percent"
+            inputMode="decimal"
+            value={values.stopLossPercent}
+            disabled={disabled}
+            placeholder="e.g. 0.01"
+            onChange={(e) => setField("stopLossPercent", e.target.value)}
           />
         </label>
         <label>

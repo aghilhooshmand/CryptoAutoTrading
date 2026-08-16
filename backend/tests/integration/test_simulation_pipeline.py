@@ -195,3 +195,42 @@ def test_pipeline_important_only_still_persists_risk_reject(db):
     assert len(decisions) == 1
     assert decisions[0].signal == "BUY"
     assert decisions[0].outcome == "rejected"
+
+
+def test_pipeline_duplicate_candle_does_not_create_second_fill(db):
+    from app.db.models import TradeJournalRow
+
+    row = create_session(db, _session_body(decisionLogMode="important_only"))
+    now = datetime(2026, 8, 9, 12, 0, 0, tzinfo=timezone.utc)
+    row.state = "RUNNING"
+    row.started_at = now
+    mock, newest_open = _flat_market(now)
+    row.last_processed_candle_open_time = newest_open
+    row.trade_count = 1
+    row.strategy_fill_count = 1
+    db.add(
+        TradeJournalRow(
+            id="22222222-2222-2222-2222-222222222222",
+            session_id=row.id,
+            created_at=now,
+            symbol=row.symbol,
+            side="BUY",
+            qty="0.01",
+            reference_price="100",
+            fill_price="100.05",
+            fee="0.1",
+            slippage_cost="0.05",
+            notional="1",
+            cash_delta="-1.15",
+            is_forced_close=False,
+            candle_open_time=newest_open,
+        )
+    )
+    db.commit()
+
+    _run_tick(db, row, mock, now)
+    db.refresh(row)
+    trades = db.query(TradeJournalRow).filter_by(session_id=row.id).all()
+    assert len(trades) == 1
+    assert row.strategy_fill_count == 1
+    assert row.last_processed_candle_open_time == newest_open

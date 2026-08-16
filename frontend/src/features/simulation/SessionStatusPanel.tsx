@@ -33,6 +33,7 @@ interface Props {
   busy?: boolean;
   onStop?: () => void;
   onEmergencyStop?: () => void;
+  onResume?: () => void;
 }
 
 export function SessionStatusPanel({
@@ -40,6 +41,7 @@ export function SessionStatusPanel({
   busy = false,
   onStop,
   onEmergencyStop,
+  onResume,
 }: Props) {
   if (!session) {
     return (
@@ -50,7 +52,9 @@ export function SessionStatusPanel({
     );
   }
 
-  const active = session.state === "RUNNING" || session.state === "STOPPING";
+  const runningOrStopping = session.state === "RUNNING" || session.state === "STOPPING";
+  const recoveryBlocked = session.state === "RECOVERY_BLOCKED";
+  const showStopActions = runningOrStopping || recoveryBlocked;
 
   return (
     <section className="simulation-status" data-testid="simulation-status" aria-labelledby="sim-status-title">
@@ -60,7 +64,13 @@ export function SessionStatusPanel({
       </div>
       <dl className="sim-dl">
         <div>
-          <Term>State</Term>
+          <Term
+            tipLabel="Session state"
+            tipText="RECOVERY_BLOCKED means restart recovery could not prove a safe ledger. It is not a normal STOPPED History completion. Resume re-checks reconciliation; or stop and start a new session."
+            tipTestId="tip-session-state"
+          >
+            State
+          </Term>
           <dd data-testid="sim-state">{session.state}</dd>
         </div>
         <div>
@@ -77,7 +87,9 @@ export function SessionStatusPanel({
               : "Full audit"}
           </dd>
         </div>
-        {session.state === "RUNNING" || session.lastProcessedCandleOpenTime != null ? (
+        {session.state === "RUNNING" ||
+        session.state === "RECOVERY_BLOCKED" ||
+        session.lastProcessedCandleOpenTime != null ? (
           <div>
             <Term>Last processed candle</Term>
             <dd data-testid="sim-last-candle">
@@ -126,6 +138,26 @@ export function SessionStatusPanel({
             {session.positionSide} / {session.positionQty}
           </dd>
         </div>
+        {session.positionSide === "long" ? (
+          <div>
+            <Term
+              tipLabel="Protective levels"
+              tipText="Absolute TP/SL derived from entry fill and configured percents. Not editable while long. Fills use live mark, not these levels."
+              tipTestId="tip-protective-levels"
+            >
+              Entry / TP / SL
+            </Term>
+            <dd data-testid="sim-protective-levels">
+              entry {session.entryFillPrice ?? "—"}
+              {"; "}
+              TP {session.takeProfitPrice ?? "—"}
+              {session.takeProfitPercent ? ` (${rateToPercentLabel(session.takeProfitPercent)})` : ""}
+              {"; "}
+              SL {session.stopLossPrice ?? "—"}
+              {session.stopLossPercent ? ` (${rateToPercentLabel(session.stopLossPercent)})` : ""}
+            </dd>
+          </div>
+        ) : null}
         <div>
           <Term
             tipLabel="Fills"
@@ -154,6 +186,39 @@ export function SessionStatusPanel({
             <dd data-testid="sim-stop-reason">{session.stopReason}</dd>
           </div>
         ) : null}
+        {session.recoveryReason ? (
+          <div>
+            <Term
+              tipLabel="Recovery"
+              tipText="Stable code explaining why auto-resume was blocked after backend restart or a failed resume attempt."
+              tipTestId="tip-recovery-reason"
+            >
+              Recovery reason
+            </Term>
+            <dd data-testid="sim-recovery-reason">{session.recoveryReason}</dd>
+          </div>
+        ) : null}
+        {session.recoveryDetail ? (
+          <div>
+            <Term>Recovery detail</Term>
+            <dd data-testid="sim-recovery-detail">{session.recoveryDetail}</dd>
+          </div>
+        ) : null}
+        {session.skippedGap ? (
+          <div>
+            <Term
+              tipLabel="Skipped gap"
+              tipText="Closed candles during downtime were not traded. The watermark advanced past that range after safe reconciliation."
+              tipTestId="tip-skipped-gap"
+            >
+              Skipped offline gap
+            </Term>
+            <dd data-testid="sim-skipped-gap">
+              {session.skippedGap.fromOpenTime ?? "—"} → {session.skippedGap.toOpenTime} (
+              {session.skippedGap.reason})
+            </dd>
+          </div>
+        ) : null}
         {session.positionFlattenStatus && session.positionFlattenStatus !== "n/a" ? (
           <div>
             <Term
@@ -167,12 +232,22 @@ export function SessionStatusPanel({
           </div>
         ) : null}
       </dl>
-      {active ? (
+      {showStopActions ? (
         <div className="sim-actions">
+          {recoveryBlocked ? (
+            <button
+              type="button"
+              data-testid="sim-resume"
+              disabled={busy}
+              onClick={onResume}
+            >
+              Resume
+            </button>
+          ) : null}
           <button
             type="button"
             data-testid="sim-stop"
-            disabled={busy || session.state !== "RUNNING"}
+            disabled={busy || (session.state !== "RUNNING" && !recoveryBlocked)}
             onClick={onStop}
           >
             Stop
@@ -181,7 +256,7 @@ export function SessionStatusPanel({
             type="button"
             className="danger"
             data-testid="sim-emergency-stop"
-            disabled={busy || session.state !== "RUNNING"}
+            disabled={busy || (session.state !== "RUNNING" && !recoveryBlocked)}
             onClick={onEmergencyStop}
           >
             Emergency stop

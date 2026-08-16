@@ -46,6 +46,8 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
   const [maxTrades, setMaxTrades] = useState("");
   const [feeRate, setFeeRate] = useState(COST_DEFAULTS.feeRate);
   const [slippageRate, setSlippageRate] = useState(COST_DEFAULTS.slippageRate);
+  const [takeProfitPercent, setTakeProfitPercent] = useState("");
+  const [stopLossPercent, setStopLossPercent] = useState("");
   const [strategy, setStrategy] = useState<StrategyConfigValue>(defaultStrategyConfig());
   const [preferredStrategy, setPreferredStrategy] = useState<StrategyConfigValue | null>(null);
   const [strategyError, setStrategyError] = useState<string | null>(null);
@@ -69,6 +71,8 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
         setMaxTrades(seed.maxTrades);
         setFeeRate(seed.feeRate);
         setSlippageRate(seed.slippageRate);
+        setTakeProfitPercent(seed.takeProfitPercent);
+        setStopLossPercent(seed.stopLossPercent);
         setStrategy(seed.strategy);
         setPreferredStrategy(seed.strategy);
         setSeeded(true);
@@ -144,6 +148,8 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
     if (profitRate) body.targetNetProfitRate = profitRate;
     if (lossRate) body.maxSessionLossRate = lossRate;
     if (maxTrades) body.maxTrades = Number(maxTrades);
+    if (takeProfitPercent.trim()) body.takeProfitPercent = takeProfitPercent.trim();
+    if (stopLossPercent.trim()) body.stopLossPercent = stopLossPercent.trim();
     body.feeRate = feeRate;
     body.slippageRate = slippageRate;
     onSubmit(body);
@@ -267,6 +273,28 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
       <details className="backtest-advanced">
         <summary>Advanced settings</summary>
         <div className="backtest-advanced-body">
+          <label>
+            Take-profit % (optional)
+            <input
+              data-testid="bt-take-profit-percent"
+              value={takeProfitPercent}
+              onChange={(e) => setTakeProfitPercent(e.target.value)}
+              disabled={locked}
+              placeholder="e.g. 0.02"
+              inputMode="decimal"
+            />
+          </label>
+          <label>
+            Stop-loss % (optional)
+            <input
+              data-testid="bt-stop-loss-percent"
+              value={stopLossPercent}
+              onChange={(e) => setStopLossPercent(e.target.value)}
+              disabled={locked}
+              placeholder="e.g. 0.01"
+              inputMode="decimal"
+            />
+          </label>
           <label>
             Target net profit rate
             <input

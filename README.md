@@ -95,6 +95,29 @@ curl -sS http://127.0.0.1:8000/simulation/sessions/active
 Feature 003 validation guide:
 [`specs/003-simulation-trading-core/quickstart.md`](specs/003-simulation-trading-core/quickstart.md)
 
+### Live paper-trading hardening (Feature 014)
+
+Long-running Simulation sessions use **conditional safe auto-recovery** after a
+backend restart: trading resumes only when full ledger reconciliation passes and
+offline closed candles are skipped (watermark advanced, gap audited). Otherwise
+the session enters non-trading **`RECOVERY_BLOCKED`** (distinct from History
+`STOPPED`). Operators may **Resume** (re-checks gates) or stop / start a new
+session. No Real trading or XT private credentials are required for paper trading.
+
+Feature 014 validation guide:
+[`specs/014-live-paper-trading-hardening/quickstart.md`](specs/014-live-paper-trading-hardening/quickstart.md)
+
+### Stage-1 trading gap-close (Feature 025)
+
+Optional per-position **take-profit / stop-loss percentages** on Simulation and
+Backtest creates. Absolute levels are derived from the entry fill; triggers use
+candle high/low (never the entry-fill candle). Fills stay mode-native —
+Simulation live mark vs Backtest next-open — and never use the TP/SL price.
+Protective exits do not consume `maxTrades`. No Real trading.
+
+Semantics (intentional Sim vs Backtest differences):
+[`specs/025-stage1-trading-gap-close/contracts/sim-vs-backtest-semantics.md`](specs/025-stage1-trading-gap-close/contracts/sim-vs-backtest-semantics.md)
+
 ## Historical backtesting (Feature 004)
 
 Offline Dual EMA backtests also live under **Auto Trading** (no fourth primary

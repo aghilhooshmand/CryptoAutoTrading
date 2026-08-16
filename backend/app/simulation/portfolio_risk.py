@@ -37,6 +37,7 @@ def sessions_bound_to_allocation(db: Session, allocation_id: str) -> list[Simula
         SessionState.CONFIGURED.value,
         SessionState.RUNNING.value,
         SessionState.STOPPING.value,
+        SessionState.RECOVERY_BLOCKED.value,
     )
     return (
         db.query(SimulationSessionRow)

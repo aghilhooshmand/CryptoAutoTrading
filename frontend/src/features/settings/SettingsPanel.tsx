@@ -35,6 +35,8 @@ function toWriteBody(
     perSymbolMaxWeight: string;
     preferredAllocationId: string;
     decisionLogMode: "important_only" | "full_audit";
+    takeProfitPercent: string;
+    stopLossPercent: string;
   },
   strategy: StrategyConfigValue,
 ): SettingsWriteBody {
@@ -59,6 +61,8 @@ function toWriteBody(
     preferredAllocationId:
       values.preferredAllocationId.trim() === "" ? null : values.preferredAllocationId,
     decisionLogMode: values.decisionLogMode,
+    takeProfitPercent: values.takeProfitPercent.trim() === "" ? null : values.takeProfitPercent,
+    stopLossPercent: values.stopLossPercent.trim() === "" ? null : values.stopLossPercent,
   };
 }
 
@@ -85,6 +89,8 @@ function applySettingsToState(
     perSymbolMaxWeight: data.perSymbolMaxWeight ?? "",
     preferredAllocationId: data.preferredAllocationId ?? "",
     decisionLogMode: data.decisionLogMode === "full_audit" ? "full_audit" : "important_only",
+    takeProfitPercent: data.takeProfitPercent ?? "",
+    stopLossPercent: data.stopLossPercent ?? "",
   });
   const nextStrategy = {
     strategyId: data.strategyId,
@@ -112,6 +118,8 @@ function emptyValues() {
     perSymbolMaxWeight: "",
     preferredAllocationId: "",
     decisionLogMode: "important_only" as const,
+    takeProfitPercent: "",
+    stopLossPercent: "",
   };
 }
 
@@ -335,6 +343,26 @@ export function SettingsPanel() {
             disabled={busy}
             placeholder="unset"
             onChange={(e) => setField("maxSessionLossRate", e.target.value)}
+          />
+        </label>
+        <label>
+          Take-profit % (optional)
+          <input
+            data-testid="settings-take-profit-percent"
+            value={values.takeProfitPercent}
+            disabled={busy}
+            placeholder="e.g. 0.02"
+            onChange={(e) => setField("takeProfitPercent", e.target.value)}
+          />
+        </label>
+        <label>
+          Stop-loss % (optional)
+          <input
+            data-testid="settings-stop-loss-percent"
+            value={values.stopLossPercent}
+            disabled={busy}
+            placeholder="e.g. 0.01"
+            onChange={(e) => setField("stopLossPercent", e.target.value)}
           />
         </label>
         <label>

@@ -17,6 +17,7 @@ from app.backtest.limits import (
     is_oversized_estimate,
 )
 from app.db.models import BacktestRunRow
+from app.execution.tpsl import validate_percents
 from app.market_data.adapters.base import MarketDataAdapterError, UnsupportedSymbolError
 from app.market_data.service import get_market_data_service
 from app.simulation.money import DEFAULT_FEE_RATE, DEFAULT_SLIPPAGE_RATE, as_str, d
@@ -132,6 +133,14 @@ def validate_config(body: dict[str, Any]) -> dict[str, Any]:
     except StrategyParamError as exc:
         raise BacktestError(exc.code, exc.message, 400) from exc
 
+    try:
+        tp_pct, sl_pct = validate_percents(
+            body.get("takeProfitPercent"),
+            body.get("stopLossPercent"),
+        )
+    except ValueError as exc:
+        raise BacktestError("invalid_config", str(exc)) from exc
+
     min_history = instance.min_history_candles()
 
     return {
@@ -151,6 +160,8 @@ def validate_config(body: dict[str, Any]) -> dict[str, Any]:
         "slippage_rate": as_str(slip_rate),
         "strategy_id": canonical_id,
         "strategy_params": dumps_params(effective_params),
+        "take_profit_percent": as_str(tp_pct) if tp_pct is not None else None,
+        "stop_loss_percent": as_str(sl_pct) if sl_pct is not None else None,
         "min_history_candles": min_history,
         "strategy_params_obj": effective_params,
     }
@@ -254,6 +265,12 @@ def complete_run_with_candles(
         wire_shared=wire_shared,
         strategy_id=fields["strategy_id"],
         strategy_params=strategy_params_obj,
+        take_profit_percent=(
+            d(fields["take_profit_percent"]) if fields.get("take_profit_percent") else None
+        ),
+        stop_loss_percent=(
+            d(fields["stop_loss_percent"]) if fields.get("stop_loss_percent") else None
+        ),
     )
     repo.mark_completed(db, run, summary=summary, candle_count=len(candles))
     return run_to_dict(db, run)
@@ -307,6 +324,8 @@ def run_to_dict(db: Session, run: BacktestRunRow, *, include_summary: bool = Tru
         "maxTrades": run.max_trades,
         "feeRate": run.fee_rate,
         "slippageRate": run.slippage_rate,
+        "takeProfitPercent": getattr(run, "take_profit_percent", None),
+        "stopLossPercent": getattr(run, "stop_loss_percent", None),
         "strategyId": display_strategy_id(run.strategy_id),
         "strategyParams": effective_params_for_row(run.strategy_id, run.strategy_params),
         "origin": getattr(run, "origin", None) or "manual",

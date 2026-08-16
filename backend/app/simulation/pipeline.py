@@ -7,8 +7,10 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
-from app.db.models import SimulationSessionRow
+from app.db.models import SimulationSessionRow, TradeJournalRow
+from app.execution.tpsl import evaluate_triggers
 from app.market_data.models import MarketStatus
+from app.market_data.public_retry import PublicRetryExhausted, with_public_retry
 from app.market_data.service import get_market_data_service
 from app.simulation.accounting import liquidation_equity, session_net_pnl
 from app.simulation.clock import Clock
@@ -23,7 +25,7 @@ from app.simulation.session_service import (
     stop_session_async,
 )
 from app.simulation.state_machine import SessionState
-from app.strategy.base import CandleClose, SignalSide
+from app.strategy.base import CandleClose, SignalSide, StrategySignal, bar_high, bar_low
 from app.strategy.registry import UnknownStrategyError, build_from_stored
 from app.strategy.serialize import loads_params
 
@@ -44,26 +46,214 @@ def _as_utc(dt: datetime) -> datetime:
     return dt.astimezone(timezone.utc)
 
 
-
 async def _closed_candles(symbol: str, timeframe: str, clock: Clock) -> list[CandleClose]:
-    series = await get_market_data_service().get_candles(symbol, timeframe)
+    async def _call():
+        return await get_market_data_service().get_candles(symbol, timeframe)
+
+    series = await with_public_retry(_call)
     interval = INTERVAL_SECONDS[timeframe]
     now_ms = int(clock.now().timestamp() * 1000)
     closed: list[CandleClose] = []
     for c in series.candles:
         if c.openTime + interval * 1000 <= now_ms:
-            closed.append(CandleClose(open_time=c.openTime, close=d(c.close)))
+            closed.append(
+                CandleClose(
+                    open_time=c.openTime,
+                    close=d(c.close),
+                    open=d(c.open),
+                    high=d(c.high),
+                    low=d(c.low),
+                )
+            )
     return closed
 
 
 async def _quote_mark(symbol: str) -> tuple[Decimal | None, bool]:
     try:
-        quote = await get_market_data_service().get_quote(symbol)
-    except Exception:  # noqa: BLE001
+
+        async def _call():
+            return await get_market_data_service().get_quote(symbol)
+
+        quote = await with_public_retry(_call)
+    except (PublicRetryExhausted, Exception):  # noqa: BLE001
         return None, False
     if quote.status != MarketStatus.FRESH:
         return None, False
     return d(quote.lastPrice), True
+
+
+def _trade_exists_for_candle(
+    db: Session, session_id: str, candle_open_time: int | None
+) -> bool:
+    if candle_open_time is None:
+        return False
+    return (
+        db.query(TradeJournalRow)
+        .filter(
+            TradeJournalRow.session_id == session_id,
+            TradeJournalRow.candle_open_time == candle_open_time,
+            TradeJournalRow.is_forced_close.is_(False),
+        )
+        .first()
+        is not None
+    )
+
+
+async def _try_protective_exit(
+    db: Session,
+    row: SimulationSessionRow,
+    *,
+    candle: CandleClose,
+    mark: Decimal,
+    safe: bool,
+    clock: Clock,
+) -> bool:
+    """Evaluate TP/SL after hard-stops; execute forced SELL on live mark if triggered.
+
+    Returns True when this candle was fully handled (caller should return).
+    """
+    if row.position_side != "long":
+        return False
+    tp_price = d(row.take_profit_price) if row.take_profit_price else None
+    sl_price = d(row.stop_loss_price) if row.stop_loss_price else None
+    if tp_price is None and sl_price is None:
+        return False
+
+    reason = evaluate_triggers(
+        candle_open_time=candle.open_time,
+        high=bar_high(candle),
+        low=bar_low(candle),
+        entry_fill_candle_open_time=row.entry_fill_candle_open_time,
+        tp_price=tp_price,
+        sl_price=sl_price,
+    )
+    if reason is None:
+        return False
+
+    signal = StrategySignal(
+        side=SignalSide.SELL,
+        candle_open_time=candle.open_time,
+        fast_ema=None,
+        slow_ema=None,
+        reason_code=reason,
+    )
+    controller = TradingController()
+    risk = RiskManager()
+    engine = SimulationExecutionEngine()
+
+    ctrl = controller.review(SessionState(row.state), signal)
+    if not ctrl.approved:
+        add_decision(
+            db,
+            row,
+            signal="SELL",
+            outcome="rejected",
+            candle_open_time=candle.open_time,
+            reason_code=ctrl.reason_code,
+            reason_message=ctrl.reason_message,
+            fast_ema=None,
+            slow_ema=None,
+            clock=clock,
+        )
+        row.last_processed_candle_open_time = candle.open_time
+        db.commit()
+        return True
+
+    from app.simulation.portfolio_risk import apply_portfolio_context, load_holding_quotes
+
+    rctx_kwargs = dict(
+        position_side=row.position_side,
+        cash=d(row.cash),
+        qty=d(row.position_qty),
+        fee_rate=d(row.fee_rate),
+        slippage_rate=d(row.slippage_rate),
+        start_equity=d(row.starting_capital),
+        target_net_profit_amount=d(row.target_net_profit_amount),
+        max_session_loss_amount=d(row.max_session_loss_amount),
+        strategy_fill_count=row.strategy_fill_count,
+        max_trades=row.max_trades,
+        mark_price=mark,
+        mark_safe=safe,
+    )
+    quotes = await load_holding_quotes(db)
+    apply_portfolio_context(rctx_kwargs, db=db, row=row, quotes=quotes)
+    rctx = RiskContext(**rctx_kwargs)
+    risk_dec = risk.review(signal, rctx)
+    if not risk_dec.approved:
+        add_decision(
+            db,
+            row,
+            signal="SELL",
+            outcome="rejected",
+            candle_open_time=candle.open_time,
+            reason_code=risk_dec.reason_code,
+            reason_message=risk_dec.reason_message,
+            fast_ema=None,
+            slow_ema=None,
+            clock=clock,
+        )
+        row.last_processed_candle_open_time = candle.open_time
+        db.commit()
+        if risk_dec.trigger_stop:
+            await stop_session_async(db, row.id, risk_dec.trigger_stop, clock=clock)
+        return True
+
+    intent = ExecutionIntent(
+        side="SELL",
+        symbol=row.symbol,
+        reference_price=mark,
+        fee_rate=d(row.fee_rate),
+        slippage_rate=d(row.slippage_rate),
+        cash=d(row.cash),
+        allocated_capital=d(row.allocated_capital),
+        max_position_size=d(row.max_position_size),
+        position_side=row.position_side,
+        position_qty=d(row.position_qty),
+        is_forced_close=True,
+    )
+    result = engine.execute(intent)
+    if not result.ok or result.fill is None or result.qty is None:
+        add_decision(
+            db,
+            row,
+            signal="SELL",
+            outcome="rejected",
+            candle_open_time=candle.open_time,
+            reason_code=result.reason_code,
+            reason_message=result.reason_message,
+            fast_ema=None,
+            slow_ema=None,
+            clock=clock,
+        )
+        row.last_processed_candle_open_time = candle.open_time
+        db.commit()
+        return True
+
+    _apply_fill(
+        row,
+        side="SELL",
+        qty=result.qty,
+        fill=result.fill,
+        is_forced=True,
+        candle_open_time=candle.open_time,
+        clock=clock,
+        db=db,
+    )
+    add_decision(
+        db,
+        row,
+        signal="SELL",
+        outcome="forced",
+        candle_open_time=candle.open_time,
+        reason_code=reason,
+        reason_message=f"Protective exit ({reason})",
+        fast_ema=None,
+        slow_ema=None,
+        clock=clock,
+    )
+    row.last_processed_candle_open_time = candle.open_time
+    db.commit()
+    return True
 
 
 async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Clock) -> None:
@@ -78,6 +268,8 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
 
     mark, safe = await _quote_mark(row.symbol)
     if not safe:
+        # Unsafe mark: increment streak; while long, early return blocks entries
+        # (Risk would also reject; we never reach strategy on unsafe mark).
         row.unsafe_quote_streak += 1
         row.updated_at = clock.now()
         db.commit()
@@ -109,9 +301,12 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
 
     try:
         closes = await _closed_candles(row.symbol, row.timeframe, clock)
-    except Exception:  # noqa: BLE001
+    except (PublicRetryExhausted, Exception):  # noqa: BLE001
         row.unsafe_quote_streak += 1
+        row.updated_at = clock.now()
         db.commit()
+        if row.unsafe_quote_streak >= UNSAFE_QUOTE_LIMIT:
+            await stop_session_async(db, row.id, "unrecoverable_unsafe_market_data", clock=clock)
         return
 
     if not closes:
@@ -124,6 +319,12 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
         and newest.open_time <= row.last_processed_candle_open_time
     ):
         db.commit()
+        return
+
+    assert mark is not None
+    if await _try_protective_exit(
+        db, row, candle=newest, mark=mark, safe=safe, clock=clock
+    ):
         return
 
     try:
@@ -218,7 +419,16 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
             await stop_session_async(db, row.id, risk_dec.trigger_stop, clock=clock)
         return
 
-    assert mark is not None
+    # Idempotency: refuse duplicate fill for same candle (restart / retry).
+    if (
+        row.last_processed_candle_open_time is not None
+        and signal.candle_open_time is not None
+        and signal.candle_open_time <= row.last_processed_candle_open_time
+    ) or _trade_exists_for_candle(db, row.id, signal.candle_open_time):
+        row.last_processed_candle_open_time = newest.open_time
+        db.commit()
+        return
+
     intent = ExecutionIntent(
         side=signal.side.value,
         symbol=row.symbol,

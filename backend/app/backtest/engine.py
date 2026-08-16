@@ -12,12 +12,13 @@ from sqlalchemy.orm import Session
 from app.backtest import repository as repo
 from app.backtest.execution import HistoricalExecutionAdapter
 from app.backtest.metrics import buy_and_hold, equity_point, max_drawdown, summarize_round_trips
+from app.execution.tpsl import derive_levels, evaluate_triggers
 from app.market_data.models import Candlestick
 from app.simulation.control.controller import TradingController
 from app.simulation.control.risk import RiskContext, RiskManager
 from app.simulation.money import DEFAULT_FEE_RATE, DEFAULT_SLIPPAGE_RATE, as_str, d, quantize_money
 from app.simulation.state_machine import SessionState
-from app.strategy.base import CandleClose, SignalSide
+from app.strategy.base import CandleClose, SignalSide, StrategySignal
 from app.strategy.registry import build_from_stored
 
 # Sentinels when optional early-exit / max_trades omitted
@@ -41,6 +42,12 @@ class EngineState:
     equity_series: list[Decimal] = field(default_factory=list)
     processed_open_times: set[int] = field(default_factory=set)
     stop_strategy: bool = False
+    # Feature 025 protective TP/SL
+    take_profit_percent: Decimal | None = None
+    stop_loss_percent: Decimal | None = None
+    take_profit_price: Decimal | None = None
+    stop_loss_price: Decimal | None = None
+    entry_fill_candle_open_time: int | None = None
 
 
 def run_engine(
@@ -59,12 +66,18 @@ def run_engine(
     wire_shared: bool = True,
     strategy_id: str = "dual_ema",
     strategy_params: dict[str, Any] | None = None,
+    take_profit_percent: Decimal | None = None,
+    stop_loss_percent: Decimal | None = None,
 ) -> dict[str, Any]:
     """
     Process candles. When wire_shared is False (T020 skeleton), only walks candles
     and records HOLD stubs without Dual EMA/control/risk fills.
     """
-    state = EngineState(cash=starting_capital)
+    state = EngineState(
+        cash=starting_capital,
+        take_profit_percent=take_profit_percent,
+        stop_loss_percent=stop_loss_percent,
+    )
     adapter = HistoricalExecutionAdapter()
     strategy = (
         build_from_stored(strategy_id, strategy_params) if wire_shared else None
@@ -82,7 +95,15 @@ def run_engine(
             continue
         state.processed_open_times.add(candle.openTime)
         close_px = d(candle.close)
-        closes.append(CandleClose(open_time=candle.openTime, close=close_px))
+        closes.append(
+            CandleClose(
+                open_time=candle.openTime,
+                close=close_px,
+                open=d(candle.open),
+                high=d(candle.high),
+                low=d(candle.low),
+            )
+        )
 
         if not wire_shared or strategy is None or controller is None or risk is None:
             repo.add_decision(
@@ -105,6 +126,173 @@ def run_engine(
                 )
             )
             continue
+
+        # Feature 025: protective TP/SL after session hard-stops path, before strategy.
+        # Protective SELL must still pass Controller → Risk → Execution (FR-003).
+        if state.position_side == "long" and (
+            state.take_profit_price is not None or state.stop_loss_price is not None
+        ):
+            protective = evaluate_triggers(
+                candle_open_time=candle.openTime,
+                high=d(candle.high),
+                low=d(candle.low),
+                entry_fill_candle_open_time=state.entry_fill_candle_open_time,
+                tp_price=state.take_profit_price,
+                sl_price=state.stop_loss_price,
+            )
+            if protective is not None:
+                protective_signal = StrategySignal(
+                    side=SignalSide.SELL,
+                    candle_open_time=candle.openTime,
+                    fast_ema=None,
+                    slow_ema=None,
+                    reason_code=protective,
+                )
+                ctrl = controller.review(SessionState.RUNNING, protective_signal)
+                if not ctrl.approved:
+                    repo.add_decision(
+                        db,
+                        run_id,
+                        signal="SELL",
+                        outcome="rejected",
+                        candle_open_time=candle.openTime,
+                        reason_code=ctrl.reason_code,
+                        reason_message=ctrl.reason_message,
+                    )
+                    state.equity_series.append(
+                        equity_point(
+                            state.cash,
+                            state.position_qty,
+                            state.position_side,
+                            close_px,
+                            fee_rate,
+                            slippage_rate,
+                        )
+                    )
+                    continue
+
+                ctx = RiskContext(
+                    position_side=state.position_side,
+                    cash=state.cash,
+                    qty=state.position_qty,
+                    fee_rate=fee_rate,
+                    slippage_rate=slippage_rate,
+                    start_equity=starting_capital,
+                    target_net_profit_amount=eff_profit,
+                    max_session_loss_amount=eff_loss,
+                    strategy_fill_count=state.strategy_fill_count,
+                    max_trades=eff_max_trades,
+                    mark_price=close_px,
+                    mark_safe=True,
+                )
+                risk_dec = risk.review(protective_signal, ctx)
+                # Session/emergency hard-stops from Risk take precedence over TP/SL (FR-006).
+                if risk_dec.trigger_stop:
+                    if state.position_side == "long":
+                        _flatten(
+                            db,
+                            run_id,
+                            state,
+                            adapter,
+                            reference=close_px,
+                            fill_open_time=candle.openTime,
+                            fee_rate=fee_rate,
+                            slippage_rate=slippage_rate,
+                            forced=True,
+                            end_of_run=False,
+                            reason=risk_dec.trigger_stop,
+                        )
+                    state.stop_strategy = True
+                    repo.add_decision(
+                        db,
+                        run_id,
+                        signal="SELL",
+                        outcome="rejected",
+                        candle_open_time=candle.openTime,
+                        reason_code=risk_dec.reason_code,
+                        reason_message=risk_dec.reason_message,
+                    )
+                    state.equity_series.append(
+                        equity_point(
+                            state.cash,
+                            state.position_qty,
+                            state.position_side,
+                            close_px,
+                            fee_rate,
+                            slippage_rate,
+                        )
+                    )
+                    continue
+                if not risk_dec.approved:
+                    repo.add_decision(
+                        db,
+                        run_id,
+                        signal="SELL",
+                        outcome="rejected",
+                        candle_open_time=candle.openTime,
+                        reason_code=risk_dec.reason_code,
+                        reason_message=risk_dec.reason_message,
+                    )
+                    state.equity_series.append(
+                        equity_point(
+                            state.cash,
+                            state.position_qty,
+                            state.position_side,
+                            close_px,
+                            fee_rate,
+                            slippage_rate,
+                        )
+                    )
+                    continue
+
+                if i + 1 >= len(candles):
+                    repo.add_decision(
+                        db,
+                        run_id,
+                        signal="SELL",
+                        outcome="approved_unexecutable",
+                        candle_open_time=candle.openTime,
+                        reason_code="no_next_candle",
+                        reason_message=(
+                            f"Protective {protective} triggered but no next candle open for fill"
+                        ),
+                    )
+                    state.equity_series.append(
+                        equity_point(
+                            state.cash,
+                            state.position_qty,
+                            state.position_side,
+                            close_px,
+                            fee_rate,
+                            slippage_rate,
+                        )
+                    )
+                    continue
+                next_c = candles[i + 1]
+                _flatten(
+                    db,
+                    run_id,
+                    state,
+                    adapter,
+                    reference=d(next_c.open),
+                    fill_open_time=next_c.openTime,
+                    fee_rate=fee_rate,
+                    slippage_rate=slippage_rate,
+                    forced=True,
+                    end_of_run=False,
+                    reason=protective,
+                )
+                state.equity_series.append(
+                    equity_point(
+                        state.cash,
+                        state.position_qty,
+                        state.position_side,
+                        close_px,
+                        fee_rate,
+                        slippage_rate,
+                    )
+                )
+                continue
 
         signal = strategy.evaluate(closes)
         fast = as_str(signal.fast_ema) if signal.fast_ema is not None else None
@@ -392,6 +580,12 @@ def run_engine(
     }
 
 
+def _clear_protective(state: EngineState) -> None:
+    state.take_profit_price = None
+    state.stop_loss_price = None
+    state.entry_fill_candle_open_time = None
+
+
 def _apply_strategy_fill(
     db: Session,
     run_id: str,
@@ -415,6 +609,14 @@ def _apply_strategy_fill(
         state.position_side = "long"
         state.position_qty = qty
         state.entry_cost_basis = -fill.cash_delta
+        tp_price, sl_price = derive_levels(
+            fill.fill_price,
+            state.take_profit_percent,
+            state.stop_loss_percent,
+        )
+        state.take_profit_price = tp_price
+        state.stop_loss_price = sl_price
+        state.entry_fill_candle_open_time = fill_open
         repo.add_trade(
             db,
             run_id,
@@ -438,6 +640,7 @@ def _apply_strategy_fill(
         state.position_qty = Decimal("0")
         state.open_round_trip_id = None
         state.open_entry_cash_out = Decimal("0")
+        _clear_protective(state)
         repo.add_trade(
             db,
             run_id,
@@ -489,6 +692,7 @@ def _flatten(
     state.position_qty = Decimal("0")
     state.open_round_trip_id = None
     state.open_entry_cash_out = Decimal("0")
+    _clear_protective(state)
     repo.add_trade(
         db,
         run_id,

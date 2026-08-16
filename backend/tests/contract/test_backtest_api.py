@@ -257,3 +257,25 @@ def test_insufficient_history_for_new_strategies(client, strategy_id, params, ca
     assert r.status_code == 201
     assert r.json()["status"] == "failed"
     assert r.json()["errorCode"] == "insufficient_history"
+
+
+def test_create_rejects_invalid_take_profit_percent(client):
+    c, _Session = client
+    r = c.post("/backtest/runs", json=_body(takeProfitPercent="0"))
+    assert r.status_code == 400
+    assert r.json()["detail"]["error"]["code"] == "invalid_config"
+
+
+def test_create_persists_tpsl_percents(client):
+    c, _Session = client
+    mock = AsyncMock()
+    mock.get_candles = AsyncMock(return_value=_mock_series(40))
+    with patch("app.backtest.service.get_market_data_service", return_value=mock):
+        r = c.post(
+            "/backtest/runs",
+            json=_body(takeProfitPercent="0.02", stopLossPercent="0.01"),
+        )
+    assert r.status_code == 201, r.text
+    data = r.json()
+    assert data["takeProfitPercent"] == "0.02"
+    assert data["stopLossPercent"] == "0.01"
