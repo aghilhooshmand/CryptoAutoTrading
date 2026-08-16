@@ -92,18 +92,27 @@ routes read-only (no open place-order REST for arbitrary clients).
 **Decision**:
 - Real create: `allocatedCapital ≤ 50` USDT (hard), `0 < maxPositionSize ≤
   allocatedCapital`; reject multi-symbol / multi-position config.
-- Re-check cap at confirm and immediately before XT entry submit.
+- Persist `starting_capital = allocated_capital` for Real. Initial session
+  `cash` equals that value as a **local budget ceiling only** — never presented
+  or treated as XT cash (FR-004b). UI/API must label budget vs XT reconcile.
+- Re-check session caps at confirm and immediately before XT entry submit.
+- Additionally enforce **FR-004a**: XT free USDT ≥ intended entry notional
+  before place; failed/missing balance read → fail closed.
+- Credentials required at Real create (`credentials_missing` if absent). If
+  balances are readable at create, fail closed when XT free USDT &lt;
+  `allocatedCapital`.
 - Real sessions **do not** reserve or mutate Simulation Portfolio allocations /
   holdings on create, fill, or close (FR-001a / FR-006 / SC-006).
 - Simulation create path unchanged (still Portfolio-aware).
 
-**Rationale**: Clarification Q3 + FR-004; constitution XXXIV for Sim remains;
-Real uses XT account as capital truth under session bounds.
+**Rationale**: Clarification Q3 + FR-004/004a/004b; constitution I; Sim Portfolio
+(XXXIV) remains authoritative for simulation capital only.
 
 **Alternatives considered**:
 - Bind Real to Portfolio allocation — rejected for MVP (blurs Sim ledger;
   Portfolio redesign out of scope).
 - Soft warning above 50 USDT — rejected (fail closed).
+- Trust session cash as XT truth — rejected (FR-004b / FR-006).
 
 ---
 
@@ -111,7 +120,8 @@ Real uses XT account as capital truth under session bounds.
 
 **Decision**: On backend startup, if a `mode=real` session was `RUNNING` /
 `STOPPING` (or had in-flight Real orders):
-1. Transition to `RECOVERY_BLOCKED` (reuse state enum).
+1. Transition to `RECOVERY_BLOCKED` (reuse state enum; dedicated Real
+   **behavior**, not a second engine).
 2. Discard **all** pending entry confirmations.
 3. Reconcile via Feature 013 (balances, open orders, order status) vs local
    session.
@@ -120,10 +130,13 @@ Real uses XT account as capital truth under session bounds.
    re-check passes; else Resume unavailable.
 6. Operator Stop/Flatten uses reconciled trustworthy XT state when executable.
 
+Same blocked occupation applies in-session for FR-006b (partial) and FR-006c
+(timeout/unsettled): no strategy trading / no new orders until settle.
+
 Simulation `mode=simulation` keeps Feature 014 conditional auto-recovery
 behavior unchanged.
 
-**Rationale**: Clarification Q5 + FR-011.
+**Rationale**: Clarification Q5 + FR-011 + FR-006b/c.
 
 **Alternatives considered**:
 - Reuse 014 auto-resume for Real — rejected explicitly.
@@ -135,18 +148,27 @@ behavior unchanged.
 ## R7 — Local Real ledger vs FillResult
 
 **Decision**: Keep ExecutionEngine protocol. For Real:
-- `FillResult.ok=true` with `fill` only when XT reconcile supplies executable
-  fill economics (price, qty, fee if available).
+- Apply session position/cash from XT reconcile evidence only (never from mark
+  inventiveness; never treat local budget cash as XT cash).
 - Intermediate “submitted / pending reconcile” is tracked on session/order
-  rows (`real_order_id`, `reconcile_status`), not as a fake FillQuote.
-- Pipeline must not apply Simulation accounting helpers from mark/next-open
-  for Real fills.
+  rows (`xt_order_id`, `reconcile_status`), not as a fake FillQuote.
+- **Partial fill (FR-006b)**: record actual filled qty/price as Real exposure,
+  then enter `RECOVERY_BLOCKED` (or equivalent); no normal strategy trading.
+- **Poll timeout (FR-006c)**: ≤**5s** wall-clock place+poll budget allowed.
+  Timeout MUST persist known `xt_order_id`, set `reconcile_status=unsettled`
+  (or `unknown_fail_closed`), block new orders, and require later reconcile to
+  determine outcome. Timeout MUST NOT invent a fill or drop the order identity
+  when known.
+- Full terminal fill without partial/unsettled issues may return
+  `FillResult(ok=True, ...)` and keep session trading-eligible when otherwise
+  safe.
 
-**Rationale**: FR-006; 012 adapter contract stability.
+**Rationale**: FR-006 / 006b / 006c; 012 adapter contract stability.
 
 **Alternatives considered**:
-- Change protocol to async-only — deferred (wrap poll inside `execute` with
-  bounded timeout for MVP).
+- Async-only execution redesign — deferred (sync poll ≤5s for MVP).
+- Timeout = forget order / assume no fill — rejected (FR-006c).
+- Full-fill-only / ignore partial exposure — rejected (FR-006b).
 - Dual ledgers with Sim portfolio mirror — rejected (SC-006).
 
 ---
@@ -155,10 +177,12 @@ behavior unchanged.
 
 **Decision**: Same Auto Trading / session surfaces with unmistakable
 `mode: "real"`, labels (“REAL”), pending-confirm panel, blocked-recovery
-banner, and history provenance. No new primary nav; no Portfolio redesign.
-Confirm/decline actions only for Real pending BUY.
+banner, and history provenance. Budget fields (`startingCapital` / session
+budget cash) MUST be labeled as local budget — not XT cash. Prefer exposing
+reconciled XT free/available when shown. No new primary nav; no Portfolio
+redesign. Confirm/decline actions only for Real pending BUY.
 
-**Rationale**: FR-007 / SC-005; constitution XIII–XIV.
+**Rationale**: FR-007 / FR-004b / SC-005; constitution XIII–XIV.
 
 **Alternatives considered**:
 - Separate Real app section — rejected (scope / Portfolio redesign risk).
@@ -168,9 +192,10 @@ Confirm/decline actions only for Real pending BUY.
 ## R9 — Testing strategy
 
 **Decision**: Default CI uses fakes for XT place/get. Cover: no XT without
-confirm; TTL discard; confirm-time validation fail; market-only reject limit;
-auto exit without confirm; cap reject; Portfolio isolation; ack≠fill;
-blocked recovery / Resume gate. Optional live smoke behind credentials env.
+confirm; TTL discard; confirm-time validation fail; XT free gate; market-only
+reject limit; auto exit without confirm; cap reject; Portfolio isolation;
+ack≠fill; partial → exposure + blocked; timeout → retain order + block; blocked
+recovery / Resume gate. Optional live smoke behind credentials env.
 
 **Rationale**: FR-010 / SC-001–SC-008.
 
@@ -179,7 +204,22 @@ blocked recovery / Resume gate. Optional live smoke behind credentials env.
 
 ---
 
+## R10 — XT free balance gate on Real entry
+
+**Decision**: At confirm / immediately before MARKET BUY place, read XT free
+USDT via Feature 013. Require free ≥ intended quote notional (after sizing).
+On missing/stale/failed balance read → fail closed (no place). Code suggestion:
+`confirm_validation_failed` or `insufficient_xt_free`.
+
+**Rationale**: FR-004a; session allocated ≤ 50 is blast-radius cap; XT free is
+exchange truth.
+
+**Alternatives considered**:
+- Trust session budget cash only — rejected.
+
+---
+
 ## Resolved clarifications
 
-All Technical Context items resolved from Q1–Q5 + existing stack. No remaining
-`NEEDS CLARIFICATION`.
+All Technical Context items resolved from Q1–Q5 + analyze remediation I1–I4
+(2026-08-16). No remaining `NEEDS CLARIFICATION`.

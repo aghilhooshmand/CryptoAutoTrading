@@ -17,15 +17,24 @@ Extend existing `SimulationSessionRow` (same table / lifecycle).
 
 **Real-specific rules:**
 
-- Create with `mode=real` is allowed when credentials/config gates pass (or
-  deferred until start — prefer fail at create if credentials missing for
-  operator clarity).
+- `mode=real` create: `allocated_capital ≤ 50`; `0 < max_position_size ≤
+  allocated_capital`.
+- For Real, persist `starting_capital = allocated_capital`. Initial `cash` is
+  set to the same value as a **local budget / configuration ceiling only**
+  (FR-004b). These fields MUST NOT be presented or treated as actual XT cash.
+- Actual available balance and post-trade cash/position MUST come from XT
+  reconciliation (Feature 013 / FR-006). Prefer separate API fields for
+  reconciled XT free/available when shown to operators.
+- Credentials required at create (`credentials_missing` if absent). When XT
+  balances are successfully read at create, fail closed if free USDT &lt;
+  `allocated_capital` (FR-004a).
 - Real create **MUST NOT** call Simulation Portfolio reserve / bind that
   mutates Sim holdings (no `allocation_id` Portfolio write path for Real MVP).
 - Simulation create behavior unchanged.
 
 **Operator-visible provenance:** status/history always include `mode` and,
-for Real, never imply `simulation` portfolio provenance.
+for Real, never imply `simulation` portfolio provenance or that budget cash
+equals XT cash.
 
 ---
 
@@ -39,7 +48,7 @@ Represents an approved exposure-increasing BUY awaiting operator action.
 | `session_id` | UUID string | FK to session; at most **one** non-terminal pending per session |
 | `symbol` | string | Must match session symbol |
 | `side` | string | `BUY` only for MVP |
-| `proposed_notional` / sizing fields | decimal strings | Bounded by cash, maxPositionSize, 50 USDT cap |
+| `proposed_notional` / sizing fields | decimal strings | Bounded by session budget caps, maxPositionSize, 50 USDT; confirm also gates on XT free (FR-004a) |
 | `reference_price` | decimal string | Mark/ref used at Risk approval (informational) |
 | `created_at` | datetime | TTL clock start |
 | `expires_at` | datetime | `created_at + 5 minutes` |
@@ -77,17 +86,28 @@ Tracks XT submission and reconcile without inventing fills.
 |-------|------|-------|
 | `session_id` | UUID | |
 | `client_intent_id` | string | Local idempotency / journal link |
-| `xt_order_id` | string \| null | Set when XT accepts place |
+| `xt_order_id` | string \| null | Set when XT accepts place; **retain on poll timeout** when known (FR-006c) |
 | `side` | `BUY` \| `SELL` | |
 | `order_type` | `MARKET` | Only MARKET in MVP |
 | `submit_status` | string | `not_submitted` \| `submitted` \| `submit_failed` |
-| `reconcile_status` | string | `unsettled` \| `filled` \| `rejected` \| `unknown_fail_closed` |
+| `reconcile_status` | string | `unsettled` \| `filled` \| `partial_filled_blocked` \| `rejected` \| `unknown_fail_closed` |
 | `filled_qty` / `avg_price` / `fee` | decimal strings \| null | **Only** from XT reconcile |
 | `updated_at` | datetime | |
 
-**Invariant:** Session `position_*` / cash for Real update **only** when
-`reconcile_status=filled` (or defined partial rule — MVP prefers wait for
-full fill or fail closed).
+**Invariants:**
+
+- Session position/cash for Real update **only** from XT reconcile evidence —
+  never from submission ack alone, never from local budget cash as if it were
+  XT truth.
+- **Full fill**: `reconcile_status=filled`; apply exposure; session may remain
+  trading-eligible when otherwise safe.
+- **Partial fill (FR-006b)**: record actual `filled_qty` / price as Real
+  exposure; set `partial_filled_blocked` (or equivalent); move session to
+  `RECOVERY_BLOCKED`; no normal strategy trading until Resume after safe
+  reconcile or Stop/Flatten.
+- **Poll timeout / unclear (FR-006c)**: keep `xt_order_id` when known; set
+  `unsettled` / `unknown_fail_closed`; block new orders; later reconcile must
+  determine outcome. Do **not** invent a fill or drop the order identity.
 
 ---
 
@@ -97,7 +117,9 @@ full fill or fail closed).
 |-------|---------|
 | `mode` | `real` \| `simulation` |
 | `pendingConfirmation` | null or summary (id, expiresAt, symbol, sizing) |
-| `realReconcile` | optional summary (unsettled order present?) |
+| `realReconcile` | optional summary (unsettled / partial-blocked / order id) |
+| `budgetStartingCapital` / budget cash | Local budget only — must not be labeled as XT cash |
+| `xtFreeQuote` (optional) | Last reconciled free USDT when available |
 | `recoveryReason` / blocked flags | Real blocked recovery messaging |
 
 ---
@@ -107,12 +129,13 @@ full fill or fail closed).
 | State | Simulation (014) | Real (015) |
 |-------|------------------|------------|
 | `RUNNING` | Normal; may auto-recover into it | Normal; may hold pending confirm |
-| `RECOVERY_BLOCKED` | Resume after gates; startup may auto-resume | Startup **always** land here if orphan Real; **never** auto-resume |
+| `RECOVERY_BLOCKED` | Resume after gates; startup may auto-resume | Startup orphans; **also** partial fill / unsettled timeout (FR-006b/c); **never** auto-resume |
 | `STOPPING` / `STOPPED` | Unchanged | Unchanged; discard pendings on stop |
 
 `allows_strategy_execution` remains **`RUNNING` only**. While
-`RECOVERY_BLOCKED`, no strategy-generated orders. Pending confirmations are
-not strategy orders; they are discarded on Real recovery entry.
+`RECOVERY_BLOCKED`, no strategy-generated orders and no new Real orders until
+reconcile settles. Pending confirmations are discarded on Real recovery entry
+(restart path).
 
 ---
 
@@ -125,9 +148,12 @@ not strategy orders; they are discarded on Real recovery entry.
 | maxPositionSize > allocated | `invalid_config` |
 | Confirm after expiry | `pending_confirmation_expired` |
 | Confirm with unsafe mark / risk fail | `confirm_validation_failed` |
+| XT free USDT &lt; intended notional / unreadable | `insufficient_xt_free` or `confirm_validation_failed` |
 | Limit order requested | `limit_orders_unavailable` |
 | RealExecutionAdapter without credentials | `credentials_missing` |
-| Place ack without fill evidence | remain `unsettled` / no position bump |
+| Place ack without fill evidence | remain `unsettled`; no invented full fill |
+| Partial fill recorded | `partial_filled_blocked` + `RECOVERY_BLOCKED` |
+| Poll timeout with known/possible order | `xt_reconcile_unsettled`; retain order id; block new orders |
 | Resume Real while reconcile incomplete | `resume_unavailable` |
 
 ---
@@ -136,6 +162,7 @@ not strategy orders; they are discarded on Real recovery entry.
 
 ```text
 SimulationSessionRow (mode=real)
+  ├── local budget fields (NOT XT cash)
   ├── 0..1 active PendingEntryConfirmation (pending)
   ├── 0..N RealOrderReconcile rows (history)
   ├── Decision / trade journals (provenance real)

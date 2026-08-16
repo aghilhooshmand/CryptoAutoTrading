@@ -13,11 +13,13 @@ auto-resume); RealExecutionAdapter only write path; unmistakable Real UI/API.
 Enable **Controlled Real** by extending the existing Simulation session worker
 and Strategy → Controller → Risk → Execution pipeline with `mode=real`.
 Exposure-increasing BUYs pause at a confirmation gate; operator confirm
-(within 5 minutes) re-validates safety then submits a **market** order via
-**RealExecutionAdapter** only. Fills and positions update only from XT
-reconcile (Feature 013 reads + write acknowledgements). TP/SL, reducing
-SELL, and emergency flatten skip the entry confirmation gate. Real sessions
-never mutate Simulation Portfolio holdings. Restart → Real
+(within 5 minutes) re-validates safety (incl. XT free USDT) then submits a
+**market** order via **RealExecutionAdapter** only. Fills and positions update
+only from XT reconcile. Local `startingCapital`/initial cash are **budget
+only**, not XT cash. Partial fills record real exposure then block; ≤5s poll
+timeout retains order identity and blocks until later reconcile. TP/SL,
+reducing SELL, and emergency flatten skip the entry confirmation gate. Real
+sessions never mutate Simulation Portfolio holdings. Restart → Real
 `RECOVERY_BLOCKED` with discarded pendings and **no** auto-resume.
 
 ## Technical Context
@@ -41,12 +43,13 @@ gated on credentials
 
 **Project Type**: Web application (`backend/` + `frontend/`)
 
-**Performance Goals**: Keep ~2s Simulation worker class; Real adds bounded XT
-place + poll reconcile latency per intent (fail closed on unclear timing)
+**Performance Goals**: Keep ~2s Simulation worker class; Real place+poll budget
+≤5s; on timeout enter unsettled/blocked (retain order) — do not invent fill
 
-**Constraints**: Spec FR-001–FR-011 + Clarifications Q1–Q5; constitution I–V,
-VII–IX, XIII–XV, XVII–XVIII, XXXII, XXXIV; market orders only; allocated ≤ 50
-USDT; no autonomous Real entries; no 014 Sim auto-recovery for Real; no
+**Constraints**: Spec FR-001–FR-011 + Clarifications Q1–Q5 + analyze I1–I4
+(FR-004a/b, FR-006b/c); constitution I–V, VII–IX, XIII–XV, XVII–XVIII, XXXII,
+XXXIV; market orders only; allocated ≤ 50 USDT; XT free gate on entry; budget
+≠ XT cash; no autonomous Real entries; no 014 Sim auto-recovery for Real; no
 Portfolio redesign; no Torque/GE
 
 **Scale/Scope**: One Real session shape (one pair, one long); confirmation

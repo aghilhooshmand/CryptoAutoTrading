@@ -42,11 +42,15 @@ Expect:
 - Risk-approved Real BUY does not call place until confirm
 - Pending older than 5 minutes expires with no XT order; session stays running
 - Confirm-time validation failure places no order
+- XT free &lt; notional blocks confirm/submit
 - Protective / reducing exits skip confirmation
 - `allocatedCapital > 50` rejected; cap re-checked pre-submit
 - Place ack alone does not create a local fill
+- Partial fill records exposure and blocks strategy trading
+- Poll timeout retains order id when known and blocks new orders until later reconcile
 - Limit order path rejected
 - Real fills do not mutate Simulation Portfolio holdings
+- Real budget cash is not presented as XT cash
 - Restart → Real `RECOVERY_BLOCKED`; no auto-resume; Resume gated
 
 Frontend:
@@ -62,15 +66,15 @@ Cover Real mode label, pending confirm actions, blocked banner (~375px smoke).
 
 ## 2. Manual mocked walkthrough
 
-1. Start backend/frontend with XT client faked or credentials unset for
-   create-only checks.
-2. Create session `mode=real`, allocated `10`, max position `10`.
+1. Start backend/frontend; Real create requires credentials (or fail closed).
+2. Create session `mode=real`, allocated `10`, max position `10` (budget ≠ XT cash).
 3. Drive / wait until status shows `pendingConfirmation`.
-4. Confirm → fake XT filled → status shows long from reconcile evidence.
+4. Confirm with fake XT free sufficient → filled → long from reconcile evidence.
 5. Trigger TP/SL or strategy exit → no confirm prompt; position flattens after
    reconcile.
-6. Create with allocated `51` → rejected.
-7. Simulate restart mid-Real → UI shows blocked; Resume disabled until fake
+6. Create with allocated `51` → rejected; confirm with XT free too low → no place.
+7. Fake partial fill → exposure recorded + blocked; fake timeout → order retained + blocked.
+8. Simulate restart mid-Real → UI shows blocked; Resume disabled until fake
    reconcile passes; then Resume or Stop.
 
 ---

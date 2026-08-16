@@ -30,9 +30,15 @@ See also: [confirmation-gate.md](./confirmation-gate.md),
 | `mode` omitted | treat as `simulation` (unchanged) | — |
 | `mode: "real"` + allocated > 50 | 400 | `real_capital_cap_exceeded` |
 | `mode: "real"` + invalid maxPosition | 400 | `invalid_config` |
+| `mode: "real"` + missing credentials | 503/400 | `credentials_missing` |
+| `mode: "real"` + XT free &lt; allocated (when readable) | 400 | `insufficient_xt_free` |
 | `mode` other | 400 | `invalid_config` / legacy `real_money_unavailable` removed for valid real |
 
 Real create **MUST NOT** mutate Simulation Portfolio holdings/reservations.
+
+For Real, `startingCapital` / session budget cash in responses are **local
+budget only** and MUST NOT be labeled or implied as XT cash (FR-004b). Prefer
+optional reconciled `xtFreeQuote` when available.
 
 Status / list / history responses **MUST** include `"mode": "real"` so clients
 cannot confuse with simulation.
@@ -45,8 +51,10 @@ cannot confuse with simulation.
 
 Body optional/empty or `{ "pendingConfirmationId": "..." }` when id required.
 
-**Success path:** final validation → RealExecutionAdapter market BUY →
-reconcile → 200 with updated session status (position only if filled).
+**Success path:** final validation (incl. XT free ≥ notional) →
+RealExecutionAdapter market BUY → reconcile → 200 with updated session status
+(full fill may leave RUNNING; partial → exposure + `RECOVERY_BLOCKED`;
+timeout/unsettled → retain order id + blocked — never invent fill).
 
 **Failure examples:**
 
@@ -55,9 +63,11 @@ reconcile → 200 with updated session status (position only if filled).
 | No pending | `no_pending_confirmation` |
 | Expired | `pending_confirmation_expired` |
 | Validation fail | `confirm_validation_failed` |
+| XT free insufficient / unreadable | `insufficient_xt_free` / `confirm_validation_failed` |
 | Cap would exceed | `real_capital_cap_exceeded` |
 | Credentials | `credentials_missing` |
-| XT reject / unclear | fail closed; no invented fill |
+| XT reject | `xt_order_rejected`; no invented fill |
+| Timeout / unclear | `xt_reconcile_unsettled`; order retained when known; blocked |
 
 ### `POST /simulation/sessions/{id}/decline-entry`
 

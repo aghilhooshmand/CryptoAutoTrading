@@ -2,7 +2,7 @@
 
 **Feature Branch**: `015-controlled-real-execution`  
 **Created**: 2026-08-16  
-**Status**: Clarified (session 2026-08-16)
+**Status**: Clarified (session 2026-08-16); remediated I1–I4 (2026-08-16)
 **Feature ID**: `015`  
 **Input**: Roadmap Controlled Real MVP (MVP-2) after Feature 025 + MVP-1 gate DONE
 
@@ -53,6 +53,16 @@ milestone on XT. It is **not** autonomous trading.
   state. Resume MUST re-run current safety/risk checks; if reconcile is
   incomplete/contradictory, Resume stays unavailable (fail closed). Do **not**
   extend Feature 014 Simulation auto-recovery into Real for this MVP.
+
+### Remediation locks (2026-08-16 analyze I1–I4)
+
+- I1: XT free USDT gate before Real entry submit (FR-004a).
+- I2: Real `startingCapital` / initial `cash` are local budget only — not XT
+  cash; actual balance/post-trade from reconcile (FR-004b).
+- I3: Partial fill → record actual exposure + block strategy trading until
+  Resume/Stop (FR-006b). Not “ignore partial / full-fill-only.”
+- I4: ≤5s sync poll allowed; timeout must not forget the order — unsettled
+  block + later reconcile before any new order (FR-006c).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -167,8 +177,16 @@ matches reconcile outcome; no fabricated fills.
   final pre-submit validation; do not place XT order.
 - Pending confirmation TTL (5 minutes) elapses — discard intent; session
   continues; no XT order.
-- Partial fills / unexpected XT order states (normalize; fail closed where
-  unknown).
+- Partial XT fill — record actual filled exposure from reconcile evidence;
+  enter fail-closed / reconciliation-blocked (no normal strategy trading)
+  until operator Resume after safe reconcile or Stop/Flatten (FR-006b).
+- Place/reconcile poll timeout with known or possible XT order — do **not**
+  forget the order; enter unsettled/blocking; later reconcile must determine
+  XT outcome before any new order (FR-006c).
+- Unexpected XT order states — normalize when known; otherwise fail closed /
+  blocked until reconcile.
+- XT free USDT below intended Real entry notional — block confirm/submit
+  fail-closed; no order (FR-004a).
 - Session stop during waiting-for-confirmation — discard pending; no XT order.
 - Protective exit and session hard-stop same candle (Feature 025 precedence
   preserved: session/emergency → SL → TP → strategy).
@@ -213,6 +231,16 @@ matches reconcile outcome; no fabricated fills.
   50 USDT cap requires an explicit future product decision after Controlled
   Real is validated. Cap enforcement MUST run before submitting an XT entry
   order (including before/at confirmation completion).
+- **FR-004a**: Before submitting a Real exposure-increasing XT entry, the
+  system MUST fail closed unless Feature 013 balance reads show sufficient
+  **free** quote (USDT) for the intended notional. Session
+  `allocatedCapital` / `maxPositionSize` (and local budget fields) MUST still
+  apply; they MUST NOT authorize an entry the exchange free balance cannot
+  cover. Missing/failed/stale balance reads MUST fail closed (no place).
+- **FR-004b**: For Real sessions, `startingCapital` and initial session `cash`
+  are **local budget / configuration** values only. They MUST NOT be presented
+  or treated as actual XT cash. Actual available balance and post-trade
+  cash/position MUST come from XT reconciliation (Feature 013 / FR-006).
 - **FR-005**: **RealExecutionAdapter** MUST be the only route from an approved
   Real intent to XT. Simulation/Backtest paths MUST remain unchanged in
   behavior intent and MUST NOT place Real orders.
@@ -225,6 +253,18 @@ matches reconcile outcome; no fabricated fills.
   exposure-increasing entries and automatic exits (TP/SL, reducing strategy
   exit, emergency/STOP flatten when safely executable). Limit orders are out
   of scope until after Controlled Real MVP is proven.
+- **FR-006b**: When XT reports a **partial** fill, the system MUST record the
+  actual filled quantity/price as Real exposure from reconcile evidence, then
+  enter a fail-closed / reconciliation-blocked session state. Normal
+  strategy-generated trading MUST NOT continue while blocked. Operator MUST
+  Resume only after reconcile proves safe, or Stop/Flatten using reconciled
+  trustworthy XT state.
+- **FR-006c**: RealExecutionAdapter MAY use a synchronous place+reconcile poll
+  budget of **at most 5 seconds**. On timeout (or other unclear outcome) the
+  system MUST NOT forget a submitted/possible XT order: persist order identity
+  when known, enter an unsettled/blocking state, and forbid new orders until
+  subsequent reconciliation determines the actual XT outcome. Timeout MUST NOT
+  invent a fill or clear exposure blindly.
 - **FR-007**: Real mode MUST be unmistakable in the operator UI and history;
   Portfolio redesign is out of scope.
 - **FR-008**: Feature 015 MUST NOT implement autonomous (unconfirmed) Real
@@ -239,23 +279,27 @@ matches reconcile outcome; no fabricated fills.
   failure modes, Real blocked-recovery/resume/stop, and UI/API Real
   distinctness without requiring live XT in unit tests (use fakes/mocks); any
   live smoke is optional and gated on credentials.
-- **FR-011**: On backend restart, a Controlled Real session MUST enter a
-  dedicated **blocked recovery** state. The system MUST NEVER auto-resume Real
-  trading. All pending entry confirmations MUST be discarded. The system MUST
-  reconcile XT balances, orders/fills, and local session state via Feature 013
-  private capabilities. While blocked, no strategy-generated orders may
-  execute. The operator MUST explicitly **Resume** only after reconciliation
-  proves the state safe, or **Stop/Flatten** using reconciled trustworthy XT
-  state. Resume MUST re-run relevant current safety/risk checks before trading
-  continues; if reconciliation is incomplete or contradictory, Resume MUST
-  remain unavailable (fail closed). Feature 015 MUST NOT extend Feature 014
-  Simulation auto-recovery machinery into Real trading for this MVP.
+- **FR-011**: On backend restart (and on in-session unsettled/partial-block
+  paths per FR-006b/FR-006c), a Controlled Real session MUST use dedicated Real
+  **blocked recovery behavior** on the shared `RECOVERY_BLOCKED` state (or
+  equivalent non-trading blocked occupation). The system MUST NEVER auto-resume
+  Real trading. All pending entry confirmations MUST be discarded on restart
+  recovery entry. The system MUST reconcile XT balances, orders/fills, and
+  local session state via Feature 013 private capabilities. While blocked, no
+  strategy-generated orders may execute (and no new Real orders until settle).
+  The operator MUST explicitly **Resume** only after reconciliation proves the
+  state safe, or **Stop/Flatten** using reconciled trustworthy XT state. Resume
+  MUST re-run relevant current safety/risk checks before trading continues; if
+  reconciliation is incomplete or contradictory, Resume MUST remain unavailable
+  (fail closed). Feature 015 MUST NOT extend Feature 014 Simulation
+  auto-recovery machinery into Real trading for this MVP.
 
 ### Key Entities
 
 - **Session (mode=real)**: Same session lifecycle as Simulation, with Real mode
-  flag/label; includes waiting-for-confirmation when applicable. Does not share
-  Simulation Portfolio holdings mutations.
+  flag/label; includes waiting-for-confirmation when applicable. Local
+  startingCapital/initial cash are budget/config only (not XT cash). Does not
+  share Simulation Portfolio holdings mutations.
 - **PendingEntryConfirmation**: Approved exposure-increasing BUY awaiting
   operator confirm/decline before RealExecutionAdapter.
 - **RealOrderReconcileView**: Normalized XT order/account snapshot used to
@@ -273,7 +317,9 @@ matches reconcile outcome; no fabricated fills.
   allocatedCapital > 50 USDT) are rejected before trading starts; XT entry is
   never submitted when the MVP cap would be violated.
 - **SC-004**: Simulated XT failures and submission-only acks never produce
-  invented local fills; filled state requires reconcile evidence.
+  invented local fills; filled/partial exposure requires reconcile evidence;
+  partial fills leave the session blocked; poll timeout retains order identity
+  when known and blocks new orders until later reconcile settles outcome.
 - **SC-007**: Fixture tests reject or omit limit-order Real placement in MVP.
 - **SC-005**: UI and API clearly distinguish Real from Simulation (including
   history/provenance) without a new primary nav or Portfolio redesign.
