@@ -522,7 +522,7 @@ before 015**.
 | 013 | XT Account / Private API Integration | DONE |
 | 014 | Live Paper-Trading Hardening | DONE (**FREEZE** — expand only for concrete defects) |
 | 025 | Stage-1 Trading Gap-Close | DONE |
-| 015 | Real-Money Manual/Confirmed Execution | PLANNED (next; MVP-1 gate DONE) |
+| 015 | Real-Money Manual/Confirmed Execution | IN PROGRESS |
 
 ---
 
