@@ -481,7 +481,7 @@ autonomous real-money trading.
 | ID | Feature | Status |
 |---|---|---|
 | 013 | XT Account / Private API Integration | DONE |
-| 014 | Live Paper-Trading Hardening | IN PROGRESS |
+| 014 | Live Paper-Trading Hardening | DONE |
 | 015 | Real-Money Manual/Confirmed Execution | PLANNED |
 
 ---
@@ -559,11 +559,7 @@ Areas should include:
 - logging/observability;
 - long-running simulation tests.
 
-Status: `IN PROGRESS`
-
----
-
-## 015 — Real-Money Manual/Confirmed Execution
+Status: `DONE`
 
 ### Goal
 
@@ -1306,25 +1302,24 @@ Current completed foundation:
 011 → DONE
 012 → DONE
 013 → DONE
+014 → DONE
 ```
 
 Current active milestone:
 
 ```text
-014 → Live Paper-Trading Hardening
+015 → Real-Money Manual/Confirmed Execution
 ```
 
 Next planned milestone:
 
 ```text
-015 → Real-Money Manual/Confirmed Execution
+(see ROADMAP feature list after 015)
 ```
 
 The near-term objective is therefore:
 
 ```text
-harden live paper trading
-        ↓
 connect confirmed real trading
         ↓
 build Torque on mature reusable infrastructure

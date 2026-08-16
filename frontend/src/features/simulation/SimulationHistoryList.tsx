@@ -83,6 +83,7 @@ export function SimulationHistoryList({ refreshKey = 0 }: Props) {
             <option value="CONFIGURED">CONFIGURED</option>
             <option value="RUNNING">RUNNING</option>
             <option value="STOPPING">STOPPING</option>
+            <option value="RECOVERY_BLOCKED">RECOVERY_BLOCKED</option>
             <option value="STOPPED">STOPPED</option>
           </select>
         </label>

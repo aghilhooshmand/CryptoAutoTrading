@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-16
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: Feature 014 — Harden the existing live-market Simulation / paper-trading system for reliable long-running operation and recovery. Reuse the single pipeline (Market Data → Strategy → Controller → Risk → Execution → Simulation Portfolio / Accounting). Do not create a second paper-trading engine. Cover restart/recovery, reconciliation before trading resumes, fail-closed unsafe recovery, duplicate candle/event/decision/fill prevention, duplicate-trade prevention after restart/retry, stale market data, temporary public XT/network failures, bounded retry where safe, Portfolio/accounting consistency, `unsafe_unflattened` and interrupted-state behavior, emergency stop under degradation, long-running reliability, operator-visible recovery/degraded/interrupted states, observability, and responsive UI (~375px). Out of scope: XT real place/cancel, RealExecutionAdapter activation, Real trading mode, real money, autonomous real trading, withdrawals/transfers, Torque, GE, new strategies, Backtest redesign.
 

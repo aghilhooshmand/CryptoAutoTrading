@@ -38,6 +38,7 @@ export function AutoTradingPage() {
     createAndStart,
     stop,
     emergencyStop,
+    resume,
   } = useSimulationSession();
 
   const backtest = useBacktest();
@@ -134,6 +135,9 @@ export function AutoTradingPage() {
           }}
           onEmergencyStop={() => {
             void emergencyStop();
+          }}
+          onResume={() => {
+            void resume();
           }}
         />
 

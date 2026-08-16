@@ -7,8 +7,9 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
-from app.db.models import SimulationSessionRow
+from app.db.models import SimulationSessionRow, TradeJournalRow
 from app.market_data.models import MarketStatus
+from app.market_data.public_retry import PublicRetryExhausted, with_public_retry
 from app.market_data.service import get_market_data_service
 from app.simulation.accounting import liquidation_equity, session_net_pnl
 from app.simulation.clock import Clock
@@ -44,9 +45,11 @@ def _as_utc(dt: datetime) -> datetime:
     return dt.astimezone(timezone.utc)
 
 
-
 async def _closed_candles(symbol: str, timeframe: str, clock: Clock) -> list[CandleClose]:
-    series = await get_market_data_service().get_candles(symbol, timeframe)
+    async def _call():
+        return await get_market_data_service().get_candles(symbol, timeframe)
+
+    series = await with_public_retry(_call)
     interval = INTERVAL_SECONDS[timeframe]
     now_ms = int(clock.now().timestamp() * 1000)
     closed: list[CandleClose] = []
@@ -58,12 +61,33 @@ async def _closed_candles(symbol: str, timeframe: str, clock: Clock) -> list[Can
 
 async def _quote_mark(symbol: str) -> tuple[Decimal | None, bool]:
     try:
-        quote = await get_market_data_service().get_quote(symbol)
-    except Exception:  # noqa: BLE001
+
+        async def _call():
+            return await get_market_data_service().get_quote(symbol)
+
+        quote = await with_public_retry(_call)
+    except (PublicRetryExhausted, Exception):  # noqa: BLE001
         return None, False
     if quote.status != MarketStatus.FRESH:
         return None, False
     return d(quote.lastPrice), True
+
+
+def _trade_exists_for_candle(
+    db: Session, session_id: str, candle_open_time: int | None
+) -> bool:
+    if candle_open_time is None:
+        return False
+    return (
+        db.query(TradeJournalRow)
+        .filter(
+            TradeJournalRow.session_id == session_id,
+            TradeJournalRow.candle_open_time == candle_open_time,
+            TradeJournalRow.is_forced_close.is_(False),
+        )
+        .first()
+        is not None
+    )
 
 
 async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Clock) -> None:
@@ -78,6 +102,8 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
 
     mark, safe = await _quote_mark(row.symbol)
     if not safe:
+        # Unsafe mark: increment streak; while long, early return blocks entries
+        # (Risk would also reject; we never reach strategy on unsafe mark).
         row.unsafe_quote_streak += 1
         row.updated_at = clock.now()
         db.commit()
@@ -109,9 +135,12 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
 
     try:
         closes = await _closed_candles(row.symbol, row.timeframe, clock)
-    except Exception:  # noqa: BLE001
+    except (PublicRetryExhausted, Exception):  # noqa: BLE001
         row.unsafe_quote_streak += 1
+        row.updated_at = clock.now()
         db.commit()
+        if row.unsafe_quote_streak >= UNSAFE_QUOTE_LIMIT:
+            await stop_session_async(db, row.id, "unrecoverable_unsafe_market_data", clock=clock)
         return
 
     if not closes:
@@ -216,6 +245,16 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
         db.commit()
         if risk_dec.trigger_stop:
             await stop_session_async(db, row.id, risk_dec.trigger_stop, clock=clock)
+        return
+
+    # Idempotency: refuse duplicate fill for same candle (restart / retry).
+    if (
+        row.last_processed_candle_open_time is not None
+        and signal.candle_open_time is not None
+        and signal.candle_open_time <= row.last_processed_candle_open_time
+    ) or _trade_exists_for_candle(db, row.id, signal.candle_open_time):
+        row.last_processed_candle_open_time = newest.open_time
+        db.commit()
         return
 
     assert mark is not None

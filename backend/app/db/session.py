@@ -60,6 +60,10 @@ def init_db() -> None:
         ("per_symbol_max_weight", "TEXT"),
         ("decision_log_mode", "TEXT"),
         ("final_result_json", "TEXT"),
+        # Feature 014 recovery fields
+        ("recovery_reason", "TEXT"),
+        ("recovery_detail", "TEXT"),
+        ("last_recovery_at", "DATETIME"),
     ):
         _ensure_column(engine, "simulation_sessions", col, typ)
     for col, typ in (
@@ -70,6 +74,19 @@ def init_db() -> None:
         ("decision_log_mode", "TEXT"),
     ):
         _ensure_column(engine, "operator_defaults", col, typ)
+    # Feature 014: journal uniqueness for existing SQLite DBs (create_all alone is insufficient).
+    _ensure_unique_index(
+        engine,
+        "uq_trade_journal_session_candle_forced",
+        "trade_journal",
+        "(session_id, candle_open_time, is_forced_close)",
+    )
+    _ensure_unique_index(
+        engine,
+        "uq_decision_journal_session_candle",
+        "decision_journal",
+        "(session_id, candle_open_time)",
+    )
     # Feature 009: leftover portfolio.cash → usdt holding; provenance rewrite.
     from app.portfolio.repository import migrate_cash_to_usdt, migrate_provenance
 
@@ -93,3 +110,19 @@ def _ensure_column(eng, table: str, column: str, coltype: str) -> None:
         return
     with eng.begin() as conn:
         conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}"))
+
+
+def _ensure_unique_index(eng, name: str, table: str, columns_sql: str) -> None:
+    """CREATE UNIQUE INDEX IF NOT EXISTS for journal idempotency on existing DBs."""
+    from sqlalchemy import inspect, text
+
+    insp = inspect(eng)
+    if table not in insp.get_table_names():
+        return
+    existing = {idx["name"] for idx in insp.get_indexes(table)}
+    if name in existing:
+        return
+    with eng.begin() as conn:
+        conn.execute(
+            text(f"CREATE UNIQUE INDEX IF NOT EXISTS {name} ON {table} {columns_sql}")
+        )

@@ -50,16 +50,32 @@ logger = logging.getLogger(__name__)
 
 
 class SessionError(Exception):
-    def __init__(self, code: str, message: str, http_status: int = 400) -> None:
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        http_status: int = 400,
+        *,
+        failed_gates: list[str] | None = None,
+        session: dict | None = None,
+    ) -> None:
         super().__init__(message)
         self.code = code
         self.message = message
         self.http_status = http_status
+        self.failed_gates = failed_gates
+        self.session = session
 
 
 def _now(clock: Clock) -> datetime:
     return clock.now()
 
+
+_ACTIVE_STATES = (
+    SessionState.RUNNING.value,
+    SessionState.STOPPING.value,
+    SessionState.RECOVERY_BLOCKED.value,
+)
 
 def _validate_capital(starting: Decimal, allocated: Decimal, max_pos: Decimal) -> None:
     if not (Decimal("0") < max_pos <= allocated <= starting):
@@ -227,7 +243,7 @@ def get_session(db: Session, session_id: str) -> SimulationSessionRow:
 def get_active_session(db: Session) -> SimulationSessionRow | None:
     return (
         db.query(SimulationSessionRow)
-        .filter(SimulationSessionRow.state.in_([SessionState.RUNNING.value, SessionState.STOPPING.value]))
+        .filter(SimulationSessionRow.state.in_(list(_ACTIVE_STATES)))
         .order_by(SimulationSessionRow.updated_at.desc())
         .first()
     )
@@ -488,12 +504,20 @@ async def stop_session_async(
 ) -> SimulationSessionRow:
     clock = clock or SystemClock()
     row = get_session(db, session_id)
-    if row.state != SessionState.RUNNING.value:
-        raise SessionError("invalid_state", "Session must be RUNNING to stop", 409)
-    transition(SessionState.RUNNING, SessionState.STOPPING)
+    current = SessionState(row.state)
+    if current not in (SessionState.RUNNING, SessionState.RECOVERY_BLOCKED):
+        raise SessionError(
+            "invalid_state",
+            "Session must be RUNNING or RECOVERY_BLOCKED to stop",
+            409,
+        )
+    transition(current, SessionState.STOPPING)
     row.state = SessionState.STOPPING.value
     row.stop_reason = reason
     row.updated_at = _now(clock)
+    # Clear recovery fields when leaving blocked via stop.
+    row.recovery_reason = None
+    row.recovery_detail = None
     await force_close_if_needed(db, row, clock=clock)
     transition(SessionState.STOPPING, SessionState.STOPPED)
     row.state = SessionState.STOPPED.value
@@ -517,6 +541,74 @@ async def stop_session_async(
     )
     db.commit()
     db.refresh(row)
+    return row
+
+
+async def resume_session_async(
+    db: Session,
+    session_id: str,
+    clock: Clock | None = None,
+) -> SimulationSessionRow:
+    """Operator resume from RECOVERY_BLOCKED after full G1–G5 + gap-skip."""
+    from app.simulation.gap_skip import apply_offline_gap_skip
+    from app.simulation.reconcile import reconcile_session
+    from app.simulation.recovery import _mark_safe_for_row
+
+    clock = clock or SystemClock()
+    row = get_session(db, session_id)
+    if row.state != SessionState.RECOVERY_BLOCKED.value:
+        raise SessionError(
+            "invalid_state_for_resume",
+            "Session must be RECOVERY_BLOCKED to resume",
+            409,
+        )
+
+    now = _now(clock)
+    mark_safe = await _mark_safe_for_row(row)
+    result = reconcile_session(db, row, mark_safe=mark_safe)
+    row.last_recovery_at = now
+
+    if not result.passed:
+        reason = result.failed_gates[0] if result.failed_gates else "reconcile_failed"
+        row.recovery_reason = reason
+        row.recovery_detail = ",".join(result.failed_gates) if result.failed_gates else None
+        row.updated_at = now
+        db.commit()
+        db.refresh(row)
+        raise SessionError(
+            "recovery_still_blocked",
+            "Reconciliation did not pass; session remains RECOVERY_BLOCKED.",
+            409,
+            failed_gates=list(result.failed_gates),
+            session=await session_to_dict(row, db=db),
+        )
+
+    ok, gap_err = await apply_offline_gap_skip(db, row)
+    if not ok:
+        row.recovery_reason = gap_err or "recovery_gap_unresolvable"
+        row.recovery_detail = gap_err
+        row.updated_at = now
+        db.commit()
+        db.refresh(row)
+        raise SessionError(
+            "recovery_gap_unresolvable",
+            "Cannot prove offline gap skip bounds; session remains RECOVERY_BLOCKED.",
+            409,
+            failed_gates=[gap_err or "recovery_gap_unresolvable"],
+            session=await session_to_dict(row, db=db),
+        )
+
+    transition(SessionState.RECOVERY_BLOCKED, SessionState.RUNNING)
+    row.state = SessionState.RUNNING.value
+    row.recovery_reason = None
+    row.recovery_detail = None
+    row.last_recovery_at = now
+    row.updated_at = now
+    db.commit()
+    db.refresh(row)
+    from app.simulation.worker import ensure_worker_running
+
+    ensure_worker_running()
     return row
 
 
@@ -551,12 +643,13 @@ def list_sessions(
         SessionState.CONFIGURED.value,
         SessionState.RUNNING.value,
         SessionState.STOPPING.value,
+        SessionState.RECOVERY_BLOCKED.value,
         SessionState.STOPPED.value,
     }
     if state is not None and state not in allowed:
         raise SessionError(
             "invalid_query",
-            "state must be one of: CONFIGURED, RUNNING, STOPPING, STOPPED",
+            "state must be one of: CONFIGURED, RUNNING, STOPPING, RECOVERY_BLOCKED, STOPPED",
             400,
         )
 
@@ -608,10 +701,10 @@ def _portfolio_binding_blocks_delete(db: Session, row: SimulationSessionRow) -> 
 
 def delete_session(db: Session, session_id: str) -> None:
     row = get_session(db, session_id)
-    if row.state in (SessionState.RUNNING.value, SessionState.STOPPING.value):
+    if row.state in _ACTIVE_STATES:
         raise SessionError(
             "session_active",
-            "Cannot delete a RUNNING or STOPPING session",
+            "Cannot delete a RUNNING, STOPPING, or RECOVERY_BLOCKED session",
             409,
         )
     if _portfolio_binding_blocks_delete(db, row):
@@ -620,6 +713,11 @@ def delete_session(db: Session, session_id: str) -> None:
             "Cannot delete while Portfolio reserved or deployed capital is bound to this session",
             409,
         )
+    from app.db.models import SkippedGapAuditRow
+
+    db.query(SkippedGapAuditRow).filter(SkippedGapAuditRow.session_id == session_id).delete(
+        synchronize_session=False
+    )
     db.query(DecisionJournalRow).filter(DecisionJournalRow.session_id == session_id).delete(
         synchronize_session=False
     )
@@ -714,6 +812,10 @@ async def session_to_dict(row: SimulationSessionRow, *, db: Session | None = Non
     else:
         economics = await economics_dict(row)
 
+    skipped_gap = None
+    if db is not None:
+        skipped_gap = _latest_skipped_gap(db, row.id)
+
     return {
         "id": row.id,
         "mode": row.mode,
@@ -750,7 +852,42 @@ async def session_to_dict(row: SimulationSessionRow, *, db: Session | None = Non
         "stopReason": row.stop_reason,
         "positionFlattenStatus": row.position_flatten_status,
         "lastProcessedCandleOpenTime": row.last_processed_candle_open_time,
+        "recoveryReason": row.recovery_reason,
+        "recoveryDetail": row.recovery_detail,
+        "lastRecoveryAt": (
+            row.last_recovery_at.isoformat().replace("+00:00", "Z")
+            if row.last_recovery_at
+            else None
+        ),
+        "skippedGap": skipped_gap,
         "economics": economics,
         "finalResult": final_result,
         "label": "SIMULATION",
+    }
+
+
+def _ms_to_iso(ms: int | None) -> str | None:
+    if ms is None:
+        return None
+    return datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _latest_skipped_gap(db: Session, session_id: str) -> dict | None:
+    from app.db.models import SkippedGapAuditRow
+
+    audit = (
+        db.query(SkippedGapAuditRow)
+        .filter(SkippedGapAuditRow.session_id == session_id)
+        .order_by(SkippedGapAuditRow.recorded_at.desc())
+        .first()
+    )
+    if audit is None:
+        return None
+    return {
+        "fromOpenTime": _ms_to_iso(audit.from_open_time),
+        "toOpenTime": _ms_to_iso(audit.to_open_time),
+        "reason": audit.reason,
+        "recordedAt": audit.recorded_at.isoformat().replace("+00:00", "Z")
+        if audit.recorded_at
+        else None,
     }

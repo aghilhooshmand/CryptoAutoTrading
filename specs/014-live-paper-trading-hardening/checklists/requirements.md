@@ -34,5 +34,6 @@
 - Clarification session 2026-08-16 locked recovery/resume/reconcile/skip/stale/`RECOVERY_BLOCKED` policies.
 - Plan resolved deferred items: watermark/journal persistence (research R4); public retry bounds max 1 / 0.5s / ≤2s Retry-After (research R5).
 - Analyze remediations 2026-08-16 applied to `tasks.md`: full G1–G5 + gap-skip before auto-resume; `init_db` `_ensure_column`; concrete FR-011; atomicity; FR-015 regression.
-- ROADMAP Feature 014 IN PROGRESS.
-- Ready for `/speckit-implement` after optional re-analyze.
+- ROADMAP Feature 014 **DONE** after `/speckit-implement`.
+- Convergence Phase 9 (T051–T057) completed: gap-skip empty-history fail-closed; unbound flat Portfolio conflict; FR-011/008/015 tests; ~375px recovery UI; spec Status → Implemented.
+- All tasks T001–T057 marked complete.

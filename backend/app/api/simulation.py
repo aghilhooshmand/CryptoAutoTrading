@@ -37,10 +37,14 @@ class CreateSessionBody(BaseModel):
 
 
 def _raise(err: svc.SessionError) -> None:
-    raise HTTPException(
-        status_code=err.http_status,
-        detail={"error": {"code": err.code, "message": err.message}},
-    )
+    body: dict[str, Any] = {
+        "error": {"code": err.code, "message": err.message},
+    }
+    if err.failed_gates is not None:
+        body["error"]["failedGates"] = err.failed_gates
+    if err.session is not None:
+        body["session"] = err.session
+    raise HTTPException(status_code=err.http_status, detail=body)
 
 
 @router.post("/sessions", status_code=201)
@@ -61,6 +65,19 @@ async def start_session(session_id: str) -> dict[str, Any]:
     db = db_session.SessionLocal()
     try:
         row = await svc.start_session_async(db, session_id)
+        return await svc.session_to_dict(row, db=db)
+    except svc.SessionError as err:
+        _raise(err)
+        raise  # pragma: no cover
+    finally:
+        db.close()
+
+
+@router.post("/sessions/{session_id}/resume")
+async def resume_session(session_id: str) -> dict[str, Any]:
+    db = db_session.SessionLocal()
+    try:
+        row = await svc.resume_session_async(db, session_id)
         return await svc.session_to_dict(row, db=db)
     except svc.SessionError as err:
         _raise(err)

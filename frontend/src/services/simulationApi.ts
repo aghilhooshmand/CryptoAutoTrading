@@ -1,6 +1,18 @@
 /** Typed client for Feature 003 `/simulation` contracts. */
 
-export type SessionState = "CONFIGURED" | "RUNNING" | "STOPPING" | "STOPPED";
+export type SessionState =
+  | "CONFIGURED"
+  | "RUNNING"
+  | "STOPPING"
+  | "RECOVERY_BLOCKED"
+  | "STOPPED";
+
+export interface SkippedGapSummary {
+  fromOpenTime: string | null;
+  toOpenTime: string;
+  reason: string;
+  recordedAt: string;
+}
 
 export type CandleInterval = "1m" | "5m" | "15m" | "1h" | "4h" | "1d";
 
@@ -57,6 +69,10 @@ export interface SimulationSession {
   stopReason: string | null;
   positionFlattenStatus: string;
   lastProcessedCandleOpenTime: number | null;
+  recoveryReason?: string | null;
+  recoveryDetail?: string | null;
+  lastRecoveryAt?: string | null;
+  skippedGap?: SkippedGapSummary | null;
   economics: SessionEconomics;
   finalResult?: FinalResult | null;
   label: "SIMULATION";
@@ -217,6 +233,17 @@ export async function emergencyStopSession(
   signal?: AbortSignal,
 ): Promise<SimulationSession> {
   const response = await fetch(`/simulation/sessions/${id}/emergency-stop`, {
+    method: "POST",
+    signal,
+  });
+  return parseJson<SimulationSession>(response);
+}
+
+export async function resumeSession(
+  id: string,
+  signal?: AbortSignal,
+): Promise<SimulationSession> {
+  const response = await fetch(`/simulation/sessions/${id}/resume`, {
     method: "POST",
     signal,
   });

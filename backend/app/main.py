@@ -14,7 +14,7 @@ from app.api.simulation import router as simulation_router
 from app.api.strategies import router as strategies_router
 from app.api.xt_account import router as xt_account_router
 from app.db import session as db_session
-from app.simulation.recovery import recover_orphan_sessions
+from app.simulation.recovery import recover_orphan_sessions_async
 from app.simulation.worker import ensure_worker_running, stop_worker
 # Ensure all strategies register before serving
 from app.strategy import (  # noqa: F401
@@ -31,7 +31,7 @@ async def lifespan(_app: FastAPI):
     db_session.init_db()
     db = db_session.SessionLocal()
     try:
-        recover_orphan_sessions(db)
+        await recover_orphan_sessions_async(db)
     finally:
         db.close()
     ensure_worker_running()

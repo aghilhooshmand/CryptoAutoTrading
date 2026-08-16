@@ -13,6 +13,7 @@ import {
   fetchDecisions,
   fetchSession,
   fetchTrades,
+  resumeSession,
   startSession,
   stopSession,
 } from "../../services/simulationApi";
@@ -109,8 +110,33 @@ export function useSimulationSession() {
     }
   }
 
+  async function resume() {
+    if (!session) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const resumed = await resumeSession(session.id);
+      setSession(resumed);
+      setTrackedId(resumed.id);
+      await loadJournals(resumed.id);
+    } catch (err) {
+      setError((err as Error).message);
+      try {
+        const fresh = await fetchSession(session.id);
+        setSession(fresh);
+      } catch {
+        /* keep prior session snapshot */
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const configDisabled =
-    busy || session?.state === "RUNNING" || session?.state === "STOPPING";
+    busy ||
+    session?.state === "RUNNING" ||
+    session?.state === "STOPPING" ||
+    session?.state === "RECOVERY_BLOCKED";
 
   return {
     session,
@@ -122,5 +148,6 @@ export function useSimulationSession() {
     createAndStart,
     stop,
     emergencyStop,
+    resume,
   };
 }
