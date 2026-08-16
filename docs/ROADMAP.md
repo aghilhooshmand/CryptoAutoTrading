@@ -715,7 +715,7 @@ Operator confirms
 RealExecutionAdapter → XT
 ```
 
-Status: `PLANNED`
+Status: `IN PROGRESS`
 
 ---
 
