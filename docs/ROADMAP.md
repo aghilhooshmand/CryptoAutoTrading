@@ -7,10 +7,10 @@ safe historical/simulated trading toward controlled real XT trading, then
 composable Torque trading programs, Grammatical Evolution, and eventually
 carefully controlled autonomous real-money trading (destination only).
 
-Post-Feature-014 audit (2026-08-16): next delivery is **025 Stage-1 Trading
-Gap-Close**, then MVP-1 validation, then **015 Controlled Real**, then Torque
-composition (016), then minimal GE — while freezing expansion of completed
-infrastructure features unless a concrete defect requires it.
+Post-Feature-014 audit (2026-08-16): Feature **025 Stage-1 Trading
+Gap-Close** is DONE; next is MVP-1 validation, then **015 Controlled Real**,
+then Torque composition (016), then minimal GE — while freezing expansion of
+completed infrastructure features unless a concrete defect requires it.
     
 This roadmap defines:
 
@@ -520,8 +520,8 @@ before 015**.
 |---|---|---|
 | 013 | XT Account / Private API Integration | DONE |
 | 014 | Live Paper-Trading Hardening | DONE (**FREEZE** — expand only for concrete defects) |
-| 025 | Stage-1 Trading Gap-Close | IN PROGRESS |
-| 015 | Real-Money Manual/Confirmed Execution | PLANNED (after 025 + MVP-1 validation) |
+| 025 | Stage-1 Trading Gap-Close | DONE |
+| 015 | Real-Money Manual/Confirmed Execution | PLANNED (after MVP-1 validation) |
 
 ---
 
@@ -662,7 +662,7 @@ Backtest → select configuration → Simulation → BUY → position
 Create additional implementation work **only** if this validation exposes
 concrete defects. Do not turn the gate into another large feature.
 
-Status: `IN PROGRESS`
+Status: `PLANNED` (operator acceptance after Feature 025 DONE)
 
 ---
 
@@ -1424,12 +1424,6 @@ Current completed foundation:
 Current active milestone:
 
 ```text
-025 → Stage-1 Trading Gap-Close   (IN PROGRESS; before 015)
-```
-
-Then:
-
-```text
 MVP-1 validation gate (acceptance/convergence — not a feature)
         ↓
 015 → Real-Money Manual/Confirmed Execution (MVP-2)
@@ -1437,6 +1431,12 @@ MVP-1 validation gate (acceptance/convergence — not a feature)
 016 → Torque MVP (composition; 018 merge direction)
         ↓
 019 → GE (+ minimum 021)
+```
+
+Completed immediately prior:
+
+```text
+025 → Stage-1 Trading Gap-Close   (DONE; before 015)
 ```
 
 Deferred / destination (do not drive near-term work):

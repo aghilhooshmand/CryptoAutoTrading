@@ -86,3 +86,60 @@ def _rsi_from_avgs(avg_gain: Decimal, avg_loss: Decimal) -> Decimal:
         return Decimal("100") if avg_gain > 0 else Decimal("50")
     rs = avg_gain / avg_loss
     return quantize_money(Decimal("100") - (Decimal("100") / (Decimal("1") + rs)))
+
+
+def true_range(high: Decimal, low: Decimal, prev_close: Decimal | None) -> Decimal:
+    if prev_close is None:
+        return high - low
+    return max(high - low, abs(high - prev_close), abs(low - prev_close))
+
+
+def atr_series(
+    highs: list[Decimal],
+    lows: list[Decimal],
+    closes: list[Decimal],
+    period: int,
+) -> list[Decimal | None]:
+    """Wilder ATR; first value at index ``period`` (after ``period`` TRs)."""
+    n = len(closes)
+    if period < 1 or n < period + 1 or len(highs) != n or len(lows) != n:
+        return [None] * n
+    out: list[Decimal | None] = [None] * n
+    trs: list[Decimal] = []
+    for i in range(n):
+        prev = closes[i - 1] if i > 0 else None
+        trs.append(true_range(highs[i], lows[i], prev))
+    # Seed at index period-1 using SMA of first `period` TRs (indices 0..period-1)
+    seed = sum(trs[:period], Decimal("0")) / Decimal(period)
+    out[period - 1] = quantize_money(seed)
+    prev_atr = out[period - 1]
+    assert prev_atr is not None
+    p = Decimal(period)
+    for i in range(period, n):
+        prev_atr = quantize_money((prev_atr * (p - Decimal("1")) + trs[i]) / p)
+        out[i] = prev_atr
+    return out
+
+
+def stochastic_k_series(
+    highs: list[Decimal],
+    lows: list[Decimal],
+    closes: list[Decimal],
+    period: int,
+) -> list[Decimal | None]:
+    """Raw %%K stochastic; None until index ``period - 1``."""
+    n = len(closes)
+    if period < 2 or n < period or len(highs) != n or len(lows) != n:
+        return [None] * n
+    out: list[Decimal | None] = [None] * n
+    for i in range(period - 1, n):
+        window_h = highs[i - period + 1 : i + 1]
+        window_l = lows[i - period + 1 : i + 1]
+        hh = max(window_h)
+        ll = min(window_l)
+        span = hh - ll
+        if span == 0:
+            out[i] = Decimal("50")
+        else:
+            out[i] = quantize_money((closes[i] - ll) / span * Decimal("100"))
+    return out

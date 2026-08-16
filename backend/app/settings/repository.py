@@ -35,6 +35,8 @@ def upsert_row(
     per_symbol_max_weight: str | None = None,
     preferred_allocation_id: str | None = None,
     decision_log_mode: str | None = None,
+    take_profit_percent: str | None = None,
+    stop_loss_percent: str | None = None,
     updated_at: datetime | None = None,
 ) -> OperatorDefaultsRow:
     now = updated_at or datetime.now(timezone.utc)
@@ -59,6 +61,8 @@ def upsert_row(
     row.per_symbol_max_weight = per_symbol_max_weight
     row.preferred_allocation_id = preferred_allocation_id
     row.decision_log_mode = decision_log_mode
+    row.take_profit_percent = take_profit_percent
+    row.stop_loss_percent = stop_loss_percent
     row.updated_at = now
     db.commit()
     db.refresh(row)

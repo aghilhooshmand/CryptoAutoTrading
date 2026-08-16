@@ -138,6 +138,26 @@ export function SessionStatusPanel({
             {session.positionSide} / {session.positionQty}
           </dd>
         </div>
+        {session.positionSide === "long" ? (
+          <div>
+            <Term
+              tipLabel="Protective levels"
+              tipText="Absolute TP/SL derived from entry fill and configured percents. Not editable while long. Fills use live mark, not these levels."
+              tipTestId="tip-protective-levels"
+            >
+              Entry / TP / SL
+            </Term>
+            <dd data-testid="sim-protective-levels">
+              entry {session.entryFillPrice ?? "—"}
+              {"; "}
+              TP {session.takeProfitPrice ?? "—"}
+              {session.takeProfitPercent ? ` (${rateToPercentLabel(session.takeProfitPercent)})` : ""}
+              {"; "}
+              SL {session.stopLossPrice ?? "—"}
+              {session.stopLossPercent ? ` (${rateToPercentLabel(session.stopLossPercent)})` : ""}
+            </dd>
+          </div>
+        ) : null}
         <div>
           <Term
             tipLabel="Fills"

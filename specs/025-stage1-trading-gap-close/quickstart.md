@@ -25,35 +25,36 @@ From `backend/`:
 
 ```bash
 pytest -q \
-  tests/unit/test_protective_exits.py \
-  tests/unit/test_strategy_ohlc_025.py \
+  tests/unit/test_tpsl.py \
+  tests/unit/test_protective_exits_simulation.py \
+  tests/unit/test_protective_exits_backtest.py \
+  tests/unit/test_protective_exit_precedence.py \
+  tests/unit/test_sim_backtest_tpsl_parity.py \
   tests/unit/test_stochastic.py \
   tests/unit/test_keltner.py \
   tests/unit/test_roc_momentum.py \
-  tests/integration/test_simulation_pipeline.py \
-  tests/integration/test_backtest_protective_exits.py
+  tests/contract/test_strategies_api.py \
+  tests/contract/test_simulation_api.py \
+  tests/unit/test_real_execution_stub.py
 ```
-
-(Adjust paths to match final test filenames from `/speckit-tasks`.)
 
 Expect:
 
 - TP and SL trigger on high/low after entry bar
 - SL wins when both touch
 - No fill at TP/SL level
-- Repeated BUY/exit cycles keep cash/holdings consistent
-- New strategies registered and deterministic
+- Protective exits do not increment `strategyFillCount`
+- New strategies registered (`stochastic`, `keltner_channel`, `roc_momentum`); no volume strategy
 - Existing five strategies unchanged on close-only behavior
 
-Frontend (once UI lands):
+Frontend:
 
 ```bash
 # from frontend/
-npm test -- --run
+npm test -- --run src/__tests__/tpslUi025.test.tsx
 ```
 
-Cover TP%/SL% on create forms and absolute levels on status (~375px smoke if
-present).
+Cover TP%/SL% on create forms and absolute levels on status (~375px smoke).
 
 ---
 
@@ -78,19 +79,17 @@ present).
 
 ## 4. MVP-1 acceptance gate (not a feature)
 
-After implement, run end-to-end:
+After Feature 025 implementation is green:
 
-```text
-Backtest → config → Simulation → BUY → position
-→ TP or SL or strategy EXIT → cash/holdings/P&L → history
-→ stop / restart (014 as-is)
-```
-
-Open defects only if concrete failures appear.
+1. Backtest → Simulation → BUY → TP/SL or strategy EXIT → accounting → history
+2. Feature 014 restart recovery still works as-is (no expansion)
+3. File only concrete defect follow-ups; do not expand scope into Real/Torque/GE
 
 ---
 
-## 5. Out of scope reminders
+## Out of scope reminders
 
-Do not validate Real XT orders, Torque, GE, trailing stops, volume strategy, or
-Portfolio redesign as part of Feature 025.
+- No Real XT private trading
+- No Feature 014 recovery redesign
+- No Portfolio UX redesign
+- No volume strategy / ticks / trailing stops

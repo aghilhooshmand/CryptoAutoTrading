@@ -64,14 +64,28 @@ def init_db() -> None:
         ("recovery_reason", "TEXT"),
         ("recovery_detail", "TEXT"),
         ("last_recovery_at", "DATETIME"),
+        # Feature 025 protective TP/SL
+        ("take_profit_percent", "TEXT"),
+        ("stop_loss_percent", "TEXT"),
+        ("take_profit_price", "TEXT"),
+        ("stop_loss_price", "TEXT"),
+        ("entry_fill_candle_open_time", "INTEGER"),
     ):
         _ensure_column(engine, "simulation_sessions", col, typ)
+    for col, typ in (
+        ("take_profit_percent", "TEXT"),
+        ("stop_loss_percent", "TEXT"),
+    ):
+        _ensure_column(engine, "backtest_runs", col, typ)
     for col, typ in (
         ("portfolio_max_loss_rate", "TEXT"),
         ("portfolio_max_loss_amount", "TEXT"),
         ("per_symbol_max_weight", "TEXT"),
         ("preferred_allocation_id", "TEXT"),
         ("decision_log_mode", "TEXT"),
+        # Feature 025 protective TP/SL defaults
+        ("take_profit_percent", "TEXT"),
+        ("stop_loss_percent", "TEXT"),
     ):
         _ensure_column(engine, "operator_defaults", col, typ)
     # Feature 014: journal uniqueness for existing SQLite DBs (create_all alone is insufficient).

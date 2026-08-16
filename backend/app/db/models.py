@@ -69,6 +69,12 @@ class SimulationSessionRow(Base):
     recovery_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
     recovery_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_recovery_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Feature 025 — protective TP/SL
+    take_profit_percent: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    stop_loss_percent: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    take_profit_price: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    stop_loss_price: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    entry_fill_candle_open_time: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class DecisionJournalRow(Base):
@@ -163,6 +169,9 @@ class BacktestRunRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Feature 025 — protective TP/SL run config
+    take_profit_percent: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    stop_loss_percent: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class StrategyComparisonRow(Base):
@@ -230,6 +239,9 @@ class OperatorDefaultsRow(Base):
     per_symbol_max_weight: Mapped[str | None] = mapped_column(String(64), nullable=True)
     preferred_allocation_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     decision_log_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # Feature 025 — optional protective TP/SL defaults
+    take_profit_percent: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    stop_loss_percent: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class BacktestDecisionRow(Base):

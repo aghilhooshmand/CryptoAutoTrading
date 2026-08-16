@@ -68,6 +68,8 @@ export interface CreateBacktestRequest {
   slippageRate?: string;
   strategyId: string;
   strategyParams?: Record<string, number | string>;
+  takeProfitPercent?: string | null;
+  stopLossPercent?: string | null;
 }
 
 export interface BacktestTrade {

@@ -59,6 +59,11 @@ export interface SimulationSession {
   portfolioMaxLossAmount?: string | null;
   perSymbolMaxWeight?: string | null;
   decisionLogMode: "important_only" | "full_audit";
+  takeProfitPercent?: string | null;
+  stopLossPercent?: string | null;
+  entryFillPrice?: string | null;
+  takeProfitPrice?: string | null;
+  stopLossPrice?: string | null;
   cash: string;
   positionSide: string;
   positionQty: string;
@@ -143,6 +148,10 @@ export interface CreateSessionRequest {
   portfolioMaxLossAmount?: string | null;
   perSymbolMaxWeight?: string | null;
   decisionLogMode?: "important_only" | "full_audit";
+  /** Optional per-position TP as fraction of entry (e.g. "0.02" = +2%). */
+  takeProfitPercent?: string | null;
+  /** Optional per-position SL as fraction of entry (e.g. "0.01" = −1%). */
+  stopLossPercent?: string | null;
 }
 
 export interface DecisionItem {

@@ -30,4 +30,6 @@ def product_starter_defaults() -> dict[str, Any]:
         "perSymbolMaxWeight": None,
         "preferredAllocationId": None,
         "decisionLogMode": "important_only",
+        "takeProfitPercent": None,
+        "stopLossPercent": None,
     }

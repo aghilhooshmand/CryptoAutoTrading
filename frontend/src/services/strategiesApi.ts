@@ -149,6 +149,77 @@ export const FALLBACK_STRATEGIES: StrategyInfo[] = [
     ],
     constraints: [],
   },
+  {
+    id: "stochastic",
+    displayName: "Stochastic",
+    aliases: [],
+    parameters: [
+      { name: "kPeriod", type: "integer", label: "%K period", default: 14, minimum: 2 },
+      { name: "dPeriod", type: "integer", label: "%D period", default: 3, minimum: 1 },
+      {
+        name: "overbought",
+        type: "integer",
+        label: "Overbought",
+        default: 80,
+        minimum: 1,
+        maximum: 99,
+      },
+      {
+        name: "oversold",
+        type: "integer",
+        label: "Oversold",
+        default: 20,
+        minimum: 1,
+        maximum: 99,
+      },
+    ],
+    constraints: [
+      {
+        code: "oversold_lt_overbought",
+        message: "Oversold threshold must be less than overbought threshold.",
+        fields: ["oversold", "overbought"],
+      },
+    ],
+  },
+  {
+    id: "keltner_channel",
+    displayName: "Keltner Channel",
+    aliases: [],
+    parameters: [
+      { name: "emaPeriod", type: "integer", label: "EMA period", default: 20, minimum: 2 },
+      { name: "atrPeriod", type: "integer", label: "ATR period", default: 10, minimum: 1 },
+      {
+        name: "atrMult",
+        type: "decimal_string",
+        label: "ATR multiplier",
+        default: "1.5",
+        minimum: 0,
+        exclusiveMinimum: true,
+      },
+    ],
+    constraints: [],
+  },
+  {
+    id: "roc_momentum",
+    displayName: "ROC Momentum",
+    aliases: [],
+    parameters: [
+      { name: "period", type: "integer", label: "ROC period", default: 12, minimum: 1 },
+      {
+        name: "buyThreshold",
+        type: "decimal_string",
+        label: "Buy when ROC crosses above",
+        default: "0",
+      },
+      {
+        name: "sellThreshold",
+        type: "decimal_string",
+        label: "Sell when ROC crosses below",
+        default: "0",
+      },
+    ],
+    constraints: [],
+  },
 ];
 
 export async function listStrategies(): Promise<StrategyInfo[]> {

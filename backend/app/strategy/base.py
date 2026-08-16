@@ -16,8 +16,25 @@ class SignalSide(str, Enum):
 
 @dataclass(frozen=True)
 class CandleClose:
+    """Strategy bar. Existing strategies use ``close``; OHLC optional for range strategies."""
+
     open_time: int
     close: Decimal
+    open: Decimal | None = None
+    high: Decimal | None = None
+    low: Decimal | None = None
+
+
+def bar_open(candle: CandleClose) -> Decimal:
+    return candle.open if candle.open is not None else candle.close
+
+
+def bar_high(candle: CandleClose) -> Decimal:
+    return candle.high if candle.high is not None else candle.close
+
+
+def bar_low(candle: CandleClose) -> Decimal:
+    return candle.low if candle.low is not None else candle.close
 
 
 @dataclass(frozen=True)

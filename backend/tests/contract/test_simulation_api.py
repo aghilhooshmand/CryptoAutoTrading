@@ -330,3 +330,42 @@ def test_start_freezes_portfolio_loss_baseline(client):
     assert data["portfolioLossBaselineKind"] in ("equity", "quote_cash")
     assert data["portfolioLossBaselineValue"] is not None
     assert data["portfolioMaxLossAmount"] is not None
+
+
+def test_create_rejects_invalid_stop_loss_percent(client):
+    r = client.post("/simulation/sessions", json=_body(stopLossPercent="1"))
+    assert r.status_code == 400
+    assert r.json()["detail"]["error"]["code"] == "invalid_config"
+
+
+def test_create_exposes_tpsl_fields_and_levels_while_long(client, tmp_path, monkeypatch):
+    created = client.post(
+        "/simulation/sessions",
+        json=_body(takeProfitPercent="0.02", stopLossPercent="0.01"),
+    ).json()
+    assert created["takeProfitPercent"] == "0.02"
+    assert created["stopLossPercent"] == "0.01"
+    assert created["takeProfitPrice"] is None
+    assert created["entryFillPrice"] is None
+
+    from app.db.models import SimulationSessionRow
+    from app.execution.tpsl import derive_levels
+    from app.simulation.money import as_str, d
+
+    sid = created["id"]
+    db = db_session.SessionLocal()
+    try:
+        row = db.get(SimulationSessionRow, sid)
+        assert row is not None
+        row.position_side = "long"
+        row.entry_fill_price = "100"
+        tp, sl = derive_levels(d("100"), d("0.02"), d("0.01"))
+        row.take_profit_price = as_str(tp)
+        row.stop_loss_price = as_str(sl)
+        db.commit()
+    finally:
+        db.close()
+    again = client.get(f"/simulation/sessions/{sid}").json()
+    assert again["entryFillPrice"] == "100"
+    assert again["takeProfitPrice"] == "102"
+    assert again["stopLossPrice"] == "99"

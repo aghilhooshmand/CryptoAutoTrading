@@ -42,8 +42,8 @@ on `docs/ROADMAP.md` until polish acceptance; mark `DONE` only after MVP-1 gate.
 
 **Purpose**: Align docs and confirm touch points; no behavior change yet
 
-- [ ] T001 Verify Feature 025 is `IN PROGRESS` on `docs/ROADMAP.md` and branch is `025-stage1-trading-gap-close`; confirm no Real/014-expansion scope creep
-- [ ] T002 [P] Add brief Feature 025 operator notes to `README.md` (per-position TP/SL %; Sim vs Backtest fill differences pointer to `specs/025-stage1-trading-gap-close/contracts/sim-vs-backtest-semantics.md`; no Real trading) without inventing undocumented APIs
+- [X] T001 Verify Feature 025 is `IN PROGRESS` on `docs/ROADMAP.md` and branch is `025-stage1-trading-gap-close`; confirm no Real/014-expansion scope creep
+- [X] T002 [P] Add brief Feature 025 operator notes to `README.md` (per-position TP/SL %; Sim vs Backtest fill differences pointer to `specs/025-stage1-trading-gap-close/contracts/sim-vs-backtest-semantics.md`; no Real trading) without inventing undocumented APIs
 
 ---
 
@@ -54,13 +54,13 @@ plumbing required by all stories
 
 **⚠️ CRITICAL**: No user-story TP/SL pipeline work until this phase completes
 
-- [ ] T003 Extend `SimulationSessionRow`, `BacktestRunRow`, and `OperatorDefaultsRow` in `backend/app/db/models.py` with nullable `take_profit_percent` and `stop_loss_percent`; on `SimulationSessionRow` also add nullable `take_profit_price`, `stop_loss_price`, `entry_fill_candle_open_time` per `data-model.md`; add `_ensure_column` calls in `backend/app/db/session.py` `init_db()`
-- [ ] T004 [P] Implement shared TP/SL helpers in `backend/app/execution/tpsl.py` (validate percents; derive absolute long levels from entry fill; trigger predicate high/low with entry-bar skip; SL-before-TP; stable reason codes `take_profit` / `stop_loss`) per `contracts/protective-exits.md` and research R1–R3
-- [ ] T005 Extend strategy bar type in `backend/app/strategy/base.py` to OHLC (`open`, `high`, `low`, `close`, `open_time`); keep existing five strategies close-based-compatible; update re-exports in `backend/app/strategy/__init__.py` / `backend/app/simulation/strategy/` as needed
-- [ ] T006 [P] Unit tests for `backend/app/execution/tpsl.py` in `backend/tests/unit/test_tpsl.py` (derive levels; entry-bar skip; SL wins; disabled sides; invalid percents)
-- [ ] T007 Wire create/validate + `session_to_dict` TP/SL % and absolute fields in `backend/app/simulation/session_service.py` (reject invalid config; expose `takeProfitPercent`, `stopLossPercent`, `entryFillPrice`, `takeProfitPrice`, `stopLossPrice`); clear absolute levels on flat/SELL
-- [ ] T008 [P] Wire Backtest `validate_config` / create persistence for `takeProfitPercent` / `stopLossPercent` on `BacktestRunRow` via `backend/app/backtest/service.py` (mirror session risk rate fields; pass percents into `run_engine`) per `contracts/protective-exits.md`
-- [ ] T009 [P] Optional operator defaults fields for TP/SL % on `OperatorDefaultsRow` + settings API (`backend/app/settings/` + related) without Settings architecture redesign — omit UI until US5 if backend-only first
+- [X] T003 Extend `SimulationSessionRow`, `BacktestRunRow`, and `OperatorDefaultsRow` in `backend/app/db/models.py` with nullable `take_profit_percent` and `stop_loss_percent`; on `SimulationSessionRow` also add nullable `take_profit_price`, `stop_loss_price`, `entry_fill_candle_open_time` per `data-model.md`; add `_ensure_column` calls in `backend/app/db/session.py` `init_db()`
+- [X] T004 [P] Implement shared TP/SL helpers in `backend/app/execution/tpsl.py` (validate percents; derive absolute long levels from entry fill; trigger predicate high/low with entry-bar skip; SL-before-TP; stable reason codes `take_profit` / `stop_loss`) per `contracts/protective-exits.md` and research R1–R3
+- [X] T005 Extend strategy bar type in `backend/app/strategy/base.py` to OHLC (`open`, `high`, `low`, `close`, `open_time`); keep existing five strategies close-based-compatible; update re-exports in `backend/app/strategy/__init__.py` / `backend/app/simulation/strategy/` as needed
+- [X] T006 [P] Unit tests for `backend/app/execution/tpsl.py` in `backend/tests/unit/test_tpsl.py` (derive levels; entry-bar skip; SL wins; disabled sides; invalid percents)
+- [X] T007 Wire create/validate + `session_to_dict` TP/SL % and absolute fields in `backend/app/simulation/session_service.py` (reject invalid config; expose `takeProfitPercent`, `stopLossPercent`, `entryFillPrice`, `takeProfitPrice`, `stopLossPrice`); clear absolute levels on flat/SELL
+- [X] T008 [P] Wire Backtest `validate_config` / create persistence for `takeProfitPercent` / `stopLossPercent` on `BacktestRunRow` via `backend/app/backtest/service.py` (mirror session risk rate fields; pass percents into `run_engine`) per `contracts/protective-exits.md`
+- [X] T009 [P] Optional operator defaults fields for TP/SL % on `OperatorDefaultsRow` + settings API (`backend/app/settings/` + related) without Settings architecture redesign — omit UI until US5 if backend-only first
 
 **Checkpoint**: Schema + helpers + OHLC type + config plumbing ready; pipelines unchanged until US1
 
@@ -74,16 +74,16 @@ plumbing required by all stories
 
 ### Tests for User Story 1
 
-- [ ] T010 [P] [US1] Unit/pipeline tests for Simulation protective TP and SL in `backend/tests/unit/test_protective_exits_simulation.py` (or extend `backend/tests/integration/test_simulation_pipeline.py`): entry-bar skip; high→TP; low→SL; fill uses mark not level; disabled sides
-- [ ] T011 [P] [US1] Unit/engine tests for Backtest protective TP and SL in `backend/tests/unit/test_protective_exits_backtest.py` (or `backend/tests/integration/test_backtest_protective_exits.py`): next-open fill; no next candle fail-closed path; entry-bar skip
+- [X] T010 [P] [US1] Unit/pipeline tests for Simulation protective TP and SL in `backend/tests/unit/test_protective_exits_simulation.py` (or extend `backend/tests/integration/test_simulation_pipeline.py`): entry-bar skip; high→TP; low→SL; fill uses mark not level; disabled sides
+- [X] T011 [P] [US1] Unit/engine tests for Backtest protective TP and SL in `backend/tests/unit/test_protective_exits_backtest.py` (or `backend/tests/integration/test_backtest_protective_exits.py`): next-open fill; no next candle fail-closed path; entry-bar skip
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Build OHLC strategy/lookback candles from market `Candlestick` in `backend/app/simulation/pipeline.py` (stop dropping high/low)
-- [ ] T013 [US1] On BUY fill in Simulation path (`pipeline.py` / session apply-fill), set `entry_fill_price`, `entry_fill_candle_open_time`, derive absolute TP/SL via `execution/tpsl.py`; clear on close
-- [ ] T014 [US1] Evaluate protective TP/SL after session hard-stops and before strategy in `backend/app/simulation/pipeline.py`; emit protective SELL through Controller → Risk → Execution (live mark); record `take_profit` / `stop_loss` reasons; never fill at trigger level
-- [ ] T015 [US1] Mirror TP/SL derive + evaluate + next-open protective SELL in `backend/app/backtest/engine.py` (and pass % into engine state from `backend/app/backtest/service.py`)
-- [ ] T016 [US1] Ensure API/create contract fields documented by `contracts/protective-exits.md` are covered by contract or service tests in `backend/tests/contract/` (create reject invalid TP/SL; status shows levels while long)
+- [X] T012 [US1] Build OHLC strategy/lookback candles from market `Candlestick` in `backend/app/simulation/pipeline.py` (stop dropping high/low)
+- [X] T013 [US1] On BUY fill in Simulation path (`pipeline.py` / session apply-fill), set `entry_fill_price`, `entry_fill_candle_open_time`, derive absolute TP/SL via `execution/tpsl.py`; clear on close
+- [X] T014 [US1] Evaluate protective TP/SL after session hard-stops and before strategy in `backend/app/simulation/pipeline.py`; emit protective SELL through Controller → Risk → Execution (live mark); record `take_profit` / `stop_loss` reasons; never fill at trigger level
+- [X] T015 [US1] Mirror TP/SL derive + evaluate + next-open protective SELL in `backend/app/backtest/engine.py` (and pass % into engine state from `backend/app/backtest/service.py`)
+- [X] T016 [US1] Ensure API/create contract fields documented by `contracts/protective-exits.md` are covered by contract or service tests in `backend/tests/contract/` (create reject invalid TP/SL; status shows levels while long)
 
 **Checkpoint**: US1 MVP — Backtest and Simulation can exit by TP or SL correctly
 
@@ -97,12 +97,12 @@ plumbing required by all stories
 
 ### Tests for User Story 2
 
-- [ ] T017 [P] [US2] Precedence and cycle tests in `backend/tests/unit/test_protective_exit_precedence.py` (SL vs TP; SL vs strategy; session hard-stop still first; repeated cycles accounting; protective exit does not increment `strategyFillCount`)
+- [X] T017 [P] [US2] Precedence and cycle tests in `backend/tests/unit/test_protective_exit_precedence.py` (SL vs TP; SL vs strategy; session hard-stop still first; repeated cycles accounting; protective exit does not increment `strategyFillCount`)
 
 ### Implementation for User Story 2
 
-- [ ] T018 [US2] Enforce evaluation order in `backend/app/simulation/pipeline.py` and `backend/app/backtest/engine.py`: session/emergency stops → SL → TP → strategy; single closing fill per candle
-- [ ] T019 [US2] Align protective-exit journal/trade flags with forced/safety closes in Simulation session apply-fill and Backtest `_apply_strategy_fill`: use forced-style closes (`is_forced=True` / equivalent) so TP/SL exits do **not** increment `strategyFillCount` or consume `maxTrades`; keep reasons `take_profit` / `stop_loss` distinct (FR-009; `contracts/protective-exits.md` maxTrades lock)
+- [X] T018 [US2] Enforce evaluation order in `backend/app/simulation/pipeline.py` and `backend/app/backtest/engine.py`: session/emergency stops → SL → TP → strategy; single closing fill per candle
+- [X] T019 [US2] Align protective-exit journal/trade flags with forced/safety closes in Simulation session apply-fill and Backtest `_apply_strategy_fill`: use forced-style closes (`is_forced=True` / equivalent) so TP/SL exits do **not** increment `strategyFillCount` or consume `maxTrades`; keep reasons `take_profit` / `stop_loss` distinct (FR-009; `contracts/protective-exits.md` maxTrades lock)
 
 **Checkpoint**: US2 — precedence and multi-cycle accounting green
 
@@ -116,12 +116,12 @@ plumbing required by all stories
 
 ### Tests for User Story 3
 
-- [ ] T020 [P] [US3] Regression tests in `backend/tests/unit/test_sim_backtest_tpsl_parity.py` asserting identical TP/SL trigger outcomes for identical OHLC+levels while allowing different fill prices per mode
+- [X] T020 [P] [US3] Regression tests in `backend/tests/unit/test_sim_backtest_tpsl_parity.py` asserting identical TP/SL trigger outcomes for identical OHLC+levels while allowing different fill prices per mode
 
 ### Implementation for User Story 3
 
-- [ ] T021 [US3] Ensure `specs/025-stage1-trading-gap-close/contracts/sim-vs-backtest-semantics.md` is accurate vs implementation; add README pointer (T002) if missing
-- [ ] T022 [US3] Resolve failures from T020 and any checklist gaps vs `contracts/sim-vs-backtest-semantics.md` (same TP/SL %→levels, high/low triggers, entry-bar skip, SL-before-TP, fees/slippage on fills, reason codes) without unifying Simulation mark vs Backtest next-open fill prices
+- [X] T021 [US3] Ensure `specs/025-stage1-trading-gap-close/contracts/sim-vs-backtest-semantics.md` is accurate vs implementation; add README pointer (T002) if missing
+- [X] T022 [US3] Resolve failures from T020 and any checklist gaps vs `contracts/sim-vs-backtest-semantics.md` (same TP/SL %→levels, high/low triggers, entry-bar skip, SL-before-TP, fees/slippage on fills, reason codes) without unifying Simulation mark vs Backtest next-open fill prices
 
 **Checkpoint**: US3 — documented intentional differences; parity tests green
 
@@ -135,19 +135,19 @@ plumbing required by all stories
 
 ### Tests for User Story 4
 
-- [ ] T023 [P] [US4] Unit tests for Stochastic in `backend/tests/unit/test_stochastic.py`
-- [ ] T024 [P] [US4] Unit tests for Keltner channel in `backend/tests/unit/test_keltner.py`
-- [ ] T025 [P] [US4] Unit tests for ROC/Momentum in `backend/tests/unit/test_roc_momentum.py`
-- [ ] T026 [P] [US4] Registry/contract assert new ids in `backend/tests/contract/test_strategies_api.py` (or extend existing strategies contract tests); assert volume strategy absent
+- [X] T023 [P] [US4] Unit tests for Stochastic in `backend/tests/unit/test_stochastic.py`
+- [X] T024 [P] [US4] Unit tests for Keltner channel in `backend/tests/unit/test_keltner.py`
+- [X] T025 [P] [US4] Unit tests for ROC/Momentum in `backend/tests/unit/test_roc_momentum.py`
+- [X] T026 [P] [US4] Registry/contract assert new ids in `backend/tests/contract/test_strategies_api.py` (or extend existing strategies contract tests); assert volume strategy absent
 
 ### Implementation for User Story 4
 
-- [ ] T027 [P] [US4] Add ATR / stochastic helpers as needed in `backend/app/strategy/indicators.py`
-- [ ] T028 [P] [US4] Implement and register `stochastic` in `backend/app/strategy/stochastic.py`
-- [ ] T029 [P] [US4] Implement and register `keltner_channel` in `backend/app/strategy/keltner.py`
-- [ ] T030 [P] [US4] Implement and register `roc_momentum` in `backend/app/strategy/momentum_roc.py`
-- [ ] T031 [US4] Ensure Simulation + Backtest pass OHLC bars into `evaluate` (`pipeline.py`, `engine.py`) and import registrations via `backend/app/strategy/__init__.py`
-- [ ] T032 [US4] Confirm existing five strategies still close-based and regression-covered (extend existing strategy unit tests if needed)
+- [X] T027 [P] [US4] Add ATR / stochastic helpers as needed in `backend/app/strategy/indicators.py`
+- [X] T028 [P] [US4] Implement and register `stochastic` in `backend/app/strategy/stochastic.py`
+- [X] T029 [P] [US4] Implement and register `keltner_channel` in `backend/app/strategy/keltner.py`
+- [X] T030 [P] [US4] Implement and register `roc_momentum` in `backend/app/strategy/momentum_roc.py`
+- [X] T031 [US4] Ensure Simulation + Backtest pass OHLC bars into `evaluate` (`pipeline.py`, `engine.py`) and import registrations via `backend/app/strategy/__init__.py`
+- [X] T032 [US4] Confirm existing five strategies still close-based and regression-covered (extend existing strategy unit tests if needed)
 
 **Checkpoint**: US4 — three new strategies selectable; volume deferred
 
@@ -161,14 +161,14 @@ plumbing required by all stories
 
 ### Tests for User Story 5
 
-- [ ] T033 [P] [US5] Frontend tests for TP/SL fields and status display in `frontend/src/__tests__/` (e.g. session config + `SessionStatusPanel`; ~375px smoke following existing responsive patterns)
+- [X] T033 [P] [US5] Frontend tests for TP/SL fields and status display in `frontend/src/__tests__/` (e.g. session config + `SessionStatusPanel`; ~375px smoke following existing responsive patterns)
 
 ### Implementation for User Story 5
 
-- [ ] T034 [P] [US5] Extend types/API client in `frontend/src/services/simulationApi.ts` (and backtest client if separate) for TP/SL % and absolute level fields
-- [ ] T035 [US5] Add optional TP%/SL% inputs to `frontend/src/features/simulation/SessionConfigForm.tsx` and `frontend/src/features/backtest/BacktestConfigForm.tsx`
-- [ ] T036 [US5] Show `entryFillPrice`, absolute TP/SL, and exit/stop reason in `frontend/src/features/simulation/SessionStatusPanel.tsx` (no mid-position editors; no Portfolio redesign)
-- [ ] T037 [P] [US5] Optional defaults for TP%/SL% in `frontend/src/features/settings/SettingsPanel.tsx` / `mapSettingsToForm.ts` only if backend T009 landed — keep Settings change minimal
+- [X] T034 [P] [US5] Extend types/API client in `frontend/src/services/simulationApi.ts` (and backtest client if separate) for TP/SL % and absolute level fields
+- [X] T035 [US5] Add optional TP%/SL% inputs to `frontend/src/features/simulation/SessionConfigForm.tsx` and `frontend/src/features/backtest/BacktestConfigForm.tsx`
+- [X] T036 [US5] Show `entryFillPrice`, absolute TP/SL, and exit/stop reason in `frontend/src/features/simulation/SessionStatusPanel.tsx` (no mid-position editors; no Portfolio redesign)
+- [X] T037 [P] [US5] Optional defaults for TP%/SL% in `frontend/src/features/settings/SettingsPanel.tsx` / `mapSettingsToForm.ts` only if backend T009 landed — keep Settings change minimal
 
 **Checkpoint**: US5 — operators can configure and observe TP/SL without redesign
 
@@ -178,12 +178,12 @@ plumbing required by all stories
 
 **Purpose**: Gates, docs, freeze scope, ROADMAP
 
-- [ ] T038 [P] Assert RealExecutionAdapter still unavailable / no XT private trading introduced by Feature 025 in `backend/tests/unit/test_real_execution_stub.py` (or thin companion)
-- [ ] T039 [P] Update `specs/025-stage1-trading-gap-close/quickstart.md` if test paths drifted during implement
-- [ ] T040 Run Feature 025 pytest set from quickstart until green (`test_tpsl`, protective exit suites, new strategy tests, parity tests, contract creates)
-- [ ] T041 Run frontend Feature 025 tests until green
-- [ ] T042 Perform MVP-1 acceptance validation per spec FR-019 / quickstart §4 (Backtest → Simulation → BUY → TP/SL/strategy EXIT → accounting → history; 014 restart as-is); file only concrete defect follow-ups
-- [ ] T043 Mark Feature 025 `DONE` on `docs/ROADMAP.md` only after acceptance gates; leave commit proposal to operator (no auto-commit)
+- [X] T038 [P] Assert RealExecutionAdapter still unavailable / no XT private trading introduced by Feature 025 in `backend/tests/unit/test_real_execution_stub.py` (or thin companion)
+- [X] T039 [P] Update `specs/025-stage1-trading-gap-close/quickstart.md` if test paths drifted during implement
+- [X] T040 Run Feature 025 pytest set from quickstart until green (`test_tpsl`, protective exit suites, new strategy tests, parity tests, contract creates)
+- [X] T041 Run frontend Feature 025 tests until green
+- [X] T042 Perform MVP-1 acceptance validation per spec FR-019 / quickstart §4 (Backtest → Simulation → BUY → TP/SL/strategy EXIT → accounting → history; 014 restart as-is); file only concrete defect follow-ups
+- [X] T043 Mark Feature 025 `DONE` on `docs/ROADMAP.md` only after acceptance gates; leave commit proposal to operator (no auto-commit)
 
 ---
 

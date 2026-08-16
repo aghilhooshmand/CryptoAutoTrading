@@ -27,9 +27,9 @@ export function SimulationHistoryList({ refreshKey = 0 }: Props) {
         limit: PAGE_SIZE,
         offset: nextOffset,
       });
-      setItems(data.sessions);
-      setTotalCount(data.totalCount);
-      setOffset(data.offset);
+      setItems(data.sessions ?? []);
+      setTotalCount(data.totalCount ?? 0);
+      setOffset(data.offset ?? nextOffset);
     } catch (err) {
       setError((err as Error).message);
     } finally {

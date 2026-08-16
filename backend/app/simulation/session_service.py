@@ -10,6 +10,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.db.models import DecisionJournalRow, SimulationSessionRow, TradeJournalRow
+from app.execution.tpsl import derive_levels, validate_percents
 from app.market_data.models import ALLOWED_INTERVALS, MarketStatus
 from app.market_data.service import get_market_data_service
 from app.simulation.accounting import (
@@ -188,6 +189,14 @@ def create_session(db: Session, body: dict, clock: Clock | None = None) -> Simul
     except ValueError as exc:
         raise SessionError("invalid_config", str(exc), 400) from exc
 
+    try:
+        tp_pct, sl_pct = validate_percents(
+            body.get("takeProfitPercent"),
+            body.get("stopLossPercent"),
+        )
+    except ValueError as exc:
+        raise SessionError("invalid_config", str(exc), 400) from exc
+
     now = _now(clock)
     target_amt = allocated * target_rate
     loss_amt = allocated * loss_rate
@@ -224,6 +233,8 @@ def create_session(db: Session, body: dict, clock: Clock | None = None) -> Simul
         portfolio_max_loss_amount=portfolio_max_loss_amount,
         per_symbol_max_weight=per_symbol_max_weight,
         decision_log_mode=decision_log_mode,
+        take_profit_percent=as_str(tp_pct) if tp_pct is not None else None,
+        stop_loss_percent=as_str(sl_pct) if sl_pct is not None else None,
         created_at=now,
         updated_at=now,
     )
@@ -341,6 +352,12 @@ def _apply_fill(
         row.entry_slippage_cost = as_str(fill.slippage_cost)
         row.cost_basis = as_str(fill.notional + fill.fee)
         row.position_flatten_status = "n/a"
+        row.entry_fill_candle_open_time = candle_open_time
+        tp_pct = d(row.take_profit_percent) if row.take_profit_percent else None
+        sl_pct = d(row.stop_loss_percent) if row.stop_loss_percent else None
+        tp_price, sl_price = derive_levels(fill.fill_price, tp_pct, sl_pct)
+        row.take_profit_price = as_str(tp_price) if tp_price is not None else None
+        row.stop_loss_price = as_str(sl_price) if sl_price is not None else None
     else:
         if row.entry_ref_price:
             gross = (fill.reference_price - d(row.entry_ref_price)) * qty
@@ -352,6 +369,9 @@ def _apply_fill(
         row.entry_fee = None
         row.entry_slippage_cost = None
         row.cost_basis = None
+        row.take_profit_price = None
+        row.stop_loss_price = None
+        row.entry_fill_candle_open_time = None
         row.position_flatten_status = "forced_closed" if is_forced else "flat"
 
     trade = TradeJournalRow(
@@ -842,6 +862,11 @@ async def session_to_dict(row: SimulationSessionRow, *, db: Session | None = Non
         "portfolioLossBaselineValue": row.portfolio_loss_baseline_value,
         "perSymbolMaxWeight": row.per_symbol_max_weight,
         "decisionLogMode": effective_decision_log_mode(row.decision_log_mode),
+        "takeProfitPercent": row.take_profit_percent,
+        "stopLossPercent": row.stop_loss_percent,
+        "entryFillPrice": row.entry_fill_price,
+        "takeProfitPrice": row.take_profit_price,
+        "stopLossPrice": row.stop_loss_price,
         "cash": row.cash,
         "positionSide": row.position_side,
         "positionQty": row.position_qty,

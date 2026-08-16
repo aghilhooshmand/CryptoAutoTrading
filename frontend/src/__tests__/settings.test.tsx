@@ -115,6 +115,12 @@ function mockFetch(handlers?: {
     if (url.includes("/backtest/runs")) {
       return new Response(JSON.stringify({ runs: [] }), { status: 200 });
     }
+    if (url.includes("/simulation/sessions") && method === "GET" && !url.match(/\/sessions\/[^/?]+/)) {
+      return new Response(
+        JSON.stringify({ sessions: [], totalCount: 0, limit: 50, offset: 0 }),
+        { status: 200 },
+      );
+    }
     if (url.includes("/simulation")) {
       return new Response(JSON.stringify({ session: null }), { status: 200 });
     }
