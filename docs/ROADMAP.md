@@ -520,7 +520,7 @@ before 015**.
 |---|---|---|
 | 013 | XT Account / Private API Integration | DONE |
 | 014 | Live Paper-Trading Hardening | DONE (**FREEZE** — expand only for concrete defects) |
-| 025 | Stage-1 Trading Gap-Close | PLANNED (**next**) |
+| 025 | Stage-1 Trading Gap-Close | IN PROGRESS |
 | 015 | Real-Money Manual/Confirmed Execution | PLANNED (after 025 + MVP-1 validation) |
 
 ---
@@ -662,7 +662,7 @@ Backtest → select configuration → Simulation → BUY → position
 Create additional implementation work **only** if this validation exposes
 concrete defects. Do not turn the gate into another large feature.
 
-Status: `PLANNED`
+Status: `IN PROGRESS`
 
 ---
 
@@ -1424,7 +1424,7 @@ Current completed foundation:
 Current active milestone:
 
 ```text
-025 → Stage-1 Trading Gap-Close   (next; before 015)
+025 → Stage-1 Trading Gap-Close   (IN PROGRESS; before 015)
 ```
 
 Then:
