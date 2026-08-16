@@ -242,3 +242,178 @@ def test_backtest_protective_no_next_candle_fail_closed(db):
         .all()
     )
     assert end_flat
+
+
+def test_backtest_protective_goes_through_controller_and_risk(db):
+    """FR-003: protective close must call Controller and Risk before flatten."""
+    run = repo.create_running_run(db, _run_fields(stop_loss_percent=None))
+    candles = [
+        _c(1000, "100", "100", "100", "100"),
+        _c(2000, "100", "100", "100", "100"),
+        _c(3000, "100", "103", "100", "102"),
+        _c(4000, "110", "110", "110", "110"),
+    ]
+    scripted = _ScriptedStrategy()
+    with (
+        patch("app.backtest.engine.build_from_stored", return_value=scripted),
+        patch(
+            "app.backtest.engine.TradingController.review",
+            wraps=None,
+        ) as ctrl_review,
+        patch(
+            "app.backtest.engine.RiskManager.review",
+            wraps=None,
+        ) as risk_review,
+    ):
+        from app.simulation.control.controller import ControlDecision
+        from app.simulation.control.risk import RiskDecision
+
+        ctrl_review.return_value = ControlDecision(True)
+        risk_review.return_value = RiskDecision(True)
+
+        run_engine(
+            db,
+            run.id,
+            candles,
+            starting_capital=Decimal("1000"),
+            allocated_capital=Decimal("1000"),
+            max_position_size=Decimal("1000"),
+            fee_rate=Decimal("0"),
+            slippage_rate=Decimal("0"),
+            max_trades=10,
+            target_net_profit_amount=None,
+            max_session_loss_amount=None,
+            take_profit_percent=Decimal("0.02"),
+            stop_loss_percent=None,
+        )
+
+    # Bound method mocks receive (state, signal) / (signal, ctx) without self.
+    sell_ctrl = [
+        c
+        for c in ctrl_review.call_args_list
+        if len(c.args) >= 2
+        and getattr(c.args[1], "side", None) == SignalSide.SELL
+        and getattr(c.args[1], "reason_code", None) == REASON_TAKE_PROFIT
+    ]
+    sell_risk = [
+        c
+        for c in risk_review.call_args_list
+        if len(c.args) >= 1
+        and getattr(c.args[0], "side", None) == SignalSide.SELL
+        and getattr(c.args[0], "reason_code", None) == REASON_TAKE_PROFIT
+    ]
+    assert sell_ctrl, "Controller.review was not called for protective SELL"
+    assert sell_risk, "RiskManager.review was not called for protective SELL"
+    forced = (
+        db.query(BacktestTradeRow)
+        .filter_by(run_id=run.id, side="SELL", is_forced_close=True)
+        .one()
+    )
+    assert d(forced.fill_price) == Decimal("110")
+
+
+def test_backtest_profit_target_beats_take_profit(db):
+    """FR-006: Risk session profit-target stop precedes protective TP."""
+    run = repo.create_running_run(
+        db,
+        _run_fields(
+            stop_loss_percent=None,
+            target_net_profit_amount="1",
+            max_session_loss_amount=None,
+        ),
+    )
+    # BUY → fill 100; later bar high crosses TP and close marks large unrealized profit
+    candles = [
+        _c(1000, "100", "100", "100", "100"),
+        _c(2000, "100", "100", "100", "100"),
+        _c(3000, "100", "200", "100", "180"),
+        _c(4000, "180", "180", "180", "180"),
+    ]
+    scripted = _ScriptedStrategy()
+    with patch("app.backtest.engine.build_from_stored", return_value=scripted):
+        summary = run_engine(
+            db,
+            run.id,
+            candles,
+            starting_capital=Decimal("1000"),
+            allocated_capital=Decimal("1000"),
+            max_position_size=Decimal("1000"),
+            fee_rate=Decimal("0"),
+            slippage_rate=Decimal("0"),
+            max_trades=10,
+            target_net_profit_amount=Decimal("1"),
+            max_session_loss_amount=None,
+            take_profit_percent=Decimal("0.02"),
+            stop_loss_percent=None,
+        )
+    tp_decisions = (
+        db.query(BacktestDecisionRow)
+        .filter_by(run_id=run.id, reason_code=REASON_TAKE_PROFIT)
+        .count()
+    )
+    assert tp_decisions == 0
+    profit_stops = (
+        db.query(BacktestDecisionRow)
+        .filter_by(run_id=run.id, reason_code="profit_target")
+        .count()
+    )
+    assert profit_stops >= 1
+    assert summary["strategyFillCount"] == 1  # BUY only; forced stop did not increment
+
+
+def test_backtest_repeated_cycles_cash_matches_fills(db):
+    """SC-004: ≥3 BUY→TP cycles leave cash equal to starting + sum(cash deltas)."""
+
+    class _CycleStrategy:
+        def min_history_candles(self) -> int:
+            return 1
+
+        def evaluate(self, closes: Sequence[CandleClose]) -> StrategySignal:
+            last = closes[-1]
+            # Alternate BUY when flat — engine state is not visible; buy on even bars
+            # Use close == 100 as buy cue and never sell (protective owns exits).
+            if last.close == Decimal("100") and last.high == Decimal("100"):
+                return StrategySignal(SignalSide.BUY, last.open_time, None, None)
+            return StrategySignal(SignalSide.HOLD, last.open_time, None, None, "hold")
+
+    run = repo.create_running_run(db, _run_fields(stop_loss_percent=None, max_trades=20))
+    candles: list[Candlestick] = []
+    t = 1000
+    for _ in range(3):
+        candles.append(_c(t, "100", "100", "100", "100"))  # BUY signal
+        t += 1000
+        candles.append(_c(t, "100", "100", "100", "100"))  # fill / entry bar
+        t += 1000
+        candles.append(_c(t, "100", "103", "100", "102"))  # TP trigger
+        t += 1000
+        candles.append(_c(t, "100", "100", "100", "100"))  # next-open protective fill
+        t += 1000
+    with patch("app.backtest.engine.build_from_stored", return_value=_CycleStrategy()):
+        summary = run_engine(
+            db,
+            run.id,
+            candles,
+            starting_capital=Decimal("1000"),
+            allocated_capital=Decimal("1000"),
+            max_position_size=Decimal("1000"),
+            fee_rate=Decimal("0"),
+            slippage_rate=Decimal("0"),
+            max_trades=20,
+            target_net_profit_amount=None,
+            max_session_loss_amount=None,
+            take_profit_percent=Decimal("0.02"),
+            stop_loss_percent=None,
+        )
+    trades = (
+        db.query(BacktestTradeRow)
+        .filter_by(run_id=run.id)
+        .order_by(BacktestTradeRow.fill_candle_open_time.asc())
+        .all()
+    )
+    protective = [t for t in trades if t.is_forced_close and t.side == "SELL"]
+    buys = [t for t in trades if t.side == "BUY"]
+    assert len(buys) >= 3
+    assert len(protective) >= 3
+    assert summary["strategyFillCount"] == len(buys)
+    # Zero fee/slippage and protective fills at 100 return capital to start.
+    assert d(summary["endingCapital"]) == Decimal("1000")

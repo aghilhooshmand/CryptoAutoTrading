@@ -268,3 +268,93 @@ def test_repeated_cycles_protective_does_not_consume_max_trades(db):
     )
     assert protective_sells == 3
     assert row.position_side == "flat"
+    assert d(row.position_qty) == Decimal("0")
+
+    trades = (
+        db.query(TradeJournalRow)
+        .filter_by(session_id=row.id)
+        .order_by(TradeJournalRow.created_at.asc())
+        .all()
+    )
+    assert len(trades) == 6  # 3 BUY + 3 protective SELL
+    sum_deltas = sum((d(t.cash_delta) for t in trades), Decimal("0"))
+    sum_fees = sum((d(t.fee) for t in trades), Decimal("0"))
+    sum_slip = sum((d(t.slippage_cost) for t in trades), Decimal("0"))
+    assert d(row.cash) == d(row.starting_capital) + sum_deltas
+    assert d(row.cumulative_fees) == sum_fees
+    assert d(row.cumulative_slippage_cost) == sum_slip
+    # Zero-cost round-trips at mark 100 return cash to starting
+    assert d(row.cash) == d(row.starting_capital)
+
+
+def test_session_profit_target_beats_take_profit(db):
+    """FR-006: session hard-stop runs before protective TP on the same tick."""
+    row = create_session(
+        db,
+        _body(
+            takeProfitPercent="0.02",
+            stopLossPercent=None,
+            targetNetProfitRate="0.05",
+            feeRate="0",
+            slippageRate="0",
+        ),
+    )
+    now = datetime(2026, 8, 9, 12, 0, 0, tzinfo=timezone.utc)
+    row.started_at = now
+    entry_ot = int(now.timestamp() * 1000) - 3 * 3600 * 1000
+    trigger_ot = entry_ot + 3600_000
+    _seed_long(row, entry_fill="100", entry_candle=entry_ot)
+    # Mark high enough that liquidation equity hits profit target before TP path
+    candles = [
+        Candlestick(openTime=entry_ot, open="100", high="100", low="100", close="100"),
+        Candlestick(openTime=trigger_ot, open="100", high="200", low="100", close="180"),
+    ]
+    mock = _market(now, candles=candles, mark="180")
+    db.commit()
+    with patch("app.simulation.pipeline.build_from_stored", return_value=_AlwaysSellStrategy()):
+        _run_tick(db, row, mock, now)
+    db.refresh(row)
+    assert row.state == "STOPPED"
+    assert row.stop_reason == "profit_target"
+    assert (
+        db.query(DecisionJournalRow)
+        .filter_by(session_id=row.id, reason_code=REASON_TAKE_PROFIT)
+        .count()
+        == 0
+    )
+
+
+def test_session_max_loss_beats_stop_loss(db):
+    """FR-006: session max-loss hard-stop before protective SL."""
+    row = create_session(
+        db,
+        _body(
+            takeProfitPercent=None,
+            stopLossPercent="0.50",
+            maxSessionLossRate="0.05",
+            feeRate="0",
+            slippageRate="0",
+        ),
+    )
+    now = datetime(2026, 8, 9, 12, 0, 0, tzinfo=timezone.utc)
+    row.started_at = now
+    entry_ot = int(now.timestamp() * 1000) - 3 * 3600 * 1000
+    trigger_ot = entry_ot + 3600_000
+    _seed_long(row, entry_fill="100", entry_candle=entry_ot)
+    candles = [
+        Candlestick(openTime=entry_ot, open="100", high="100", low="100", close="100"),
+        Candlestick(openTime=trigger_ot, open="100", high="100", low="40", close="50"),
+    ]
+    mock = _market(now, candles=candles, mark="50")
+    db.commit()
+    with patch("app.simulation.pipeline.build_from_stored", return_value=_AlwaysSellStrategy()):
+        _run_tick(db, row, mock, now)
+    db.refresh(row)
+    assert row.state == "STOPPED"
+    assert row.stop_reason == "max_loss"
+    assert (
+        db.query(DecisionJournalRow)
+        .filter_by(session_id=row.id, reason_code=REASON_STOP_LOSS)
+        .count()
+        == 0
+    )

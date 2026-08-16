@@ -279,3 +279,14 @@ Task: T030 momentum_roc.py
 - Do not redesign Portfolio or Settings architecture  
 - Protective fills must never use TP/SL absolute price as fill  
 - Commit only when operator requests  
+
+---
+
+## Phase 9: Convergence
+
+**Purpose**: Close gaps found by `/speckit-converge` against spec, plan, and
+constitution (post-implement assessment). Do not rewrite earlier phases.
+
+- [X] T044 CRITICAL: Route Backtest protective TP/SL closes through Controller → Risk → Historical Execution before flatten in `backend/app/backtest/engine.py` (mirror Simulation `_try_protective_exit`); keep next-open fill, forced/non-`strategyFillCount` semantics, and `take_profit`/`stop_loss` reasons — per FR-003, US1/AC1, Constitution III–IV, plan: Controller/Risk gate (`contradicts`)
+- [X] T045 [P] Strengthen repeated-cycle accounting assertions in `backend/tests/unit/test_protective_exit_precedence.py` (and/or Backtest companion): after ≥3 BUY→protective-exit cycles, assert cash/holdings/P&L match applied fills and fees/slippage — per FR-011, SC-004, US2/AC4 (`partial`)
+- [X] T046 [P] Add automated coverage that session hard-stops (profit target / max session loss / emergency) still evaluate before TP/SL on the same candle path in Simulation (and Backtest where applicable) — per FR-006, FR-018, Edge Cases (`partial`)

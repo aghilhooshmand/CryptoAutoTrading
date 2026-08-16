@@ -18,7 +18,7 @@ from app.simulation.control.controller import TradingController
 from app.simulation.control.risk import RiskContext, RiskManager
 from app.simulation.money import DEFAULT_FEE_RATE, DEFAULT_SLIPPAGE_RATE, as_str, d, quantize_money
 from app.simulation.state_machine import SessionState
-from app.strategy.base import CandleClose, SignalSide
+from app.strategy.base import CandleClose, SignalSide, StrategySignal
 from app.strategy.registry import build_from_stored
 
 # Sentinels when optional early-exit / max_trades omitted
@@ -127,7 +127,8 @@ def run_engine(
             )
             continue
 
-        # Feature 025: protective TP/SL after session hard-stops path, before strategy
+        # Feature 025: protective TP/SL after session hard-stops path, before strategy.
+        # Protective SELL must still pass Controller → Risk → Execution (FR-003).
         if state.position_side == "long" and (
             state.take_profit_price is not None or state.stop_loss_price is not None
         ):
@@ -140,6 +141,110 @@ def run_engine(
                 sl_price=state.stop_loss_price,
             )
             if protective is not None:
+                protective_signal = StrategySignal(
+                    side=SignalSide.SELL,
+                    candle_open_time=candle.openTime,
+                    fast_ema=None,
+                    slow_ema=None,
+                    reason_code=protective,
+                )
+                ctrl = controller.review(SessionState.RUNNING, protective_signal)
+                if not ctrl.approved:
+                    repo.add_decision(
+                        db,
+                        run_id,
+                        signal="SELL",
+                        outcome="rejected",
+                        candle_open_time=candle.openTime,
+                        reason_code=ctrl.reason_code,
+                        reason_message=ctrl.reason_message,
+                    )
+                    state.equity_series.append(
+                        equity_point(
+                            state.cash,
+                            state.position_qty,
+                            state.position_side,
+                            close_px,
+                            fee_rate,
+                            slippage_rate,
+                        )
+                    )
+                    continue
+
+                ctx = RiskContext(
+                    position_side=state.position_side,
+                    cash=state.cash,
+                    qty=state.position_qty,
+                    fee_rate=fee_rate,
+                    slippage_rate=slippage_rate,
+                    start_equity=starting_capital,
+                    target_net_profit_amount=eff_profit,
+                    max_session_loss_amount=eff_loss,
+                    strategy_fill_count=state.strategy_fill_count,
+                    max_trades=eff_max_trades,
+                    mark_price=close_px,
+                    mark_safe=True,
+                )
+                risk_dec = risk.review(protective_signal, ctx)
+                # Session/emergency hard-stops from Risk take precedence over TP/SL (FR-006).
+                if risk_dec.trigger_stop:
+                    if state.position_side == "long":
+                        _flatten(
+                            db,
+                            run_id,
+                            state,
+                            adapter,
+                            reference=close_px,
+                            fill_open_time=candle.openTime,
+                            fee_rate=fee_rate,
+                            slippage_rate=slippage_rate,
+                            forced=True,
+                            end_of_run=False,
+                            reason=risk_dec.trigger_stop,
+                        )
+                    state.stop_strategy = True
+                    repo.add_decision(
+                        db,
+                        run_id,
+                        signal="SELL",
+                        outcome="rejected",
+                        candle_open_time=candle.openTime,
+                        reason_code=risk_dec.reason_code,
+                        reason_message=risk_dec.reason_message,
+                    )
+                    state.equity_series.append(
+                        equity_point(
+                            state.cash,
+                            state.position_qty,
+                            state.position_side,
+                            close_px,
+                            fee_rate,
+                            slippage_rate,
+                        )
+                    )
+                    continue
+                if not risk_dec.approved:
+                    repo.add_decision(
+                        db,
+                        run_id,
+                        signal="SELL",
+                        outcome="rejected",
+                        candle_open_time=candle.openTime,
+                        reason_code=risk_dec.reason_code,
+                        reason_message=risk_dec.reason_message,
+                    )
+                    state.equity_series.append(
+                        equity_point(
+                            state.cash,
+                            state.position_qty,
+                            state.position_side,
+                            close_px,
+                            fee_rate,
+                            slippage_rate,
+                        )
+                    )
+                    continue
+
                 if i + 1 >= len(candles):
                     repo.add_decision(
                         db,
