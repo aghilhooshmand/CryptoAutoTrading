@@ -8,9 +8,10 @@ composable Torque trading programs, Grammatical Evolution, and eventually
 carefully controlled autonomous real-money trading (destination only).
 
 Post-Feature-014 audit (2026-08-16): Feature **025 Stage-1 Trading
-Gap-Close** is DONE; next is MVP-1 validation, then **015 Controlled Real**,
-then Torque composition (016), then minimal GE — while freezing expansion of
-completed infrastructure features unless a concrete defect requires it.
+Gap-Close** and the **MVP-1 validation gate** are DONE; next delivery is
+**015 Controlled Real**, then Torque composition (016), then minimal GE —
+while freezing expansion of completed infrastructure features unless a
+concrete defect requires it.
     
 This roadmap defines:
 
@@ -521,7 +522,7 @@ before 015**.
 | 013 | XT Account / Private API Integration | DONE |
 | 014 | Live Paper-Trading Hardening | DONE (**FREEZE** — expand only for concrete defects) |
 | 025 | Stage-1 Trading Gap-Close | DONE |
-| 015 | Real-Money Manual/Confirmed Execution | PLANNED (after MVP-1 validation) |
+| 015 | Real-Money Manual/Confirmed Execution | PLANNED (next; MVP-1 gate DONE) |
 
 ---
 
@@ -662,7 +663,7 @@ Backtest → select configuration → Simulation → BUY → position
 Create additional implementation work **only** if this validation exposes
 concrete defects. Do not turn the gate into another large feature.
 
-Status: `PLANNED` (operator acceptance after Feature 025 DONE)
+Status: `DONE` (operator acceptance 2026-08-16; no residual defect backlog)
 
 ---
 
@@ -1424,8 +1425,6 @@ Current completed foundation:
 Current active milestone:
 
 ```text
-MVP-1 validation gate (acceptance/convergence — not a feature)
-        ↓
 015 → Real-Money Manual/Confirmed Execution (MVP-2)
         ↓
 016 → Torque MVP (composition; 018 merge direction)
@@ -1437,6 +1436,7 @@ Completed immediately prior:
 
 ```text
 025 → Stage-1 Trading Gap-Close   (DONE; before 015)
+MVP-1 validation gate             (DONE)
 ```
 
 Deferred / destination (do not drive near-term work):
@@ -1453,10 +1453,6 @@ Deferred / destination (do not drive near-term work):
 The near-term objective is therefore:
 
 ```text
-close Stage-1 trading gaps (025)
-        ↓
-validate Backtest → Simulation (MVP-1 gate)
-        ↓
 controlled Real with confirmation (015)
         ↓
 compose with Torque (016)
