@@ -146,7 +146,13 @@ Key outcomes (living):
 - favorites/preferences;
 - historical candle range support used by Backtest.
 
-Status: `DONE` (XT as-built); **Kraken-first public amendment IN PROGRESS**
+**Non-blocking leftover (M1):** Dashboard favorites remain a symbol string
+list, not `venue+product` composite keys. The current UI filters favorites to
+the loaded catalog and ignores XT-form persisted ids when the catalog is
+Kraken, so XT favorites are not sent to Kraken quote/candle APIs. Composite
+favorite keys (and leftover XT ids in `localStorage`) are a small follow-up.
+
+Status: `DONE` (XT as-built + Kraken-first public amendment)
 
 ---
 
@@ -538,10 +544,10 @@ before 015**.
 
 | ID | Feature | Status |
 |---|---|---|
-| 013 | Private Account Integration (XT as-built; Kraken-first amendment) | DONE (XT read); **Kraken private-read amendment PLANNED** (after 002 Kraken public) |
+| 013 | Private Account Integration (XT as-built; Kraken-first amendment) | DONE (XT read); **Kraken private-read amendment IN PROGRESS** |
 | 014 | Live Paper-Trading Hardening | DONE (**FREEZE** — expand only for concrete defects) |
 | 025 | Stage-1 Trading Gap-Close | DONE |
-| 015 | Real-Money Manual/Confirmed Execution | IN PROGRESS — **stop new XT live work**; Kraken Controlled Real **blocked** until 002 Kraken public + 013 Kraken private-read |
+| 015 | Real-Money Manual/Confirmed Execution | IN PROGRESS — **stop new XT live work**; Kraken Controlled Real **blocked** until 013 Kraken private-read |
 
 ---
 
@@ -603,8 +609,7 @@ RealExecutionAdapter
 Kraken private adapter
 ```
 
-Status: `DONE` (XT read as-built); **Kraken private-read amendment PLANNED**
-(implement after 002 Kraken public)
+Status: `DONE` (XT read as-built); **Kraken private-read amendment IN PROGRESS**
 
 ---
 
@@ -1448,7 +1453,7 @@ Current completed foundation:
 
 ```text
 001 → DONE
-002 → DONE (XT as-built); Kraken-first public amendment IN PROGRESS
+002 → DONE (XT as-built + Kraken-first public amendment; M1 favorites composite key is a small follow-up)
 003 → DONE
 004 → DONE
 005 → DONE
@@ -1459,14 +1464,14 @@ Current completed foundation:
 010 → DONE (minimal quote_asset wording; Risk semantics unchanged)
 011 → DONE
 012 → DONE (minimal venue_order_id additive; Sim/Backtest semantics unchanged)
-013 → DONE (XT read as-built); Kraken private-read amendment after 002
+013 → DONE (XT read as-built); Kraken private-read amendment IN PROGRESS
 014 → DONE (freeze recovery expansion)
 ```
 
 Current active milestone:
 
 ```text
-015 → Controlled Real on Kraken (blocked until 002 Kraken public + 013 Kraken private-read)
+015 → Controlled Real on Kraken (blocked until 013 Kraken private-read)
         ↓
 016 → Torque MVP (composition; 018 merge direction)
         ↓

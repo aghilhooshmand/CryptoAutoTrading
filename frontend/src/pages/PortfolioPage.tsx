@@ -53,8 +53,8 @@ export function PortfolioPage() {
       </div>
       <p className="note">
         Local simulation capital book. For live exchange balances and open orders, open{" "}
-        <Link to="/portfolio/real-xt">Real XT Account</Link> (read-only; separate from this
-        book).
+        <Link to="/portfolio/real-account">Real Account</Link> (Venue: Kraken;
+        read-only; separate from this book).
       </p>
 
       {loadError ? (

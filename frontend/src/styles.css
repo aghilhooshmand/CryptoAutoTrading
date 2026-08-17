@@ -444,7 +444,8 @@ a {
   background: #7a2e0b;
 }
 
-.real-xt-badge {
+.real-xt-badge,
+.real-account-badge {
   display: inline-flex;
   align-items: center;
   min-height: 1.75rem;

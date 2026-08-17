@@ -162,3 +162,40 @@ Never auto-adjust system clock (FR-010a).
 | Credential env names | R5 |
 | UI route | R6 |
 | Place/cancel surface | R7 (none) |
+
+## Amendment 2026-08-17 — Kraken private read
+
+**R10 — Layout.** Venue-neutral port in `backend/app/account/` (`port.py`,
+models, errors). Kraken signing and REST live only in
+`backend/app/account/signing.py` + `kraken_private.py`. Keep
+`backend/app/xt_account/` for regression. Do not rename `XtAccountService`.
+
+**R11 — Kraken REST (read-only).** `https://api.kraken.com` POST form body:
+
+| Capability | Path | Notes |
+|------------|------|--------|
+| Balances | `/0/private/BalanceEx` | `balance` total, `hold_trade` locked; free = total − locked when both present. Fallback `/0/private/Balance` has no split — locked omitted. |
+| Open orders | `/0/private/OpenOrders` | Map `open` map keys to `venueOrderId`; `descr.pair` → `venueProductId`. |
+| Order status | `/0/private/QueryOrders` | Body `txid=`. Empty result → `order_not_found`. |
+
+No `AddOrder` / `CancelOrder`.
+
+**R12 — Signing.** HMAC-SHA512 of (URI path + SHA256(nonce + POST data)) with
+base64-decoded secret; headers `API-Key` / `API-Sign`. Nonce is a strictly
+increasing millisecond timestamp. Invalid nonce → `timestamp_invalid`. Never
+auto-adjust the host clock. Tests use fixed nonce/secret fixtures, not live
+keys.
+
+**R13 — Errors.** Map Kraken `error[]` strings: invalid key/signature →
+`authentication_failed`; invalid nonce → `timestamp_invalid`; rate limit /
+HTTP 429 → bounded retry then `rate_limited`; unknown order →
+`order_not_found`; else `venue_private_unavailable`. Same retry bound as XT
+(R4: one retry, Retry-After cap 3s, else 0.5s). Retry MUST use a new nonce.
+
+**R14 — Credentials.** `KRAKEN_API_KEY` / `KRAKEN_API_SECRET`. Fail closed
+before network. Placeholders only in `.env.example`. Public Feature 002 does
+not read these vars.
+
+**R15 — UI.** Living inspect page `/portfolio/real-account` (Real Account /
+Venue: Kraken). Legacy `/portfolio/real-xt` remains. No trading controls.
+No secrets in UI. Simulation Portfolio unchanged.

@@ -57,9 +57,9 @@ Unsupported paths show a dedicated **Not Found** page with primary navigation
 still available (no silent redirect).
 
 **Real Account** (Feature 013) is a read-only sub-route under Portfolio:
-`/portfolio/real-xt` (legacy XT path until the Kraken inspect UI replaces it)
-— not a fourth primary nav item; separate from Simulation Portfolio. Living
-direction: Venue Kraken; no trading buttons on this surface.
+`/portfolio/real-account` (Venue: Kraken). Legacy `/portfolio/real-xt` remains
+for XT regression — not a fourth primary nav item; separate from Simulation
+Portfolio. No trading buttons on this surface.
 
 ## Start locally
 

@@ -6,7 +6,8 @@
 
 **Status**: Clarified (session 2026-08-16). **DONE (XT private read as-built).**
 **Amendment 2026-08-17 — venue-neutral private-account + Kraken implementation:
-PLANNED (implement after Feature 002 Kraken public). No Real orders in 013.**
+IN PROGRESS.** Feature 002 Kraken public (identity + public adapter) is
+complete; this amendment is the next living delivery. No Real orders in 013.
 
 **Input**: Feature 013 — Private XT account integration (primarily read-only). Establish authenticated private-exchange connectivity for real XT account balances, open orders, and order status, with credential configuration that fails closed, normalized private errors, basic rate-limit handling, and an explicit Real XT account representation that never merges with Simulation Portfolio. Locked out: operator Real trading mode, Strategy→XT orders, RealExecutionAdapter live fills, **all place/cancel capability** (unconditionally deferred to Feature 015+), autonomous trading, withdrawals/transfers, Features 014–015 hardening/confirmed execution. Architecture lock: strategies never call XT; future path remains Strategy → Controller → Risk → RealExecutionAdapter → XT Private Client, but RealExecutionAdapter remains unavailable for live trading in this feature.
 

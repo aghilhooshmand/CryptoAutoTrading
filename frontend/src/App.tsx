@@ -6,6 +6,7 @@ import { AutoTradingPage } from "./pages/AutoTradingPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
+import { RealAccountPage } from "./pages/RealAccountPage";
 import { RealXtAccountPage } from "./pages/RealXtAccountPage";
 import { SimulationSessionDetailPage } from "./features/simulation/SimulationSessionDetailPage";
 
@@ -24,6 +25,7 @@ export default function App() {
           element={<SimulationSessionDetailPage />}
         />
         <Route path="/portfolio" element={<PortfolioPage />} />
+        <Route path="/portfolio/real-account" element={<RealAccountPage />} />
         <Route path="/portfolio/real-xt" element={<RealXtAccountPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

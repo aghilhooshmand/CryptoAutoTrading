@@ -93,3 +93,28 @@ npm test -- --run   # or project’s equivalent for new Real XT page tests if ad
 - Live order placement or cancel
 - Operator Real trading mode
 - Feature 014 hardening / 015 confirmation UX
+
+---
+
+## Amendment 2026-08-17 — Kraken private read
+
+Living path (Feature 002 public is already complete):
+
+```bash
+export KRAKEN_API_KEY="YOUR_API_KEY_HERE"
+export KRAKEN_API_SECRET="YOUR_API_SECRET_HERE"
+```
+
+Unset both to verify fail-closed `credentials_missing` on `GET /account/balances`.
+
+From `backend/`:
+
+```bash
+pytest -q \
+  tests/unit/test_kraken_account_*.py \
+  tests/contract/test_account_api.py \
+  tests/unit/test_real_execution_stub.py
+```
+
+Manual UI: `/portfolio/real-account` (Venue: Kraken). Legacy `/portfolio/real-xt`
+may remain. No place/cancel. Simulation Portfolio numbers must be unchanged.

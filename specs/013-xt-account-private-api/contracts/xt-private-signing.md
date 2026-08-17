@@ -52,3 +52,18 @@ on 429:
 - Withdrawal / transfer endpoints
 - Place / cancel order APIs
 - Auto clock sync against XT server time in 013 (may be reconsidered in later hardening features if needed)
+
+---
+
+## Amendment 2026-08-17 — Kraken private signing
+
+Normative for the living Kraken adapter only (not used by `xt_account`):
+
+1. Form-encode POST fields including `nonce` (strictly increasing unsigned integer, typically milliseconds).
+2. `API-Sign` = Base64(HMAC-SHA512(base64-decoded secret, URI path + SHA256(nonce + POST data))).
+3. Headers: `API-Key` (public key), `API-Sign`.
+4. URI path for the signature starts at `/0/private/...`.
+5. Retry of a rate-limited call MUST mint a new nonce.
+
+Fixture tests MUST assert a known signature for a fixed nonce/secret/path
+(no live Kraken keys). Never auto-adjust the host clock.

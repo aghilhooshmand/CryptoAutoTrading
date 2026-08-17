@@ -151,7 +151,9 @@ parallel to `market_data`, plus one Portfolio-area inspect page. No DB schema.
 
 ## Amendment 2026-08-17 — Kraken private-read plan
 
-**Gate**: Feature 002 Kraken public (FR-021–FR-038) MUST be complete first.
+**Gate**: Feature 002 Kraken public (FR-021–FR-038) is complete
+(`feat: add Kraken-first public market data and product identity`).
+Implement this amendment now. Do not add Kraken place/cancel.
 
 **Summary**: Venue-neutral private-account port + Kraken adapter. XT package
 remains. No place/cancel. No RealExecutionAdapter writes. Simulation

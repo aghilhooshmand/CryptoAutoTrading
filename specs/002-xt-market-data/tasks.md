@@ -430,3 +430,10 @@ still green; no private/Real Kraken; Sim/Backtest engine invariance holds.
 
 **Do not start Feature 013 Kraken private or Feature 015 Kraken orders in
 this phase.**
+
+### Follow-up (non-blocking, M1)
+
+Dashboard favorites are still stored as symbol strings. Current UI filters
+favorites to the active catalog and does not send XT-form ids to Kraken
+quote/candle APIs. Composite `venue+product` favorite keys remain a small
+follow-up; do not treat this as a 002 blocker.

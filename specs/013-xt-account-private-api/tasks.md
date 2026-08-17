@@ -293,27 +293,28 @@ Deliver **US1 + US2** first: fail-closed credentials + balances API + minimal Re
 
 ## Phase 9: Amendment 2026-08-17 — Kraken private read
 
-**Blocked on Feature 002 Phase 10 (Kraken public) complete.** Do not implement
-these tasks before T052–T069 of Feature 002 are done. No Real Kraken orders.
+Feature 002 Phase 10 (Kraken public) is complete. Implement these tasks now.
+No Real Kraken orders. No `AddOrder` / cancel. No `RealExecutionAdapter` live
+fills on Kraken.
 
-- [ ] T053 Define venue-neutral `PrivateAccountPort` (balances, open orders,
+- [x] T053 Define venue-neutral `PrivateAccountPort` (balances, open orders,
       get order) in a core account module (e.g. `backend/app/account/port.py`)
       without Kraken/XT types (FR-018)
-- [ ] T054 Implement Kraken private adapter (signing, balances, open orders,
+- [x] T054 Implement Kraken private adapter (signing, balances, open orders,
       order lookup) in `backend/app/account/kraken_private.py` (or equivalent);
       keep `backend/app/xt_account/` (FR-019, FR-020, FR-022, FR-023)
-- [ ] T055 [P] Load `KRAKEN_API_KEY` / `KRAKEN_API_SECRET` fail-closed in
+- [x] T055 [P] Load `KRAKEN_API_KEY` / `KRAKEN_API_SECRET` fail-closed in
       credentials helper; placeholders only in `.env.example` (FR-021)
-- [ ] T056 [P] Normalize Kraken private errors and bounded rate-limit retry
+- [x] T056 [P] Normalize Kraken private errors and bounded rate-limit retry
       (FR-024, FR-025)
-- [ ] T057 HTTP read routes + Real Account UI (Venue: Kraken); no trading
+- [x] T057 HTTP read routes + Real Account UI (Venue: Kraken); no trading
       controls; do not write Simulation Portfolio (FR-026, FR-027)
-- [ ] T058 [P] Tests: signing fixtures, credentials missing, normalize,
+- [x] T058 [P] Tests: signing fixtures, credentials missing, normalize,
       isolation, no place/cancel, Strategy/Controller/Risk import guard
       (FR-030, SC-009–SC-013)
-- [ ] T059 Confirm public market data still works without Kraken keys
+- [x] T059 Confirm public market data still works without Kraken keys
       (FR-028)
-- [ ] T060 Confirm RealExecutionAdapter still places no orders from 013
+- [x] T060 Confirm RealExecutionAdapter still places no orders from 013
       (FR-029)
 
 Do **not** start Feature 015 Kraken order placement in this phase.

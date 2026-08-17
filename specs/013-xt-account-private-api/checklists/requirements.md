@@ -38,4 +38,5 @@
 - Plan artifacts present: `plan.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md`.
 - Tasks generated: `tasks.md` (T001–T053). Analyze remediations applied.
 - Implementation + automated gates complete; T052 / ROADMAP DONE applied after convergence.
-- Feature 013 closed; next milestone Feature 014.
+- Feature 013 XT read closed historically; living Kraken private-read amendment
+  is IN PROGRESS after Feature 002 Kraken public. Place/cancel still out.

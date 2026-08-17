@@ -176,3 +176,72 @@ MAY remain. No place/cancel routes. Secrets never in request bodies or UI.
 
 Kraken adapter methods (internal): `get_balances`, `list_open_orders`,
 `get_order` only. No `AddOrder` in 013.
+
+### Living HTTP routes (`/account`)
+
+JSON **camelCase**. Provenance is `venue: "kraken"`. Failures use the same
+error envelope as `/xt-account`. Additional living code:
+`venue_private_unavailable` (HTTP 502). XT `xt_private_unavailable` remains
+a legacy alias on `/xt-account` only.
+
+Secrets MUST NOT appear in request bodies, query strings, or UI.
+
+#### GET `/account/balances`
+
+Success 200:
+
+```json
+{
+  "venue": "kraken",
+  "retrievedAt": "2026-08-17T20:00:00.000Z",
+  "balances": [
+    {
+      "asset": "EUR",
+      "free": "100.5",
+      "locked": "10",
+      "total": "110.5",
+      "venue": "kraken"
+    }
+  ]
+}
+```
+
+Rules:
+- Map free vs locked only when Kraken provides the split (`BalanceEx`
+  `balance` / `hold_trade`). Do not invent locked amounts.
+- Omit assets whose free and locked (or free alone when locked is unknown)
+  are both zero.
+- Empty `balances` is success.
+- Does not read or write `/portfolio`.
+
+#### GET `/account/open-orders`
+
+Optional query: `venueProductId` (filter after normalize when provided).
+
+```json
+{
+  "venue": "kraken",
+  "retrievedAt": "2026-08-17T20:00:00.000Z",
+  "orders": [
+    {
+      "venueOrderId": "O7MN22-ZCX7J-TGLQHD",
+      "venueProductId": "XXBTZEUR",
+      "side": "BUY",
+      "orderType": "limit",
+      "quantity": "0.01",
+      "price": "50000",
+      "executedQty": "0",
+      "status": "open",
+      "updatedAt": "2026-08-17T19:55:00.000Z",
+      "venue": "kraken"
+    }
+  ]
+}
+```
+
+#### GET `/account/orders/{venue_order_id}`
+
+Success 200 with a single `order` object (same shape as open-order rows).
+Unknown id → `order_not_found` / 404.
+
+No POST/DELETE place, cancel, withdraw, or transfer routes under `/account`.
