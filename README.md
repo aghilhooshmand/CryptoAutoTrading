@@ -129,8 +129,10 @@ Semantics (intentional Sim vs Backtest differences):
 ### Controlled Real (Feature 015 — IN PROGRESS)
 
 Operator-supervised Real sessions on XT (`mode=real`) under Auto Trading:
-confirmed market entries, automatic protective/reducing exits, hard ≤50 USDT
-allocated budget, 5-minute pending confirmation TTL, XT free-balance gate before
+choose **Controlled Real** on the session form; exposure-increasing BUY waits
+for `POST /simulation/sessions/{id}/confirm-entry` (or Decline). Protective TP/SL,
+reducing SELL, and Stop/Flatten skip confirmation. Hard ≤50 USDT allocated
+**local budget** (not XT cash), 5-minute pending TTL, XT free-balance gate before
 entry, and `RECOVERY_BLOCKED` after restart / partial / unsettled (no Feature 014
 auto-resume for Real). Spec and validation:
 [`specs/015-controlled-real-execution/`](specs/015-controlled-real-execution/).

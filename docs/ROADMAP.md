@@ -704,6 +704,11 @@ Prefer a path that can later move from confirmed entries → automatic entries
 within hard risk limits **without** a second execution pipeline. Do **not**
 implement autonomous Real entries in Feature 015.
 
+**Status (honest):** Feature 015 remains **IN PROGRESS**. Branch
+`015-controlled-real-execution` implements confirmed entry, auto exits, bounds/UI,
+reconcile-over-assume, and Real blocked recovery. Do **not** mark DONE until the
+operator accepts SC-001–SC-008 / quickstart evidence.
+
 Example (entries):
 
 ```text

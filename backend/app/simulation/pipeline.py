@@ -25,6 +25,8 @@ from app.simulation.position_sizing import intended_notional
 from app.simulation.session_service import (
     _apply_fill,
     add_decision,
+    block_real_session_if_needed,
+    record_real_order_outcome,
     stop_session_async,
 )
 from app.simulation.state_machine import SessionState
@@ -215,45 +217,61 @@ async def _try_protective_exit(
         is_forced_close=True,
     )
     result = engine.execute(intent)
-    if not result.ok or result.fill is None or result.qty is None:
+    record_real_order_outcome(db, row, result, side="SELL", clock=clock)
+    if result.fill is not None and result.qty is not None:
+        _apply_fill(
+            row,
+            side="SELL",
+            qty=result.qty,
+            fill=result.fill,
+            is_forced=True,
+            candle_open_time=candle.open_time,
+            clock=clock,
+            db=db,
+        )
         add_decision(
             db,
             row,
             signal="SELL",
-            outcome="rejected",
+            outcome="forced",
             candle_open_time=candle.open_time,
-            reason_code=result.reason_code,
-            reason_message=result.reason_message,
+            reason_code=reason,
+            reason_message=f"Protective exit ({reason})",
             fast_ema=None,
             slow_ema=None,
             clock=clock,
         )
+        if not result.ok:
+            add_decision(
+                db,
+                row,
+                signal="SELL",
+                outcome="rejected",
+                candle_open_time=candle.open_time,
+                reason_code=result.reason_code,
+                reason_message=result.reason_message,
+                fast_ema=None,
+                slow_ema=None,
+                clock=clock,
+            )
+        block_real_session_if_needed(row, result)
         row.last_processed_candle_open_time = candle.open_time
         db.commit()
         return True
 
-    _apply_fill(
-        row,
-        side="SELL",
-        qty=result.qty,
-        fill=result.fill,
-        is_forced=True,
-        candle_open_time=candle.open_time,
-        clock=clock,
-        db=db,
-    )
     add_decision(
         db,
         row,
         signal="SELL",
-        outcome="forced",
+        outcome="rejected",
         candle_open_time=candle.open_time,
-        reason_code=reason,
-        reason_message=f"Protective exit ({reason})",
+        reason_code=result.reason_code,
+        reason_message=result.reason_message,
         fast_ema=None,
         slow_ema=None,
         clock=clock,
     )
+    block_real_session_if_needed(row, result)
     row.last_processed_candle_open_time = candle.open_time
     db.commit()
     return True
@@ -488,65 +506,82 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
         position_qty=d(row.position_qty),
     )
     result = engine.execute(intent)
-    if not result.ok or result.fill is None or result.qty is None:
+    record_real_order_outcome(db, row, result, side=signal.side.value, clock=clock)
+    if result.fill is not None and result.qty is not None:
+        _apply_fill(
+            row,
+            side=signal.side.value,
+            qty=result.qty,
+            fill=result.fill,
+            is_forced=False,
+            candle_open_time=signal.candle_open_time,
+            clock=clock,
+            db=db,
+        )
         add_decision(
             db,
             row,
             signal=signal.side.value,
-            outcome="rejected",
+            outcome="approved",
             candle_open_time=signal.candle_open_time,
-            reason_code=result.reason_code,
-            reason_message=result.reason_message,
+            reason_code=None,
+            reason_message=None,
             fast_ema=as_str(signal.fast_ema) if signal.fast_ema is not None else None,
             slow_ema=as_str(signal.slow_ema) if signal.slow_ema is not None else None,
             clock=clock,
         )
+        if not result.ok:
+            add_decision(
+                db,
+                row,
+                signal=signal.side.value,
+                outcome="rejected",
+                candle_open_time=signal.candle_open_time,
+                reason_code=result.reason_code,
+                reason_message=result.reason_message,
+                fast_ema=as_str(signal.fast_ema) if signal.fast_ema is not None else None,
+                slow_ema=as_str(signal.slow_ema) if signal.slow_ema is not None else None,
+                clock=clock,
+            )
+        block_real_session_if_needed(row, result)
         row.last_processed_candle_open_time = newest.open_time
         db.commit()
+        db.refresh(row)
+        if row.state != SessionState.RUNNING.value:
+            return
+        if row.strategy_fill_count >= row.max_trades:
+            await stop_session_async(db, row.id, "max_trades", clock=clock)
+            return
+        mark2, safe2 = await _quote_mark(row.symbol)
+        if safe2 and mark2 is not None:
+            liq2 = liquidation_equity(
+                d(row.cash),
+                d(row.position_qty),
+                mark2,
+                row.position_side,
+                d(row.fee_rate),
+                d(row.slippage_rate),
+            )
+            net2 = session_net_pnl(liq2, d(row.starting_capital))
+            if net2 is not None:
+                if net2 >= d(row.target_net_profit_amount):
+                    await stop_session_async(db, row.id, "profit_target", clock=clock)
+                elif net2 <= -d(row.max_session_loss_amount):
+                    await stop_session_async(db, row.id, "max_loss", clock=clock)
         return
 
-    _apply_fill(
-        row,
-        side=signal.side.value,
-        qty=result.qty,
-        fill=result.fill,
-        is_forced=False,
-        candle_open_time=signal.candle_open_time,
-        clock=clock,
-        db=db,
-    )
     add_decision(
         db,
         row,
         signal=signal.side.value,
-        outcome="approved",
+        outcome="rejected",
         candle_open_time=signal.candle_open_time,
-        reason_code=None,
-        reason_message=None,
+        reason_code=result.reason_code,
+        reason_message=result.reason_message,
         fast_ema=as_str(signal.fast_ema) if signal.fast_ema is not None else None,
         slow_ema=as_str(signal.slow_ema) if signal.slow_ema is not None else None,
         clock=clock,
     )
+    block_real_session_if_needed(row, result)
     row.last_processed_candle_open_time = newest.open_time
     db.commit()
-
-    db.refresh(row)
-    if row.strategy_fill_count >= row.max_trades:
-        await stop_session_async(db, row.id, "max_trades", clock=clock)
-        return
-    mark2, safe2 = await _quote_mark(row.symbol)
-    if safe2 and mark2 is not None:
-        liq2 = liquidation_equity(
-            d(row.cash),
-            d(row.position_qty),
-            mark2,
-            row.position_side,
-            d(row.fee_rate),
-            d(row.slippage_rate),
-        )
-        net2 = session_net_pnl(liq2, d(row.starting_capital))
-        if net2 is not None:
-            if net2 >= d(row.target_net_profit_amount):
-                await stop_session_async(db, row.id, "profit_target", clock=clock)
-            elif net2 <= -d(row.max_session_loss_amount):
-                await stop_session_async(db, row.id, "max_loss", clock=clock)

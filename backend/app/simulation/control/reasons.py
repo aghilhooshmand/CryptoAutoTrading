@@ -39,6 +39,7 @@ INSUFFICIENT_XT_FREE = "insufficient_xt_free"
 PARTIAL_FILLED_BLOCKED = "partial_filled_blocked"
 XT_ORDER_REJECTED = "xt_order_rejected"
 CREDENTIALS_MISSING = "credentials_missing"
+REAL_RESTART_BLOCKED = "real_restart_blocked"
 
 # Stop trigger aliases (session stop_reason / RiskDecision.trigger_stop).
 STOP_MAX_TRADES = "max_trades"
@@ -76,6 +77,7 @@ _MESSAGES: dict[str, str] = {
     PARTIAL_FILLED_BLOCKED: "Partial XT fill recorded; session blocked until reconcile/Resume.",
     XT_ORDER_REJECTED: "XT rejected the Real order.",
     CREDENTIALS_MISSING: "XT private credentials are not configured.",
+    REAL_RESTART_BLOCKED: "Real session blocked after restart; never auto-resumed.",
 }
 
 

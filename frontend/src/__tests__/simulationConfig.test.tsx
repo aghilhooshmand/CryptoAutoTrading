@@ -97,6 +97,6 @@ describe("simulation config validation", () => {
 
     expect(screen.getByTestId("sim-config-error")).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
-    expect(screen.getByTestId("sim-real-money-disabled")).toBeDisabled();
+    expect(screen.getByTestId("session-mode")).toHaveValue("simulation");
   });
 });

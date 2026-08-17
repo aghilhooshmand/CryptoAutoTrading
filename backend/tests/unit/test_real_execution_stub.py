@@ -23,7 +23,7 @@ def _intent() -> ExecutionIntent:
 
 
 def test_real_stub_structured_unavailable():
-    """Scaffold fails closed until US1 enables live place."""
+    """Without credentials, adapter fails closed and invents no fill."""
     res = RealExecutionAdapter().execute(_intent())
     assert res.ok is False
     assert res.reason_code in (REAL_EXECUTION_UNAVAILABLE, "credentials_missing")

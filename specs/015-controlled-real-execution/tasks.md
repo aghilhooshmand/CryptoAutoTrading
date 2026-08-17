@@ -122,13 +122,13 @@ reconcile
 
 ### Tests for User Story 2
 
-- [ ] T023 [P] [US2] Unit/pipeline tests in `backend/tests/unit/test_real_auto_exits.py` (protective TP/SL skip confirm; reducing SELL skip confirm; forced flatten skip confirm; precedence session/emergency → SL → TP → strategy preserved)
+- [X] T023 [P] [US2] Unit/pipeline tests in `backend/tests/unit/test_real_auto_exits.py` (protective TP/SL skip confirm; reducing SELL skip confirm; forced flatten skip confirm; precedence session/emergency → SL → TP → strategy preserved)
 
 ### Implementation for User Story 2
 
-- [ ] T024 [US2] Ensure Real protective TP/SL evaluation (025 rules) emits SELL through Controller → Risk → RealExecutionAdapter without pending confirmation in `backend/app/simulation/pipeline.py`
-- [ ] T025 [US2] Ensure Real strategy reducing/closing SELL and emergency/STOP flatten paths skip confirmation gate and use RealExecutionAdapter in `backend/app/simulation/pipeline.py` / `session_service.py`
-- [ ] T026 [US2] Reconcile-driven apply of Real SELL fills to session state without Simulation Portfolio writes in session apply-fill / accounting path
+- [X] T024 [US2] Ensure Real protective TP/SL evaluation (025 rules) emits SELL through Controller → Risk → RealExecutionAdapter without pending confirmation in `backend/app/simulation/pipeline.py`
+- [X] T025 [US2] Ensure Real strategy reducing/closing SELL and emergency/STOP flatten paths skip confirmation gate and use RealExecutionAdapter in `backend/app/simulation/pipeline.py` / `session_service.py`
+- [X] T026 [US2] Reconcile-driven apply of Real SELL fills to session state without Simulation Portfolio writes in session apply-fill / accounting path
 
 **Checkpoint**: US2 — Real risk-reducing exits automatic and safe
 
@@ -144,16 +144,16 @@ confirm blocked if cap would be violated; history/provenance shows real
 
 ### Tests for User Story 3
 
-- [ ] T027 [P] [US3] Unit/contract tests for pre-submit cap re-check, single-long enforcement, and **XT free &lt; notional → no place** in `backend/tests/unit/test_real_capital_bounds.py` (and extend contract tests)
-- [ ] T028 [P] [US3] Portfolio isolation regression in `backend/tests/unit/test_real_portfolio_isolation.py` (Real fills never mutate Sim Portfolio holdings/allocations)
-- [ ] T029 [P] [US3] Extend frontend test in `frontend/src/__tests__/controlledRealUi015.test.tsx` for unmistakable Real label/mode on create/status/history (~375px)
+- [X] T027 [P] [US3] Unit/contract tests for pre-submit cap re-check, single-long enforcement, and **XT free &lt; notional → no place** in `backend/tests/unit/test_real_capital_bounds.py` (and extend contract tests)
+- [X] T028 [P] [US3] Portfolio isolation regression in `backend/tests/unit/test_real_portfolio_isolation.py` (Real fills never mutate Sim Portfolio holdings/allocations)
+- [X] T029 [P] [US3] Extend frontend test in `frontend/src/__tests__/controlledRealUi015.test.tsx` for unmistakable Real label/mode on create/status/history (~375px)
 
 ### Implementation for User Story 3
 
-- [ ] T030 [US3] Re-enforce 50 USDT cap and position bounds at confirm and immediately before XT entry submit in confirm path / `RealExecutionAdapter`
-- [ ] T031 [US3] Ensure status, list, history, and journals expose explicit `mode: "real"` / provenance and label Real `startingCapital`/budget cash as **local budget not XT cash** (optional `xtFreeQuote` when reconciled) in `session_service.py` and related serializers
-- [ ] T032 [US3] Frontend Real mode selector/create fields and unmistakable badges in `frontend/src/features/simulation/SessionConfigForm.tsx`, `SimulationBadge.tsx`, `SimulationHistoryList.tsx`; budget fields must not read as XT cash (no Portfolio redesign; no new primary nav)
-- [ ] T033 [US3] Reject multi-pair / multi-position Real configuration attempts fail-closed in `session_service.py` (keep one-symbol session invariant)
+- [X] T030 [US3] Re-enforce 50 USDT cap and position bounds at confirm and immediately before XT entry submit in confirm path / `RealExecutionAdapter`
+- [X] T031 [US3] Ensure status, list, history, and journals expose explicit `mode: "real"` / provenance and label Real `startingCapital`/budget cash as **local budget not XT cash** (optional `xtFreeQuote` when reconciled) in `session_service.py` and related serializers
+- [X] T032 [US3] Frontend Real mode selector/create fields and unmistakable badges in `frontend/src/features/simulation/SessionConfigForm.tsx`, `SimulationBadge.tsx`, `SimulationHistoryList.tsx`; budget fields must not read as XT cash (no Portfolio redesign; no new primary nav)
+- [X] T033 [US3] Reject multi-pair / multi-position Real configuration attempts fail-closed in `session_service.py` (keep one-symbol session invariant)
 
 **Checkpoint**: US3 — blast radius bounds + clear Real UX
 
@@ -170,14 +170,14 @@ partial (exposure + blocked), ack-without-fill; limit placement rejected
 
 ### Tests for User Story 4
 
-- [ ] T034 [P] [US4] Reconcile failure-mode tests in `backend/tests/unit/test_real_execution_adapter.py` (or `test_real_reconcile.py`): reject → no fill; submission-only ack → no invented fill; **partial → exposure recorded + blocked**; **timeout → retain order id + unsettled block** (no forgotten order)
-- [ ] T035 [P] [US4] Limit-order rejection test (`limit_orders_unavailable`) in `backend/tests/unit/test_real_execution_adapter.py` / contract coverage
+- [X] T034 [P] [US4] Reconcile failure-mode tests in `backend/tests/unit/test_real_execution_adapter.py` (or `test_real_reconcile.py`): reject → no fill; submission-only ack → no invented fill; **partial → exposure recorded + blocked**; **timeout → retain order id + unsettled block** (no forgotten order)
+- [X] T035 [P] [US4] Limit-order rejection test (`limit_orders_unavailable`) in `backend/tests/unit/test_real_execution_adapter.py` / contract coverage
 
 ### Implementation for User Story 4
 
-- [ ] T036 [US4] Harden Real order reconcile state machine in adapter + `data-model` fields (`submit_status`, `reconcile_status` incl. `partial_filled_blocked` / `unsettled`) so pipeline never promotes submit-alone to filled; on partial apply exposure then transition session to `RECOVERY_BLOCKED` in `pipeline.py` / `session_service.py`; on timeout retain `xt_order_id`, unsettle, block new orders until later reconcile (FR-006b/c)
-- [ ] T037 [US4] Map XT private errors (credentials, rate limit, timestamp_invalid, unavailable, insufficient free) to fail-closed session/confirm outcomes without inventing balances
-- [ ] T038 [US4] Explicitly reject limit/non-market Real placement attempts at API/adapter boundary
+- [X] T036 [US4] Harden Real order reconcile state machine in adapter + `data-model` fields (`submit_status`, `reconcile_status` incl. `partial_filled_blocked` / `unsettled`) so pipeline never promotes submit-alone to filled; on partial apply exposure then transition session to `RECOVERY_BLOCKED` in `pipeline.py` / `session_service.py`; on timeout retain `xt_order_id`, unsettle, block new orders until later reconcile (FR-006b/c)
+- [X] T037 [US4] Map XT private errors (credentials, rate limit, timestamp_invalid, unavailable, insufficient free) to fail-closed session/confirm outcomes without inventing balances
+- [X] T038 [US4] Explicitly reject limit/non-market Real placement attempts at API/adapter boundary
 
 **Checkpoint**: US4 — reconcile authority proven under failure
 
@@ -195,15 +195,15 @@ auto-recovery unchanged
 
 ### Tests
 
-- [ ] T039 [P] Unit/integration tests in `backend/tests/unit/test_real_blocked_recovery.py` (Real orphan → blocked; pendings discarded; no auto-resume; partial/unsettled in-session block; Resume fail/success after later reconcile; Sim path unchanged)
-- [ ] T040 [P] Frontend blocked-recovery banner smoke in `frontend/src/__tests__/controlledRealUi015.test.tsx`
+- [X] T039 [P] Unit/integration tests in `backend/tests/unit/test_real_blocked_recovery.py` (Real orphan → blocked; pendings discarded; no auto-resume; partial/unsettled in-session block; Resume fail/success after later reconcile; Sim path unchanged)
+- [X] T040 [P] Frontend blocked-recovery banner smoke in `frontend/src/__tests__/controlledRealUi015.test.tsx`
 
 ### Implementation
 
-- [ ] T041 Branch startup recovery in `backend/app/simulation/recovery.py`: for `mode=real`, always `RECOVERY_BLOCKED`, discard pendings, reconcile via 013, **never** auto-resume; keep Feature 014 Sim conditional auto-recovery for `mode=simulation`
-- [ ] T042 Gate Real Resume in `backend/app/simulation/session_service.py` on Real reconcile + safety/risk re-check (`resume_unavailable` when incomplete/contradictory)
-- [ ] T043 Ensure Stop/Flatten from Real blocked/running skips entry confirmation and uses reconciled trustworthy state when executable
-- [ ] T044 Frontend blocked-recovery messaging + Resume/Stop affordances in `SessionStatusPanel.tsx` / `SimulationSessionDetailPage.tsx`
+- [X] T041 Branch startup recovery in `backend/app/simulation/recovery.py`: for `mode=real`, always `RECOVERY_BLOCKED`, discard pendings, reconcile via 013, **never** auto-resume; keep Feature 014 Sim conditional auto-recovery for `mode=simulation`
+- [X] T042 Gate Real Resume in `backend/app/simulation/session_service.py` on Real reconcile + safety/risk re-check (`resume_unavailable` when incomplete/contradictory)
+- [X] T043 Ensure Stop/Flatten from Real blocked/running skips entry confirmation and uses reconciled trustworthy state when executable
+- [X] T044 Frontend blocked-recovery messaging + Resume/Stop affordances in `SessionStatusPanel.tsx` / `SimulationSessionDetailPage.tsx`
 
 **Checkpoint**: FR-011 / SC-008 green; Sim recovery not extended into Real
 
@@ -213,10 +213,10 @@ auto-recovery unchanged
 
 **Purpose**: Quickstart validation, docs, MVP-2 readiness
 
-- [ ] T045 [P] Run and fix `specs/015-controlled-real-execution/quickstart.md` automated pytest + frontend test commands until green
-- [ ] T046 [P] Update `README.md` Controlled Real notes if API/UI names drifted during implementation
-- [ ] T047 Mark Feature 015 / Controlled Real MVP-2 acceptance notes on `docs/ROADMAP.md` only after SC-001–SC-008 evidence (keep honest `IN PROGRESS` until then; set DONE when operator accepts)
-- [ ] T048 Confirm existing Simulation/Backtest/012 stub regression suite still green (`backend/tests/unit/test_real_execution_stub.py` behavior updated or replaced only as appropriate for live adapter + miswire cases)
+- [X] T045 [P] Run and fix `specs/015-controlled-real-execution/quickstart.md` automated pytest + frontend test commands until green
+- [X] T046 [P] Update `README.md` Controlled Real notes if API/UI names drifted during implementation
+- [X] T047 Mark Feature 015 / Controlled Real MVP-2 acceptance notes on `docs/ROADMAP.md` only after SC-001–SC-008 evidence (keep honest `IN PROGRESS` until then; set DONE when operator accepts)
+- [X] T048 Confirm existing Simulation/Backtest/012 stub regression suite still green (`backend/tests/unit/test_real_execution_stub.py` behavior updated or replaced only as appropriate for live adapter + miswire cases)
 
 ---
 

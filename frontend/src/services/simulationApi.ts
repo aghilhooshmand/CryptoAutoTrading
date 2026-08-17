@@ -131,6 +131,8 @@ export interface FinalResultSummary {
 
 export interface HistoryListItem {
   id: string;
+  mode?: string;
+  label?: "SIMULATION" | "REAL";
   state: SessionState;
   symbol: string;
   timeframe: string;
@@ -230,7 +232,7 @@ export async function createSession(
   const response = await fetch("/simulation/sessions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mode: "simulation", ...body }),
+    body: JSON.stringify({ ...body, mode: body.mode ?? "simulation" }),
     signal,
   });
   return parseJson<SimulationSession>(response);

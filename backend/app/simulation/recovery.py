@@ -12,7 +12,9 @@ from app.db.models import SimulationSessionRow
 from app.market_data.models import MarketStatus
 from app.market_data.public_retry import PublicRetryExhausted, with_public_retry
 from app.market_data.service import get_market_data_service
+from app.simulation.control import reasons as risk_reasons
 from app.simulation.gap_skip import apply_offline_gap_skip
+from app.simulation.pending_confirmation import discard_all_pending_for_session
 from app.simulation.reconcile import reconcile_session
 from app.simulation.state_machine import SessionState, recover_to_blocked, transition
 
@@ -73,6 +75,24 @@ async def recover_orphan_sessions_async(
     )
     count = 0
     for row in rows:
+        if row.mode == "real":
+            discarded = discard_all_pending_for_session(db, row.id, status="cancelled")
+            await _best_effort_refresh_xt_order(row)
+            _enter_blocked(
+                row,
+                reason=risk_reasons.REAL_RESTART_BLOCKED,
+                detail=risk_reasons.message_for(risk_reasons.REAL_RESTART_BLOCKED)
+                + (f"; discarded {discarded} pending confirmation(s)" if discarded else ""),
+                now=now,
+            )
+            logger.info(
+                "real_restart_blocked session_id=%s xt_order_id=%s",
+                row.id,
+                row.xt_order_id,
+            )
+            count += 1
+            continue
+
         mark_safe = await _mark_safe_for_row(row)
         result = reconcile_session(db, row, mark_safe=mark_safe)
         row.last_recovery_at = now
@@ -130,3 +150,31 @@ def recover_orphan_sessions(db: Session, now: datetime | None = None) -> int:
         "recover_orphan_sessions() cannot be called from a running event loop; "
         "use await recover_orphan_sessions_async(...)"
     )
+
+
+async def _best_effort_refresh_xt_order(row: SimulationSessionRow) -> None:
+    """Update reconcile_status from Feature 013 get_order; never auto-resumes."""
+    if not row.xt_order_id:
+        return
+    try:
+        from app.execution.real import _FILLED_STATES, _PARTIAL_STATES, _REJECTED_STATES, _client_for, _order_state
+        from app.xt_account.credentials import load_credentials
+
+        client = _client_for(load_credentials())
+        try:
+            raw = await client.get_order(row.xt_order_id)
+        finally:
+            await client.aclose()
+        status, _executed, _price = _order_state(raw)
+        if status in _FILLED_STATES:
+            row.real_reconcile_status = "filled"
+        elif status in _PARTIAL_STATES:
+            row.real_reconcile_status = "partial_filled_blocked"
+        elif status in _REJECTED_STATES:
+            row.real_reconcile_status = "rejected"
+    except Exception:  # noqa: BLE001
+        logger.info(
+            "real_xt_refresh_skipped session_id=%s order_id=%s",
+            row.id,
+            row.xt_order_id,
+        )

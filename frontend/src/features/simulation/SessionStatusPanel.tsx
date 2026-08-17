@@ -204,7 +204,11 @@ export function SessionStatusPanel({
           <div>
             <Term
               tipLabel="Recovery"
-              tipText="Stable code explaining why auto-resume was blocked after backend restart or a failed resume attempt."
+              tipText={
+                isReal
+                  ? "Controlled Real never auto-resumes after restart or an unsettled/partial XT order. Resume only after reconcile is safe, or Stop/Flatten."
+                  : "Stable code explaining why auto-resume was blocked after backend restart or a failed resume attempt."
+              }
               tipTestId="tip-recovery-reason"
             >
               Recovery reason
@@ -246,7 +250,13 @@ export function SessionStatusPanel({
           </div>
         ) : null}
       </dl>
-      {pending ? (
+      {isReal && recoveryBlocked ? (
+        <p className="note" data-testid="real-recovery-banner" role="status">
+          Controlled Real never auto-resumes after restart or an unsettled/partial XT
+          order. Resume only after reconcile proves the state safe, or Stop/Flatten.
+        </p>
+      ) : null}
+      {pending && !recoveryBlocked ? (
         <section
           className="real-pending-confirm"
           data-testid="real-pending-confirm"

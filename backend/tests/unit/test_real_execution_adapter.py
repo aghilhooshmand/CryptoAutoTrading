@@ -127,3 +127,34 @@ def test_partial_fill_blocked_with_exposure():
     assert result.qty == Decimal("0.0001")
     assert result.reason_code == "partial_filled_blocked"
     assert result.reconcile_status == "partial_filled_blocked"
+
+
+def test_xt_reject_does_not_invent_fill():
+    from app.xt_account.errors import XT_PRIVATE_UNAVAILABLE, XtPrivateError
+
+    class RejectingClient:
+        async def place_market_order(self, **kwargs):
+            raise XtPrivateError(XT_PRIVATE_UNAVAILABLE, "XT down")
+
+        async def get_order(self, order_id: str):
+            raise AssertionError("get_order must not run after place reject")
+
+        async def aclose(self) -> None:
+            return None
+
+    set_client_factory_override(lambda _c: RejectingClient())
+    result = RealExecutionAdapter().execute(_intent())
+    assert result.ok is False
+    assert result.fill is None
+    assert result.qty is None
+    assert result.xt_order_id is None
+    assert result.blocked is False
+    assert result.reason_code == "xt_private_unavailable"
+
+
+def test_limit_orders_unavailable():
+    result = RealExecutionAdapter().execute(_intent(order_type="LIMIT"))
+    assert result.ok is False
+    assert result.fill is None
+    assert result.reason_code == "limit_orders_unavailable"
+

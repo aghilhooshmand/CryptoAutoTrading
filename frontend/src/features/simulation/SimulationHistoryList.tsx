@@ -119,6 +119,10 @@ export function SimulationHistoryList({ refreshKey = 0 }: Props) {
                   data-testid={`sim-history-open-${s.id}`}
                 >
                   <span className="sim-history-title">
+                    <span data-testid={`sim-history-label-${s.id}`}>
+                      {s.label === "REAL" || s.mode === "real" ? "REAL" : "SIMULATION"}
+                    </span>
+                    {" · "}
                     {s.symbol} · {s.timeframe} · {s.state}
                   </span>
                   <span className="sim-history-meta">

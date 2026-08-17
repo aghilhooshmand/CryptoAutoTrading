@@ -12,9 +12,16 @@ from app.simulation.accounting import FillQuote
 from app.simulation.control import reasons as risk_reasons
 from app.simulation.money import as_str, d, quantize_money
 from app.simulation.position_sizing import intended_notional, is_dust
+from app.simulation.real_gates import REAL_ALLOCATED_CAP
 from app.xt_account.client import XtPrivateClient
 from app.xt_account.credentials import PrivateCredentials, load_credentials
-from app.xt_account.errors import CREDENTIALS_MISSING, XtPrivateError
+from app.xt_account.errors import (
+    CREDENTIALS_MISSING,
+    RATE_LIMITED,
+    TIMESTAMP_INVALID,
+    XT_PRIVATE_UNAVAILABLE,
+    XtPrivateError,
+)
 from app.xt_account.normalize import normalize_order
 
 REAL_EXECUTION_UNAVAILABLE = "real_execution_unavailable"
@@ -55,6 +62,28 @@ def _client_for(credentials: PrivateCredentials) -> RealXtClient:
     if _client_factory_override is not None:
         return _client_factory_override(credentials)
     return XtPrivateClient(credentials)
+
+
+def _fill_from_private_error(
+    exc: XtPrivateError,
+    *,
+    xt_order_id: str | None = None,
+) -> FillResult:
+    if exc.code == CREDENTIALS_MISSING:
+        code = risk_reasons.CREDENTIALS_MISSING
+    elif exc.code in (RATE_LIMITED, TIMESTAMP_INVALID, XT_PRIVATE_UNAVAILABLE):
+        code = exc.code
+    else:
+        code = risk_reasons.XT_ORDER_REJECTED
+    blocked = xt_order_id is not None
+    return FillResult(
+        False,
+        code,
+        str(exc),
+        xt_order_id=xt_order_id,
+        reconcile_status="unsettled" if blocked else None,
+        blocked=blocked,
+    )
 
 
 def _extract_order_id(place_result: Any) -> str | None:
@@ -121,7 +150,13 @@ class RealExecutionAdapter:
     def execute(self, intent: ExecutionIntent) -> FillResult:
         if intent.side not in ("BUY", "SELL"):
             return FillResult(False, "invalid_side", "side must be BUY or SELL")
-        if intent.allocated_capital > Decimal("50"):
+        if (intent.order_type or "MARKET").upper() != "MARKET":
+            return FillResult(
+                False,
+                risk_reasons.LIMIT_ORDERS_UNAVAILABLE,
+                risk_reasons.message_for(risk_reasons.LIMIT_ORDERS_UNAVAILABLE),
+            )
+        if intent.allocated_capital > REAL_ALLOCATED_CAP:
             return FillResult(
                 False,
                 risk_reasons.REAL_CAPITAL_CAP_EXCEEDED,
@@ -177,6 +212,12 @@ class RealExecutionAdapter:
             intent.allocated_capital,
             intent.max_position_size,
         )
+        if target > REAL_ALLOCATED_CAP:
+            return FillResult(
+                False,
+                risk_reasons.REAL_CAPITAL_CAP_EXCEEDED,
+                risk_reasons.message_for(risk_reasons.REAL_CAPITAL_CAP_EXCEEDED),
+            )
         if is_dust(target):
             return FillResult(False, "insufficient_balance", "Intended notional is dust or zero")
         quote_qty = as_str(target)
@@ -223,7 +264,7 @@ class RealExecutionAdapter:
             )
             xt_order_id = _extract_order_id(place_result)
         except XtPrivateError as exc:
-            return FillResult(False, risk_reasons.XT_ORDER_REJECTED, str(exc))
+            return _fill_from_private_error(exc)
 
         if xt_order_id is None:
             return FillResult(

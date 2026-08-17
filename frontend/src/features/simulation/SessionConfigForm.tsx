@@ -18,6 +18,7 @@ import {
 import { InfoTooltip } from "../shared/InfoTooltip";
 
 export interface SessionConfigValues {
+  mode: "simulation" | "real";
   symbol: string;
   timeframe: CandleInterval;
   startingCapital: string;
@@ -46,6 +47,7 @@ interface Props {
 }
 
 const DEFAULTS: SessionConfigValues = {
+  mode: "simulation",
   symbol: "btc_usdt",
   timeframe: "1h",
   startingCapital: "1000",
@@ -163,8 +165,10 @@ export function SessionConfigForm({
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    const isReal = values.mode === "real";
+    const starting = isReal ? values.allocatedCapital : values.startingCapital;
     const nest = validateCapitalNesting(
-      values.startingCapital,
+      starting,
       values.allocatedCapital,
       values.maxPositionSize,
     );
@@ -172,7 +176,13 @@ export function SessionConfigForm({
       setLocalError(nest);
       return;
     }
-    if (portfolioAvailable != null) {
+    if (isReal) {
+      const allocated = Number(values.allocatedCapital);
+      if (!Number.isFinite(allocated) || allocated > 50) {
+        setLocalError("Controlled Real allocated capital must be ≤ 50 USDT.");
+        return;
+      }
+    } else if (portfolioAvailable != null) {
       const allocated = Number(values.allocatedCapital);
       const available = Number(portfolioAvailable);
       if (Number.isFinite(allocated) && Number.isFinite(available) && allocated > available) {
@@ -209,9 +219,10 @@ export function SessionConfigForm({
     }
     setLocalError(null);
     onSubmit({
+      mode: values.mode,
       symbol: values.symbol.trim(),
       timeframe: values.timeframe,
-      startingCapital: values.startingCapital,
+      startingCapital: isReal ? values.allocatedCapital : values.startingCapital,
       allocatedCapital: values.allocatedCapital,
       maxPositionSize: values.maxPositionSize,
       targetNetProfitRate: values.targetNetProfitRate,
@@ -222,10 +233,10 @@ export function SessionConfigForm({
       slippageRate: values.slippageRate || undefined,
       strategyId: strategy.strategyId,
       strategyParams: strategy.strategyParams,
-      allocationId: values.allocationId.trim() || null,
-      portfolioMaxLossRate: values.portfolioMaxLossRate.trim() || null,
-      portfolioMaxLossAmount: values.portfolioMaxLossAmount.trim() || null,
-      perSymbolMaxWeight: values.perSymbolMaxWeight.trim() || null,
+      allocationId: isReal ? null : values.allocationId.trim() || null,
+      portfolioMaxLossRate: isReal ? null : values.portfolioMaxLossRate.trim() || null,
+      portfolioMaxLossAmount: isReal ? null : values.portfolioMaxLossAmount.trim() || null,
+      perSymbolMaxWeight: isReal ? null : values.perSymbolMaxWeight.trim() || null,
       decisionLogMode: values.decisionLogMode,
       takeProfitPercent: values.takeProfitPercent.trim() || null,
       stopLossPercent: values.stopLossPercent.trim() || null,
@@ -233,6 +244,7 @@ export function SessionConfigForm({
   }
 
   const displayError = localError ?? error;
+  const isReal = values.mode === "real";
 
   return (
     <form
@@ -243,11 +255,33 @@ export function SessionConfigForm({
     >
       <h2 id="simulation-config-title">Configure session</h2>
       <p className="note">
-        Simulation only — real-money trading is unavailable. Profit and loss are
-        rates of allocated capital; amounts update live. Allocated capital cannot
-        exceed Portfolio available USDT
-        {portfolioAvailable != null ? ` (currently ${portfolioAvailable})` : ""}.
+        {isReal
+          ? "Controlled Real — confirmed BUY only, market orders, ≤50 USDT. Session cash is a local budget, not XT cash. Real fills do not write Simulation Portfolio."
+          : `Simulation only. Profit and loss are rates of allocated capital; amounts update live. Allocated capital cannot exceed Portfolio available USDT${
+              portfolioAvailable != null ? ` (currently ${portfolioAvailable})` : ""
+            }.`}
       </p>
+
+      <label>
+        <FieldLabel
+          tipLabel="Session mode"
+          tipText="Simulation never places XT orders. Controlled Real requires operator confirmation for each BUY and uses live XT market orders."
+          tipTestId="tip-session-mode"
+        >
+          Mode
+        </FieldLabel>
+        <select
+          data-testid="session-mode"
+          value={values.mode}
+          disabled={disabled}
+          onChange={(e) =>
+            setField("mode", e.target.value as SessionConfigValues["mode"])
+          }
+        >
+          <option value="simulation">Simulation</option>
+          <option value="real">Controlled Real</option>
+        </select>
+      </label>
 
       <StrategyConfigFields
         disabled={disabled}
@@ -291,6 +325,7 @@ export function SessionConfigForm({
             <option value="1d">1d</option>
           </select>
         </label>
+        {!isReal ? (
         <label>
           <FieldLabel>Starting capital (USDT)</FieldLabel>
           <input
@@ -302,10 +337,15 @@ export function SessionConfigForm({
             required
           />
         </label>
+        ) : null}
         <label>
           <FieldLabel
             tipLabel="Allocated capital"
-            tipText="How much of starting capital this session is allowed to use. Cannot be higher than starting capital or Portfolio available USDT."
+            tipText={
+              isReal
+                ? "Local Real budget cap (not XT cash). Must be ≤ 50 USDT. Session cash starts at this amount."
+                : "How much of starting capital this session is allowed to use. Cannot be higher than starting capital or Portfolio available USDT."
+            }
             tipTestId="tip-allocated"
           >
             Allocated capital (USDT)
@@ -318,12 +358,17 @@ export function SessionConfigForm({
             onChange={(e) => setField("allocatedCapital", e.target.value)}
             required
           />
-          {portfolioAvailable != null ? (
+          {isReal ? (
+            <span className="field-hint" data-testid="real-budget-note">
+              Local budget only — not XT cash. Max 50 USDT.
+            </span>
+          ) : portfolioAvailable != null ? (
             <span className="field-hint" data-testid="sim-portfolio-available">
               Portfolio available: {portfolioAvailable} USDT
             </span>
           ) : null}
         </label>
+        {!isReal ? (
         <label>
           <FieldLabel
             tipLabel="Bind allocation"
@@ -346,6 +391,7 @@ export function SessionConfigForm({
             ))}
           </select>
         </label>
+        ) : null}
         <label>
           <FieldLabel
             tipLabel="Max position size"
@@ -437,6 +483,8 @@ export function SessionConfigForm({
             {rateToPercentLabel(values.maxSessionLossRate)} ≈ {lossAmount ?? "—"} USDT
           </span>
         </label>
+        {!isReal ? (
+        <>
         <label>
           <FieldLabel
             tipLabel="Portfolio max-loss rate"
@@ -488,6 +536,8 @@ export function SessionConfigForm({
             onChange={(e) => setField("perSymbolMaxWeight", e.target.value)}
           />
         </label>
+        </>
+        ) : null}
         <label>
           <FieldLabel
             tipLabel="Max trades"
@@ -562,9 +612,6 @@ export function SessionConfigForm({
       <div className="sim-actions">
         <button type="submit" disabled={disabled} data-testid="sim-create-start">
           Create &amp; start
-        </button>
-        <button type="button" disabled aria-disabled="true" data-testid="sim-real-money-disabled">
-          Real money (unavailable)
         </button>
       </div>
     </form>

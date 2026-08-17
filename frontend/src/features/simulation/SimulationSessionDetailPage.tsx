@@ -8,11 +8,14 @@ import type {
 } from "../../services/simulationApi";
 import {
   deleteSession,
+  emergencyStopSession,
   fetchDecisions,
   fetchSession,
   fetchTrades,
   rateToPercentLabel,
+  resumeSession,
   startSession,
+  stopSession,
 } from "../../services/simulationApi";
 import { DecisionJournal } from "./DecisionJournal";
 import { SimulationBadge } from "./SimulationBadge";
@@ -69,6 +72,49 @@ export function SimulationSessionDetailPage() {
     }
   }
 
+  async function handleResume() {
+    if (!session) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const resumed = await resumeSession(session.id);
+      setSession(resumed);
+      navigate("/auto-trading");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleStop() {
+    if (!session) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const stopped = await stopSession(session.id);
+      setSession(stopped);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleEmergencyStop() {
+    if (!session) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const stopped = await emergencyStopSession(session.id);
+      setSession(stopped);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleDelete() {
     if (!session) return;
     const ok = window.confirm(
@@ -105,7 +151,9 @@ export function SimulationSessionDetailPage() {
   const fr = session.finalResult;
   const stopped = session.state === "STOPPED";
   const configured = session.state === "CONFIGURED";
+  const recoveryBlocked = session.state === "RECOVERY_BLOCKED";
   const canDelete = stopped || configured;
+  const isReal = session.label === "REAL" || session.mode === "real";
 
   return (
     <section className="page simulation-detail-page" data-testid="simulation-detail">
@@ -131,6 +179,10 @@ export function SimulationSessionDetailPage() {
           <div>
             <dt>State</dt>
             <dd data-testid="sim-detail-state">{session.state}</dd>
+          </div>
+          <div>
+            <dt>Mode</dt>
+            <dd data-testid="sim-detail-mode">{session.label ?? session.mode}</dd>
           </div>
           <div>
             <dt>Symbol</dt>
@@ -176,6 +228,12 @@ export function SimulationSessionDetailPage() {
             <dt>Stop reason</dt>
             <dd data-testid="sim-detail-stop-reason">{session.stopReason ?? "—"}</dd>
           </div>
+          {session.recoveryReason ? (
+            <div>
+              <dt>Recovery reason</dt>
+              <dd data-testid="sim-detail-recovery-reason">{session.recoveryReason}</dd>
+            </div>
+          ) : null}
         </dl>
       </section>
 
@@ -222,6 +280,14 @@ export function SimulationSessionDetailPage() {
         </section>
       ) : null}
 
+      {recoveryBlocked ? (
+        <p className="note" data-testid="real-recovery-banner" role="status">
+          {isReal
+            ? "Controlled Real never auto-resumes after restart or an unsettled/partial XT order. Resume only after reconcile proves the state safe, or Stop/Flatten."
+            : "This session is RECOVERY_BLOCKED. Resume re-checks reconciliation, or stop and inspect History."}
+        </p>
+      ) : null}
+
       <div className="sim-actions">
         {configured ? (
           <button
@@ -234,6 +300,41 @@ export function SimulationSessionDetailPage() {
           >
             Start
           </button>
+        ) : null}
+        {recoveryBlocked ? (
+          <>
+            <button
+              type="button"
+              data-testid="sim-resume"
+              disabled={busy}
+              onClick={() => {
+                void handleResume();
+              }}
+            >
+              Resume
+            </button>
+            <button
+              type="button"
+              data-testid="sim-stop"
+              disabled={busy}
+              onClick={() => {
+                void handleStop();
+              }}
+            >
+              Stop
+            </button>
+            <button
+              type="button"
+              className="danger"
+              data-testid="sim-emergency-stop"
+              disabled={busy}
+              onClick={() => {
+                void handleEmergencyStop();
+              }}
+            >
+              Emergency stop
+            </button>
+          </>
         ) : null}
         {canDelete ? (
           <button

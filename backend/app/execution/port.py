@@ -22,6 +22,7 @@ class ExecutionIntent:
     position_side: str
     position_qty: Decimal
     is_forced_close: bool = False
+    order_type: str = "MARKET"
 
 
 @dataclass

@@ -440,6 +440,10 @@ a {
   color: #fff;
 }
 
+.simulation-badge.real-badge {
+  background: #7a2e0b;
+}
+
 .real-xt-badge {
   display: inline-flex;
   align-items: center;

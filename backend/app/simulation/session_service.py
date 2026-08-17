@@ -20,7 +20,7 @@ from app.simulation.accounting import (
     unrealized_gross,
 )
 from app.simulation.clock import Clock, SystemClock
-from app.simulation.execution.port import ExecutionIntent, SimulationExecutionEngine
+from app.execution.port import ExecutionEngine, ExecutionIntent, FillResult
 from app.simulation.execution_adapter import execution_engine_for
 from app.simulation.money import DEFAULT_FEE_RATE, DEFAULT_SLIPPAGE_RATE, as_str, d
 from app.simulation.pending_confirmation import (
@@ -150,6 +150,10 @@ def create_session(db: Session, body: dict, clock: Clock | None = None) -> Simul
                 "invalid_config",
                 "Require 0 < max_position_size <= allocated_capital",
             )
+        if body.get("symbols") not in (None, "", []):
+            raise SessionError("invalid_config", "Real sessions allow exactly one symbol")
+        if body.get("positionSide") not in (None, "", "flat"):
+            raise SessionError("invalid_config", "Real sessions start flat with at most one long")
         try:
             require_real_credentials()
         except XtPrivateError as exc:
@@ -228,13 +232,15 @@ def create_session(db: Session, body: dict, clock: Clock | None = None) -> Simul
             except (ValueError, TypeError) as exc:
                 raise SessionError("invalid_config", f"Invalid perSymbolMaxWeight: {exc}") from exc
 
-    symbol = str(body["symbol"])
+    symbol = str(body["symbol"]).strip()
     timeframe = str(body["timeframe"])
     if timeframe not in ALLOWED_INTERVALS:
         raise SessionError(
             "invalid_config",
             "timeframe must be one of: 1m, 5m, 15m, 1h, 4h, 1d",
         )
+    if mode == "real" and any(sep in symbol for sep in (",", ";", " ")):
+        raise SessionError("invalid_config", "Real sessions allow exactly one symbol")
 
     try:
         canonical_id, effective_params, _instance = validate_and_materialize(
@@ -520,10 +526,10 @@ async def force_close_if_needed(
     db: Session,
     row: SimulationSessionRow,
     clock: Clock | None = None,
-    engine: SimulationExecutionEngine | None = None,
+    engine: ExecutionEngine | None = None,
 ) -> None:
     clock = clock or SystemClock()
-    engine = engine or SimulationExecutionEngine()
+    engine = engine or execution_engine_for(row)
     if row.position_side != "long":
         row.position_flatten_status = "flat" if row.position_side == "flat" else row.position_flatten_status
         return
@@ -545,31 +551,34 @@ async def force_close_if_needed(
         is_forced_close=True,
     )
     result = engine.execute(intent)
-    if not result.ok or result.fill is None or result.qty is None:
-        row.position_flatten_status = "unsafe_unflattened"
+    record_real_order_outcome(db, row, result, side="SELL", clock=clock)
+    if result.fill is not None and result.qty is not None:
+        _apply_fill(
+            row,
+            side="SELL",
+            qty=result.qty,
+            fill=result.fill,
+            is_forced=True,
+            candle_open_time=None,
+            clock=clock,
+            db=db,
+        )
+        add_decision(
+            db,
+            row,
+            signal="SELL",
+            outcome="forced",
+            candle_open_time=None,
+            reason_code="hard_stop_flatten",
+            reason_message="Forced full close on session stop",
+            fast_ema=None,
+            slow_ema=None,
+            clock=clock,
+        )
+        if row.position_side == "long":
+            row.position_flatten_status = "unsafe_unflattened"
         return
-    _apply_fill(
-        row,
-        side="SELL",
-        qty=result.qty,
-        fill=result.fill,
-        is_forced=True,
-        candle_open_time=None,
-        clock=clock,
-        db=db,
-    )
-    add_decision(
-        db,
-        row,
-        signal="SELL",
-        outcome="forced",
-        candle_open_time=None,
-        reason_code="hard_stop_flatten",
-        reason_message="Forced full close on session stop",
-        fast_ema=None,
-        slow_ema=None,
-        clock=clock,
-    )
+    row.position_flatten_status = "unsafe_unflattened"
 
 
 def stop_session(
@@ -654,6 +663,68 @@ async def resume_session_async(
 
     now = _now(clock)
     mark_safe = await _mark_safe_for_row(row)
+    if row.mode == "real":
+        from app.simulation.pending_confirmation import get_active_pending
+        from app.simulation.reconcile import reconcile_real_session
+        from app.simulation.recovery import _best_effort_refresh_xt_order
+
+        await _best_effort_refresh_xt_order(row)
+        if get_active_pending(db, row.id) is not None:
+            row.recovery_reason = risk_reasons.RESUME_UNAVAILABLE
+            row.recovery_detail = "Pending Real confirmation still present"
+            row.updated_at = now
+            db.commit()
+            db.refresh(row)
+            raise SessionError(
+                risk_reasons.RESUME_UNAVAILABLE,
+                risk_reasons.message_for(risk_reasons.RESUME_UNAVAILABLE),
+                409,
+                failed_gates=[risk_reasons.RESUME_UNAVAILABLE],
+                session=await session_to_dict(row, db=db),
+            )
+        result = reconcile_real_session(db, row, mark_safe=mark_safe)
+        row.last_recovery_at = now
+        if not result.passed:
+            reason = result.failed_gates[0] if result.failed_gates else risk_reasons.RESUME_UNAVAILABLE
+            row.recovery_reason = reason
+            row.recovery_detail = ",".join(result.failed_gates) if result.failed_gates else None
+            row.updated_at = now
+            db.commit()
+            db.refresh(row)
+            raise SessionError(
+                risk_reasons.RESUME_UNAVAILABLE,
+                risk_reasons.message_for(risk_reasons.RESUME_UNAVAILABLE),
+                409,
+                failed_gates=list(result.failed_gates),
+                session=await session_to_dict(row, db=db),
+            )
+        ok, gap_err = await apply_offline_gap_skip(db, row)
+        if not ok:
+            row.recovery_reason = gap_err or "recovery_gap_unresolvable"
+            row.recovery_detail = gap_err
+            row.updated_at = now
+            db.commit()
+            db.refresh(row)
+            raise SessionError(
+                risk_reasons.RESUME_UNAVAILABLE,
+                "Cannot prove offline gap skip bounds; session remains RECOVERY_BLOCKED.",
+                409,
+                failed_gates=[gap_err or "recovery_gap_unresolvable"],
+                session=await session_to_dict(row, db=db),
+            )
+        transition(SessionState.RECOVERY_BLOCKED, SessionState.RUNNING)
+        row.state = SessionState.RUNNING.value
+        row.recovery_reason = None
+        row.recovery_detail = None
+        row.last_recovery_at = now
+        row.updated_at = now
+        db.commit()
+        db.refresh(row)
+        from app.simulation.worker import ensure_worker_running
+
+        ensure_worker_running()
+        return row
+
     result = reconcile_session(db, row, mark_safe=mark_safe)
     row.last_recovery_at = now
 
@@ -703,8 +774,11 @@ async def resume_session_async(
 
 def _history_list_item(row: SimulationSessionRow) -> dict:
     fr = parse_final_result(row.final_result_json)
+    is_real = row.mode == "real"
     return {
         "id": row.id,
+        "mode": row.mode,
+        "label": "REAL" if is_real else "SIMULATION",
         "state": row.state,
         "symbol": row.symbol,
         "timeframe": row.timeframe,
@@ -914,6 +988,48 @@ def _record_real_order_row(
     )
 
 
+def record_real_order_outcome(
+    db: Session,
+    row: SimulationSessionRow,
+    result: FillResult,
+    *,
+    side: str,
+    clock: Clock,
+    client_intent_id: str | None = None,
+) -> None:
+    """Persist XT submit/reconcile metadata for a Real execution attempt."""
+    if row.mode != "real":
+        return
+    row.xt_order_id = result.xt_order_id or row.xt_order_id
+    row.real_submit_status = "submitted" if result.xt_order_id else "submit_failed"
+    row.real_reconcile_status = result.reconcile_status
+    _record_real_order_row(
+        db,
+        row,
+        client_intent_id=client_intent_id or str(uuid.uuid4()),
+        side=side,
+        xt_order_id=result.xt_order_id,
+        submit_status=row.real_submit_status or "not_submitted",
+        reconcile_status=result.reconcile_status or "unsettled",
+        filled_qty=result.qty,
+        avg_price=result.fill.fill_price if result.fill else None,
+        clock=clock,
+    )
+
+
+def block_real_session_if_needed(row: SimulationSessionRow, result: FillResult) -> bool:
+    """RUNNING Real session → RECOVERY_BLOCKED when adapter signals blocked."""
+    if row.mode != "real" or not result.blocked:
+        return False
+    if SessionState(row.state) not in (SessionState.RUNNING, SessionState.STOPPING):
+        return False
+    recover_to_blocked(SessionState(row.state))
+    row.state = SessionState.RECOVERY_BLOCKED.value
+    row.recovery_reason = result.reason_code
+    row.recovery_detail = result.reason_message
+    return True
+
+
 def _apply_real_execution_result(
     db: Session,
     row: SimulationSessionRow,
@@ -925,21 +1041,8 @@ def _apply_real_execution_result(
     candle_open_time: int | None = None,
 ) -> None:
     """Apply RealExecutionAdapter outcome; block session on partial/unsettled."""
-    row.xt_order_id = result.xt_order_id
-    row.real_submit_status = "submitted" if result.xt_order_id else "submit_failed"
-    row.real_reconcile_status = result.reconcile_status
-
-    _record_real_order_row(
-        db,
-        row,
-        client_intent_id=pending.id,
-        side="BUY",
-        xt_order_id=result.xt_order_id,
-        submit_status=row.real_submit_status or "not_submitted",
-        reconcile_status=result.reconcile_status or "unsettled",
-        filled_qty=result.qty,
-        avg_price=result.fill.fill_price if result.fill else None,
-        clock=clock,
+    record_real_order_outcome(
+        db, row, result, side="BUY", clock=clock, client_intent_id=pending.id
     )
 
     if result.ok and result.fill is not None and result.qty is not None:
@@ -968,7 +1071,7 @@ def _apply_real_execution_result(
         )
         return
 
-    if result.blocked and result.fill is not None and result.qty is not None:
+    if result.fill is not None and result.qty is not None:
         _apply_fill(
             row,
             side="BUY",
@@ -981,10 +1084,11 @@ def _apply_real_execution_result(
         )
 
     discard_pending(db, pending, status="rejected" if not result.blocked else "confirmed")
-    recover_to_blocked(SessionState(row.state))
-    row.state = SessionState.RECOVERY_BLOCKED.value
-    row.recovery_reason = result.reason_code
-    row.recovery_detail = result.reason_message
+    if result.blocked:
+        recover_to_blocked(SessionState(row.state))
+        row.state = SessionState.RECOVERY_BLOCKED.value
+        row.recovery_reason = result.reason_code
+        row.recovery_detail = result.reason_message
     add_decision(
         db,
         row,
@@ -1036,7 +1140,9 @@ async def confirm_entry_async(
             400,
         )
 
-    if d(row.allocated_capital) > Decimal("50"):
+    from app.simulation.real_gates import REAL_ALLOCATED_CAP, try_xt_free_usdt
+
+    if d(row.allocated_capital) > REAL_ALLOCATED_CAP:
         discard_pending(db, pending, status="rejected")
         db.commit()
         raise SessionError(
@@ -1056,7 +1162,14 @@ async def confirm_entry_async(
         )
 
     notional = d(pending.proposed_notional)
-    from app.simulation.real_gates import try_xt_free_usdt
+    if notional > REAL_ALLOCATED_CAP:
+        discard_pending(db, pending, status="rejected")
+        db.commit()
+        raise SessionError(
+            risk_reasons.REAL_CAPITAL_CAP_EXCEEDED,
+            risk_reasons.message_for(risk_reasons.REAL_CAPITAL_CAP_EXCEEDED),
+            400,
+        )
 
     free = try_xt_free_usdt()
     if free is not None and free < notional:

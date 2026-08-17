@@ -23,6 +23,14 @@ GATE_PORTFOLIO = "reconcile_portfolio_mismatch"
 GATE_UNSAFE_UNFLATTENED = "reconcile_unsafe_unflattened"
 GATE_MARK = "reconcile_mark_untrustworthy"
 GATE_GAP = "recovery_gap_unresolvable"
+GATE_REAL_UNSETTLED = "xt_reconcile_unsettled"
+GATE_REAL_PENDING = "resume_unavailable"
+GATE_REAL_PARTIAL = "partial_filled_blocked"
+
+
+_BLOCKING_REAL_RECONCILE = frozenset(
+    {"unsettled", "partial_filled_blocked", "submit_failed"}
+)
 
 
 @dataclass
@@ -162,6 +170,47 @@ def reconcile_session(
     passed = len(failed) == 0
     logger.info(
         "reconcile_session session_id=%s passed=%s failed_gates=%s",
+        row.id,
+        passed,
+        failed,
+    )
+    return ReconcileResult(
+        passed=passed,
+        failed_gates=failed,
+        session_id=row.id,
+        checked_at=checked_at,
+    )
+
+
+def reconcile_real_session(
+    db: Session,
+    row: SimulationSessionRow,
+    *,
+    mark_safe: bool | None = None,
+) -> ReconcileResult:
+    """Real resume gates: local journals + XT settle; never uses Sim Portfolio."""
+    from app.simulation.pending_confirmation import get_active_pending
+
+    checked_at = datetime.now(timezone.utc)
+    failed: list[str] = []
+
+    if not _gate_session_journal(db, row):
+        failed.append(GATE_SESSION_JOURNAL)
+    if not _gate_watermark(db, row):
+        failed.append(GATE_WATERMARK)
+    if not _gate_unsafe_unflattened(row):
+        failed.append(GATE_UNSAFE_UNFLATTENED)
+    if not _gate_mark(row, mark_safe):
+        failed.append(GATE_MARK)
+    if get_active_pending(db, row.id) is not None:
+        failed.append(GATE_REAL_PENDING)
+    status = (row.real_reconcile_status or "").strip()
+    if status in _BLOCKING_REAL_RECONCILE:
+        failed.append(GATE_REAL_PARTIAL if status == "partial_filled_blocked" else GATE_REAL_UNSETTLED)
+
+    passed = len(failed) == 0
+    logger.info(
+        "reconcile_real_session session_id=%s passed=%s failed_gates=%s",
         row.id,
         passed,
         failed,
