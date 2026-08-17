@@ -163,3 +163,46 @@ Not a persisted entity. Boundary object that:
 3. Surfaces typed failures for the service layer.
 
 Only the XT adapter implementation may know XT URLs and payload keys.
+
+---
+
+## Amendment 2026-08-17 — Product identity (living)
+
+Internal models remain normalized. Venue-specific wire ids stay in adapters.
+
+### Product identity (required on new pairs/runs)
+
+| Field | Type | Required (new) | Notes |
+|-------|------|----------------|-------|
+| `venue` | string | yes | `kraken` (default) or `xt` (legacy) |
+| `base_asset` | string | yes | Canonical, e.g. `BTC` (Kraken `XBT` mapped in adapter) |
+| `quote_asset` | string | yes | From the selected product; not assumed EUR or USDT |
+| `canonical_symbol` | string | yes | Operator identity, e.g. `BTC/EUR` |
+| `venue_product_id` | string | yes | Adapter wire id only |
+
+Compatibility: existing `symbol` / `displayName` / `baseCurrency` /
+`quoteCurrency` may remain. `quoteCurrency` is **not** always `usdt`.
+`source` MUST equal the active `venue`, never a silent `"XT"` default when
+Kraken is active.
+
+### Quote accounting roles (009 minimum; Sim book unchanged as a Kraken account)
+
+| Role | Meaning |
+|------|---------|
+| `quote_cash` | Quote holding quantity |
+| `available_quote` | `quote_cash − reserved_quote` |
+| `reserved_quote` | Allocation reserved size |
+| `deployed_quote` | Open Sim position cost basis in quote |
+| `max_notional` | Session max position in `quote_asset` |
+
+Do not globally rename every USDT UI string. When the Sim book `quote_asset`
+is still `usdt`, USDT labels remain valid for that book.
+
+### Persistence (additive, nullable legacy)
+
+Sessions, backtests, comparison runs, and operator defaults store the identity
+fields. NULL `venue` + XT-form `symbol` ⇒ infer `venue=xt`. New creates
+require `venue=kraken` unless an explicit regression test sets `xt`.
+
+`venue_order_id` is additive on execution/session order rows for Feature 012;
+unused for Kraken writes until Feature 015. Keep `xt_order_id`.

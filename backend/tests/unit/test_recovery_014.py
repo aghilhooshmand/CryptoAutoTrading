@@ -72,7 +72,7 @@ def test_recovery_pass_resumes_running():
     mock_svc.get_quote = AsyncMock(side_effect=_quote)
     with patch("app.simulation.recovery.get_market_data_service", return_value=mock_svc):
         with patch(
-            "app.simulation.gap_skip.apply_offline_gap_skip",
+            "app.simulation.recovery.apply_offline_gap_skip",
             new=AsyncMock(return_value=(True, None)),
         ):
             n = recover_orphan_sessions(db, now=now)
@@ -122,7 +122,7 @@ def test_recovery_gap_fail_blocks():
     mock_svc.get_quote = AsyncMock(side_effect=_quote)
     with patch("app.simulation.recovery.get_market_data_service", return_value=mock_svc):
         with patch(
-            "app.simulation.gap_skip.apply_offline_gap_skip",
+            "app.simulation.recovery.apply_offline_gap_skip",
             new=AsyncMock(return_value=(False, "recovery_gap_unresolvable")),
         ):
             n = recover_orphan_sessions(db, now=now)

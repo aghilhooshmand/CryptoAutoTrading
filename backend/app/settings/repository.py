@@ -37,6 +37,11 @@ def upsert_row(
     decision_log_mode: str | None = None,
     take_profit_percent: str | None = None,
     stop_loss_percent: str | None = None,
+    venue: str | None = None,
+    base_asset: str | None = None,
+    quote_asset: str | None = None,
+    canonical_symbol: str | None = None,
+    venue_product_id: str | None = None,
     updated_at: datetime | None = None,
 ) -> OperatorDefaultsRow:
     now = updated_at or datetime.now(timezone.utc)
@@ -63,6 +68,11 @@ def upsert_row(
     row.decision_log_mode = decision_log_mode
     row.take_profit_percent = take_profit_percent
     row.stop_loss_percent = stop_loss_percent
+    row.venue = venue
+    row.base_asset = base_asset
+    row.quote_asset = quote_asset
+    row.canonical_symbol = canonical_symbol
+    row.venue_product_id = venue_product_id
     row.updated_at = now
     db.commit()
     db.refresh(row)

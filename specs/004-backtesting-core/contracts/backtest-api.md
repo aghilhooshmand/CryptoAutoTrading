@@ -126,6 +126,15 @@ FIFO 5 failed), return completed (or failed) run with summary.
 Optional fields may be omitted: `targetNetProfitRate`, `maxSessionLossRate`,
 `maxTrades`, `feeRate`, `slippageRate`.
 
+### Amendment 2026-08-17 — Product identity (C1)
+
+Create and read MUST support `venue`, `baseAsset`, `quoteAsset`,
+`canonicalSymbol`, `venueProductId`. `symbol` is a compatibility alias for
+legacy/XT-era runs. New Kraken-default creates MUST persist and return the
+identity fields. Omit `venue` + XT-form `symbol` ⇒ `venue=xt`. Do not rewrite
+historical backtest rows. Fetch candles from the persisted venue only (no XT
+prices on `venue=kraken` runs).
+
 When profit/loss rates are provided, server derives and returns absolute
 amounts (same relationship as Feature 003).
 

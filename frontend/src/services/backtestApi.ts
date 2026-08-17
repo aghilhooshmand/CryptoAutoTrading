@@ -1,3 +1,5 @@
+import type { ProductIdentityFields } from "./productIdentity";
+
 /** Typed client for Feature 004 `/backtest` contracts. */
 
 export type CandleInterval = "1m" | "5m" | "15m" | "1h" | "4h" | "1d";
@@ -27,6 +29,11 @@ export interface BacktestRun {
   id: string;
   status: string;
   symbol: string;
+  venue?: string;
+  baseAsset?: string;
+  quoteAsset?: string;
+  canonicalSymbol?: string;
+  venueProductId?: string;
   timeframe: string;
   startTime: number;
   endTime: number;
@@ -53,8 +60,7 @@ export interface BacktestRun {
   summary: BacktestSummary | null;
 }
 
-export interface CreateBacktestRequest {
-  symbol: string;
+export interface CreateBacktestRequest extends ProductIdentityFields {
   timeframe: CandleInterval;
   startTime: number;
   endTime: number;

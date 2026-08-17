@@ -41,5 +41,8 @@ describe("market prefs", () => {
       "btc_usdt",
     );
     expect(resolveInitialSymbol(["eth_usdt"], null)).toBe("eth_usdt");
+    expect(
+      resolveInitialSymbol(["BTC/EUR", "ETH/EUR"], "btc_usdt"),
+    ).toBe("BTC/EUR");
   });
 });

@@ -39,6 +39,20 @@ timeout; TTL expiry; confirm-time fail; blocked recovery; Portfolio
 isolation); frontend Real mode / confirm UI smoke ~375px; optional live smoke
 gated on credentials
 
+---
+
+## Amendment 2026-08-17 — Kraken execution plan
+
+**Blocked.** Do not implement Kraken `AddOrder` / Real writes until Feature
+002 Phase 10 and Feature 013 Phase 9 are complete.
+
+When unblocked: replace XT client calls inside `RealExecutionAdapter` with
+the Kraken private **write** adapter; keep confirmation/TTL/budget/recovery;
+persist `venue_order_id`; fail closed on mixed XT market data; cap in session
+`quote_asset`; keep Simulation Portfolio isolation.
+
+Constitution: I–V, XVI–XVIII, XXXII, XXXIX must remain PASS.
+
 **Target Platform**: Local operator machines (same as Features 003–014)
 
 **Project Type**: Web application (`backend/` + `frontend/`)

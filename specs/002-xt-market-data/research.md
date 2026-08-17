@@ -208,3 +208,30 @@ manual path is sufficient for acceptance.
 - Polling all USDT tickers: wasteful and rate-limit risky.
 - Aggressive multi-retry storms: can worsen bans; fail clearly instead.
 - Treating auto-refresh as mandatory: blocks completion without necessity.
+
+---
+
+## Decision 12: Kraken public REST as active venue (2026-08-17)
+
+**Decision**: Add a Kraken public adapter as the default/active Feature 002
+feed. Keep XT public REST (Decision 1) as `venue=xt` only.
+
+**Intended public host**: `https://api.kraken.com/0/public/` with (verify at
+implement, do not invent if Kraken has changed):
+
+| Need | Endpoint (expected) | Notes |
+|------|---------------------|--------|
+| Pair universe | `GET /0/public/AssetPairs` | Map `wsname`/`altname`/Kraken codes → identity; XBT→BTC |
+| Ticker | `GET /0/public/Ticker` | Last/24h when present; omit missing |
+| OHLC | `GET /0/public/OHLC` | Map minute intervals to product `1m,5m,15m,1h,4h,1d` |
+
+**Rationale**: Product direction is Kraken-first. Public/private stay split.
+Core remains venue-neutral.
+
+**Alternatives rejected**:
+
+- Feature 026 for identity only — rejected; keep feature 002.
+- Rename `XtSpotAdapter` to Kraken — rejected.
+- Default `venue=xt` forever so tests stay green — rejected; pin XT tests.
+- Assume EUR as the only quote — rejected; product determines quote_asset.
+- Coinbase — out of scope.

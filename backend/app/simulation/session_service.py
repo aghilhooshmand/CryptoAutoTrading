@@ -11,8 +11,15 @@ from sqlalchemy.orm import Session
 
 from app.db.models import DecisionJournalRow, RealOrderReconcileRow, SimulationSessionRow, TradeJournalRow
 from app.execution.tpsl import derive_levels, validate_percents
+from app.market_data.identity import (
+    ProductIdentityError,
+    identity_api_from_row,
+    identity_from_row,
+    persistence_columns,
+    resolve_product_identity,
+)
 from app.market_data.models import ALLOWED_INTERVALS, MarketStatus
-from app.market_data.service import get_market_data_service
+from app.market_data.service import bound_service_for_identity, get_market_data_service
 from app.simulation.accounting import (
     liquidation_equity,
     mark_equity,
@@ -232,7 +239,11 @@ def create_session(db: Session, body: dict, clock: Clock | None = None) -> Simul
             except (ValueError, TypeError) as exc:
                 raise SessionError("invalid_config", f"Invalid perSymbolMaxWeight: {exc}") from exc
 
-    symbol = str(body["symbol"]).strip()
+    try:
+        ident = resolve_product_identity(body)
+    except ProductIdentityError as exc:
+        raise SessionError("invalid_config", str(exc)) from exc
+    symbol = ident.symbol_alias
     timeframe = str(body["timeframe"])
     if timeframe not in ALLOWED_INTERVALS:
         raise SessionError(
@@ -274,7 +285,7 @@ def create_session(db: Session, body: dict, clock: Clock | None = None) -> Simul
         id=str(uuid.uuid4()),
         mode=mode,
         state=SessionState.CONFIGURED.value,
-        symbol=symbol,
+        **persistence_columns(ident),
         timeframe=timeframe,
         starting_capital=as_str(starting if mode == "simulation" else allocated),
         allocated_capital=as_str(allocated),
@@ -375,7 +386,9 @@ async def start_session_async(
                 raise SessionError("not_found", "Bound allocation no longer exists", 400)
 
     try:
-        await get_market_data_service().get_quote(row.symbol)
+        ident = identity_from_row(row)
+        service, key = bound_service_for_identity(ident, injected=get_market_data_service())
+        await service.get_quote(key)
     except Exception as exc:  # noqa: BLE001
         raise SessionError("market_data_unavailable", "Unable to verify market data for symbol", 503) from exc
 
@@ -512,9 +525,11 @@ def add_decision(
     return entry
 
 
-async def _safe_mark(symbol: str) -> tuple[Decimal | None, bool]:
+async def _safe_mark(row: SimulationSessionRow) -> tuple[Decimal | None, bool]:
     try:
-        quote = await get_market_data_service().get_quote(symbol)
+        ident = identity_from_row(row)
+        service, key = bound_service_for_identity(ident, injected=get_market_data_service())
+        quote = await service.get_quote(key)
     except Exception:  # noqa: BLE001
         return None, False
     if quote.status != MarketStatus.FRESH:
@@ -533,7 +548,7 @@ async def force_close_if_needed(
     if row.position_side != "long":
         row.position_flatten_status = "flat" if row.position_side == "flat" else row.position_flatten_status
         return
-    mark, safe = await _safe_mark(row.symbol)
+    mark, safe = await _safe_mark(row)
     if not safe or mark is None:
         row.position_flatten_status = "unsafe_unflattened"
         return
@@ -625,7 +640,7 @@ async def stop_session_async(
     safe = False
     m_eq: Decimal | None = None
     if row.position_side == "long":
-        mark, safe = await _safe_mark(row.symbol)
+        mark, safe = await _safe_mark(row)
         if safe and mark is not None:
             m_eq = mark_equity(d(row.cash), d(row.position_qty), mark, row.position_side)
     persist_final_result(
@@ -780,7 +795,7 @@ def _history_list_item(row: SimulationSessionRow) -> dict:
         "mode": row.mode,
         "label": "REAL" if is_real else "SIMULATION",
         "state": row.state,
-        "symbol": row.symbol,
+        **identity_api_from_row(row),
         "timeframe": row.timeframe,
         "strategyId": display_strategy_id(row.strategy_id),
         "startedAt": row.started_at.isoformat().replace("+00:00", "Z") if row.started_at else None,
@@ -914,7 +929,7 @@ def _stopped_economics_from_freeze(row: SimulationSessionRow, freeze: dict) -> d
 
 
 async def economics_dict(row: SimulationSessionRow) -> dict:
-    mark, safe = await _safe_mark(row.symbol)
+    mark, safe = await _safe_mark(row)
 
     cash = d(row.cash)
     qty = d(row.position_qty)
@@ -976,6 +991,7 @@ def _record_real_order_row(
             session_id=row.id,
             client_intent_id=client_intent_id,
             xt_order_id=xt_order_id,
+            venue_order_id=xt_order_id,
             side=side,
             order_type="MARKET",
             submit_status=submit_status,
@@ -1001,6 +1017,7 @@ def record_real_order_outcome(
     if row.mode != "real":
         return
     row.xt_order_id = result.xt_order_id or row.xt_order_id
+    row.venue_order_id = result.venue_order_id or result.xt_order_id or row.venue_order_id
     row.real_submit_status = "submitted" if result.xt_order_id else "submit_failed"
     row.real_reconcile_status = result.reconcile_status
     _record_real_order_row(
@@ -1151,7 +1168,7 @@ async def confirm_entry_async(
             400,
         )
 
-    mark, safe = await _safe_mark(row.symbol)
+    mark, safe = await _safe_mark(row)
     if not safe or mark is None:
         discard_pending(db, pending, status="rejected")
         db.commit()
@@ -1283,7 +1300,7 @@ async def session_to_dict(row: SimulationSessionRow, *, db: Session | None = Non
         "id": row.id,
         "mode": row.mode,
         "state": row.state,
-        "symbol": row.symbol,
+        **identity_api_from_row(row),
         "timeframe": row.timeframe,
         "strategyId": display_strategy_id(row.strategy_id),
         "strategyParams": effective_params_for_row(row.strategy_id, row.strategy_params),

@@ -217,6 +217,39 @@ Notes:
 - Server-side persistence of favorites or last selection
 - Returning raw XT envelopes to clients
 
+---
+
+## Amendment 2026-08-17 — Living public contract
+
+Default venue is **Kraken**. Optional query `venue=xt` selects the XT adapter
+for regression.
+
+### `GET /market/pairs`
+
+- Default: Kraken spot products (any quote the product has).
+- `?venue=xt`: existing XT USDT pair list (regression).
+- Successful body MUST include `source` equal to the venue and, per pair:
+  `venue`, `baseAsset`, `quoteAsset`, `canonicalSymbol`, `venueProductId`,
+  `status`. Compatibility `symbol` / `displayName` MAY remain as aliases —
+  `symbol` MUST NOT be Kraken’s raw wire id as the only identity.
+
+### `GET /market/quote` and `GET /market/candles`
+
+- Resolve identity to one venue product. Reject unknown or cross-venue ids
+  (do not fetch XT for a Kraken session or the reverse).
+- `source` is the venue. Financial fields remain decimal strings.
+- Freshness rules unchanged (quote-timed 60s).
+
+### Non-goals (amendment)
+
+- Kraken private endpoints
+- Order placement
+- Coinbase
+- Fabricating unsupported OHLC intervals
+
+Simulation, Backtest, Comparison, and Settings create/read identity fields are
+specified on those features’ contracts (C1, 2026-08-17), not duplicated here.
+
 ## Related
 
 - Health remains `GET /health` from Feature 001 and MUST stay distinguishable

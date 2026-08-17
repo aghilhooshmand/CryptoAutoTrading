@@ -4,9 +4,179 @@
 
 **Created**: 2026-08-09
 
-**Status**: Draft
+**Status**: DONE (XT as-built). **Amendment 2026-08-17 — Kraken-first public market data: specification IN PROGRESS for implementation.**
 
 **Input**: User description: "Connect CryptoAutoTrading to XT.COM public Spot market-data APIs; retrieve pairs, latest price, 24h stats, and candlesticks; show real XT data on the Dashboard with clear source/status and fail-safe error handling; isolate XT behind an exchange adapter; no trading, credentials, sentiment, or portfolio."
+
+## Amendment 2026-08-17 — Kraken-first public market data
+
+This amendment is the **living** Feature 002 product direction. The original
+XT USDT-only Dashboard delivery remains historically DONE. Do not recast that
+delivery as Kraken. Do not create Feature 026. Do not mechanically rename XT
+classes to Kraken.
+
+**Product locks:**
+
+1. **Kraken** is the default/active public venue for new Dashboard, Settings,
+   Simulation, and Backtest runs.
+2. **Coinbase** is out of scope.
+3. **Stop new XT development.** Keep `XtSpotAdapter` and XT fixtures for
+   `venue=xt` regression and migration safety; remove/disable later.
+4. **Do not globally replace USDT with EUR.** The selected product determines
+   `base_asset` and `quote_asset` (BTC/EUR, BTC/USD, BTC/USDT are one engine).
+5. Kraken-specific pair/asset codes stay inside the Kraken public adapter.
+6. Strategy, Controller, and Risk remain exchange-independent (consume
+   normalized candles and quote-denominated money).
+7. Simulation Portfolio remains separate from any Kraken account (no private
+   API in this feature).
+8. **No Kraken private API. No Real Kraken orders.** Feature 013/015 follow.
+9. **Do not change Simulation/Backtest trading semantics.** Same recorded
+   candles + same config → same fills. Changing the *live default feed* to
+   Kraken is an intended price-source change for **new** runs, not an engine
+   change.
+10. New sessions persist `venue`, `base_asset`, `quote_asset`,
+    `canonical_symbol`, and `venue_product_id`. Legacy rows with NULL venue
+    and XT `symbol` (e.g. `btc_usdt`) remain XT-priced; do not rewrite History.
+
+### Amendment clarifications
+
+- Q: Is `venue=xt` the long-term product default so old tests stay green? → A:
+  **No.** Kraken is the product default. Pin existing XT tests to `venue=xt`
+  or recorded candles; do not extend XT assumptions for new work.
+- Q: Default Kraken product if several BTC pairs exist? → A: Prefer the first
+  **actually listed** tradable BTC pair in this order: BTC/EUR, then BTC/USD,
+  then BTC/USDT; else first tradable BTC pair; else first tradable pair. Do
+  not hard-code EUR as the only quote.
+- Q: Does this feature place Kraken orders? → A: **No.**
+
+The original FR-001–FR-020 below describe the XT as-built. **Living
+requirements for this amendment are FR-021–FR-038.** Where they conflict,
+FR-021–FR-038 win.
+
+### Amendment user story — Kraken public feed (Priority: P1)
+
+As an operator, I want Dashboard (and new Simulation/Backtest market data) to
+use Kraken public spot pairs, quotes, and candles, with clear Kraken source
+labeling, without credentials, and without mixing XT prices into Kraken
+sessions.
+
+**Independent Test**: Run locally with no Kraken keys; open Dashboard; see a
+Kraken-sourced pair (canonical symbol + quote asset from the product); refresh
+quote/history; `?venue=xt` still returns XT pairs for regression.
+
+**Acceptance Scenarios:**
+
+1. **Given** no exchange credentials, **When** the operator opens Dashboard,
+   **Then** the default pair list and quote/candles are Kraken public data
+   (or a clear Kraken unavailable status) — not silent XT defaults.
+2. **Given** a selected Kraken product, **When** quote and candles load,
+   **Then** `source`/`venue` is Kraken and identity includes `base_asset`,
+   `quote_asset`, `canonical_symbol`, and `venue_product_id`.
+3. **Given** `venue=xt`, **When** pairs/quote/candles are requested,
+   **Then** the XT adapter is used and Kraken payloads are not mixed in.
+4. **Given** a `venue=kraken` session/run, **When** market data is fetched,
+   **Then** XT public prices MUST NOT be used.
+5. **Given** recorded OHLC fixtures and unchanged strategy/risk/fee config,
+   **When** Simulation/Backtest run, **Then** trading outcomes match the
+   pre-amendment engine (Strategy/Controller/Risk semantics unchanged).
+
+### Amendment functional requirements
+
+- **FR-021**: The default/active public market-data venue for new operator
+  surfaces MUST be **Kraken**. XT MUST remain available only as an explicit
+  legacy/`venue=xt` adapter for regression — not as the product default.
+- **FR-022**: Market-data and persisted run/session identity MUST include
+  `venue`, `base_asset`, `quote_asset`, `canonical_symbol`, and
+  `venue_product_id`. Kraken native product codes MUST be translated at the
+  adapter boundary (including Bitcoin `XBT` → canonical `BTC` where Kraken
+  uses XBT).
+- **FR-023**: The system MUST discover Kraken public spot products without
+  credentials. Pair listing MUST NOT be protocol-limited to USDT. Quote asset
+  is whatever the selected product uses.
+- **FR-024**: The system MUST retrieve a normalized public ticker/quote for the
+  selected Kraken product (latest price and available 24h stats when present;
+  omit missing fields; never invent).
+- **FR-025**: The system MUST retrieve public OHLC/candles for the selected
+  Kraken product for the existing allowed intervals (`1m`, `5m`, `15m`, `1h`,
+  `4h`, `1d` as already used by the product). Unsupported intervals MUST fail
+  as unsupported/unavailable — never fabricate bars. Dashboard history
+  interval control (15m/1h/4h/1d, default 1h) remains.
+- **FR-026**: Dashboard fresh vs STALE MUST remain quote-timed (prefer
+  `observedAt` else `retrievedAt`, 60-second threshold). Candle age MUST NOT
+  determine Dashboard freshness.
+- **FR-027**: `source` on quotes/series/pair lists MUST be the active venue
+  (`kraken` or `xt`), never a silent default of XT when Kraken is active.
+- **FR-028**: Kraken HTTP, payloads, and product ids MUST stay inside the
+  Kraken public adapter. Dashboard and core trading logic MUST consume
+  normalized models only.
+- **FR-029**: Public Kraken access MUST NOT require credentials. Feature 002
+  MUST NOT call Kraken private APIs or place orders.
+- **FR-030**: New Simulation, Backtest, Comparison, and Settings defaults MUST
+  use `venue=kraken` and a discovered Kraken product. Existing persisted
+  Settings/sessions MUST NOT be silently rewritten from XT symbols to Kraken.
+- **FR-031**: The system MUST NOT mix XT market prices with `venue=kraken`
+  execution or Kraken-configured Simulation/Backtest runs (fail closed).
+- **FR-032**: Feature 002 MUST NOT change Strategy, Controller, or Risk
+  semantics. Recorded-candle Simulation/Backtest fixtures MUST keep the same
+  trading outcomes.
+- **FR-033**: Simulation Portfolio MUST NOT become a Kraken account. Valuation
+  for Sim holdings MUST use the book/session `quote_asset` and the matching
+  venue public feed — not a hardcoded `{asset}_usdt` identity once Kraken
+  products are active (minimum change; do not globally rename USDT UI when
+  the Sim book quote is still USDT).
+- **FR-034**: Legacy NULL-venue rows whose `symbol` is XT-form (e.g.
+  `btc_usdt`) MUST continue to resolve to the XT adapter. Dashboard
+  localStorage holding an XT id while the active venue is Kraken MUST fall
+  back to the Kraken default product (do not send `btc_usdt` to Kraken).
+- **FR-035**: Compatibility field `symbol` MAY remain on HTTP contracts as an
+  alias; it MUST NOT be treated as Kraken’s raw wire id. Authoritative identity
+  is FR-022.
+- **FR-036**: Default Kraken product selection: first tradable BTC pair
+  actually returned, preference BTC/EUR then BTC/USD then BTC/USDT; else first
+  tradable BTC; else first tradable pair.
+- **FR-037**: Automated tests MUST cover Kraken pair/ticker/OHLC normalization
+  (fixtures, no live keys), venue factory selection, cross-venue mix rejection,
+  default-Kraken vs `venue=xt` regression, and recorded-candle engine
+  invariance for Simulation/Backtest.
+- **FR-038**: Feature 002 MUST NOT implement Feature 013 private account or
+  Feature 015 Real order placement.
+
+### Amendment success criteria
+
+- **SC-010**: Local Dashboard with no credentials shows Kraken as source for
+  the default pair path (or clear Kraken unavailable) without requiring XT.
+- **SC-011**: Architecture check: no Kraken types in Strategy/Controller/Risk;
+  Kraken HTTP confined to the Kraken adapter.
+- **SC-012**: `venue=xt` regression tests for the existing XT adapter remain
+  runnable.
+- **SC-013**: Recorded-candle Simulation and Backtest fixtures produce the
+  same fills/journals as before this amendment (engine invariance).
+- **SC-014**: A `venue=kraken` request never returns XT-sourced prices.
+
+### Amendment assumptions
+
+- Kraken public REST is the intended public host (verify AssetPairs / Ticker /
+  OHLC at implement time). Interval mapping uses Kraken minute intervals that
+  match existing product intervals.
+- Fee/slippage Settings defaults are **out of this amendment** (changing them
+  would change trading outcomes).
+- SQLite additive columns for venue/product/quote on sessions, backtests,
+  comparisons, and operator defaults; nullable legacy rows.
+- 009/010/012 receive only the minimum identity field changes specified in
+  those features’ 2026-08-17 amendments.
+
+### Amendment out of scope
+
+- Kraken private authentication, balances, orders
+- Real Kraken order placement (015)
+- Coinbase
+- Global USDT → EUR rename
+- Mechanical XT class rename
+- Deleting XT code
+- Roadmap renumbering / Feature 026
+- Strategy/Controller/Risk logic changes
+
+---
 
 ## Clarifications
 

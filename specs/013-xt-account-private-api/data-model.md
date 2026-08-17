@@ -109,3 +109,19 @@ N/A for trading. Account reads are request/response only. Order `status` reflect
 1. No write path from Real XT entities into Portfolio repository.
 2. No merge of `real_xt` and `simulation` provenance in one authoritative book.
 3. No place/cancel entities or commands in 013.
+
+---
+
+## Amendment 2026-08-17 — Venue-neutral private account
+
+Living entities (Kraken implementation):
+
+| Entity | Notes |
+|--------|--------|
+| `VenueBalance` | asset, free, locked (if provided), total, `venue=kraken` |
+| `VenueOrder` | `venue_order_id`, `venue_product_id`, side, status, qty fields |
+| `PrivateAccountPort` | get_balances, list_open_orders, get_order |
+
+XT `RealXt*` models remain for the legacy adapter. Core/UI for the living
+path MUST NOT require `real_xt` provenance. Simulation Portfolio has no
+relationship to either book.

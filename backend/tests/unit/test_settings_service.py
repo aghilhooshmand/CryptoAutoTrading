@@ -15,6 +15,14 @@ from app.settings.starters import SINGLETON_ID, product_starter_defaults
 from app.strategy.serialize import dumps_params
 
 
+def _xt_override(body: dict, **overrides) -> dict:
+    out = dict(body)
+    for key in ("venue", "baseAsset", "quoteAsset", "canonicalSymbol", "venueProductId"):
+        out.pop(key, None)
+    out.update(overrides)
+    return out
+
+
 @pytest.fixture()
 def db(tmp_path):
     engine = create_engine(f"sqlite:///{tmp_path}/s.db", connect_args={"check_same_thread": False})
@@ -27,7 +35,8 @@ def db(tmp_path):
 
 def test_starters_shape():
     body = product_starter_defaults()
-    assert body["symbol"] == "btc_usdt"
+    assert body["symbol"] == "BTC/EUR"
+    assert body["venue"] == "kraken"
     assert body["timeframe"] == "1h"
     assert body["startingCapital"] == "1000"
     assert body["allocatedCapital"] == "1000"
@@ -47,11 +56,13 @@ def test_get_empty_returns_starters(db):
 
 
 def test_put_and_get_round_trip(db):
-    body = product_starter_defaults()
-    body["symbol"] = "eth_usdt"
-    body["startingCapital"] = "2000"
-    body["allocatedCapital"] = "1500"
-    body["maxPositionSize"] = "1000"
+    body = _xt_override(
+        product_starter_defaults(),
+        symbol="eth_usdt",
+        startingCapital="2000",
+        allocatedCapital="1500",
+        maxPositionSize="1000",
+    )
     saved = svc.put_settings(db, body)
     assert saved["source"] == "saved"
     assert saved["symbol"] == "eth_usdt"
@@ -64,8 +75,7 @@ def test_put_and_get_round_trip(db):
 
 
 def test_invalid_nesting_leaves_prior(db):
-    good = product_starter_defaults()
-    good["symbol"] = "eth_usdt"
+    good = _xt_override(product_starter_defaults(), symbol="eth_usdt")
     svc.put_settings(db, good)
 
     bad = dict(good)
@@ -124,3 +134,26 @@ def test_save_does_not_call_trading_services(db, monkeypatch):
     svc.put_settings(db, product_starter_defaults())
     svc.reset_settings(db)
     assert calls == []
+
+
+def test_saved_xt_settings_not_rewritten_on_get(db):
+    xt_body = {
+        "symbol": "btc_usdt",
+        "timeframe": "1h",
+        "startingCapital": "1000",
+        "allocatedCapital": "1000",
+        "maxPositionSize": "1000",
+        "feeRate": "0.002",
+        "slippageRate": "0.0005",
+        "strategyId": "dual_ema",
+        "strategyParams": {"fastPeriod": 9, "slowPeriod": 21},
+    }
+    saved = svc.put_settings(db, xt_body)
+    assert saved["venue"] == "xt"
+    assert saved["symbol"] == "btc_usdt"
+    again = svc.get_settings(db)
+    assert again["source"] == "saved"
+    assert again["venue"] == "xt"
+    assert again["symbol"] == "btc_usdt"
+    assert again["canonicalSymbol"] == "BTC/USDT"
+

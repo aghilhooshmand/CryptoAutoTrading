@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 
 import type { CandleInterval, CreateSessionRequest } from "../../services/simulationApi";
+import { identityFromInput, KRAKEN_STARTER_IDENTITY } from "../../services/productIdentity";
 import {
   deriveAmount,
   rateToPercentLabel,
@@ -48,7 +49,7 @@ interface Props {
 
 const DEFAULTS: SessionConfigValues = {
   mode: "simulation",
-  symbol: "btc_usdt",
+  symbol: KRAKEN_STARTER_IDENTITY.symbol,
   timeframe: "1h",
   startingCapital: "1000",
   allocatedCapital: "1000",
@@ -91,7 +92,7 @@ function FieldLabel({
 
 export function SessionConfigForm({
   disabled = false,
-  defaultSymbol = "btc_usdt",
+  defaultSymbol = KRAKEN_STARTER_IDENTITY.symbol,
   onSubmit,
   error,
 }: Props) {
@@ -220,7 +221,7 @@ export function SessionConfigForm({
     setLocalError(null);
     onSubmit({
       mode: values.mode,
-      symbol: values.symbol.trim(),
+      ...identityFromInput({ symbol: values.symbol.trim() }),
       timeframe: values.timeframe,
       startingCapital: isReal ? values.allocatedCapital : values.startingCapital,
       allocatedCapital: values.allocatedCapital,

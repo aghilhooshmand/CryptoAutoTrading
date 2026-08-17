@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.market_data.identity import kraken_starter_identity
 from app.simulation.money import DEFAULT_FEE_RATE, DEFAULT_SLIPPAGE_RATE, as_str
 from app.strategy.serialize import DEFAULT_DUAL_EMA_PARAMS
 
@@ -12,8 +13,9 @@ SINGLETON_ID = 1
 
 def product_starter_defaults() -> dict[str, Any]:
     """Built-in starters used when no valid saved Settings exist / on Reset."""
+    ident = kraken_starter_identity().to_api()
     return {
-        "symbol": "btc_usdt",
+        **ident,
         "timeframe": "1h",
         "startingCapital": "1000",
         "allocatedCapital": "1000",

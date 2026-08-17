@@ -12,6 +12,24 @@ analyze remediation I1/U1/U2)
 Correction tasks T044–T087 are complete. Feature 009 is marked **DONE** on
 `docs/ROADMAP.md`. Feature 010 remains PLANNED until started separately.
 
+## Amendment 2026-08-17 — Quote identity (minimum)
+
+Feature 009 remains **Simulation Portfolio** (`provenance = simulation`). It
+MUST NOT become a Kraken account.
+
+Minimum living identity (no semantic change to `available = quote_cash −
+reserved`):
+
+- Persist `quote_asset` on the Sim book (existing books default `usdt`).
+- Roles: `quote_cash`, `available_quote`, `reserved_quote`, `deployed_quote`.
+- Do **not** globally replace USDT with EUR. USDT labels remain valid while
+  the book quote is `usdt`.
+- Valuation MUST use Feature 002 public data for the session/book venue and
+  quote — not a hardcoded `{asset}_usdt` once Kraken products are in use.
+- Feature 013 Real Account (`venue=kraken`) stays a separate book.
+
+---
+
 **Input**: User description: "Revise Feature 009 to a Simulation Portfolio that behaves like a normal crypto exchange portfolio. Operator may fund only simulation quote cash (primarily USDT). Do not provide UI or operator API to manually record BTC/ETH/SOL. Non-USDT holdings appear only when simulated executions create them (BUY decreases USDT and increases the asset; SELL reverses and updates realized P&L). Strategies never modify balances. Pipeline: Strategy → Controller → Risk → Execution → Portfolio/Accounting. Value with Feature 002 public prices; never invent prices. Keep capital reservation for future Risk/Torque but do not make it the dominant UI. Clear SIMULATION state; Feature 013 later adds a separate Real XT Portfolio. Persist snapshots on meaningful state changes; no fake history charts. Modern exchange-style UI per docs/UI_UX_STANDARDS.md."
 
 ## Clarifications

@@ -133,9 +133,33 @@ With backend running:
 ```bash
 curl -sS http://127.0.0.1:8000/health
 curl -sS http://127.0.0.1:8000/market/pairs | head
-curl -sS "http://127.0.0.1:8000/market/quote?symbol=btc_usdt"
-curl -sS "http://127.0.0.1:8000/market/candles?symbol=btc_usdt&interval=1h&limit=3"
+curl -sS "http://127.0.0.1:8000/market/quote?symbol=BTC/EUR"
+curl -sS "http://127.0.0.1:8000/market/candles?symbol=BTC/EUR&interval=1h&limit=3"
+curl -sS "http://127.0.0.1:8000/market/pairs?venue=xt" | head
 ```
 
 Expect JSON matching [contracts/market-data.md](./contracts/market-data.md), not
 raw XT envelopes.
+
+---
+
+## Amendment 2026-08-17 — Kraken-first smoke
+
+No Kraken credentials. Network to `https://api.kraken.com` required for live
+Dashboard; CI uses recorded fixtures.
+
+After the Kraken adapter is implemented:
+
+```bash
+curl -sS http://127.0.0.1:8000/health
+curl -sS http://127.0.0.1:8000/market/pairs | head
+curl -sS "http://127.0.0.1:8000/market/pairs?venue=xt" | head
+```
+
+Expect default `/market/pairs` `source`/`venue` **kraken**, identity fields
+present, and `?venue=xt` still XT. Do not pass XT symbols into Kraken quote
+requests.
+
+Recorded-candle Simulation/Backtest regression MUST still pass (engine
+invariance). Live Kraken prices for **new** sessions are expected to differ
+from XT — that is not a trading-semantics regression.

@@ -14,7 +14,6 @@ from app.db import session as db_session
 from app.db.models import Base, DecisionJournalRow, SimulationSessionRow
 from app.main import app
 from app.market_data.models import MarketQuote, MarketStatus
-from app.simulation.final_result import parse_final_result
 
 
 @pytest.fixture()
@@ -252,8 +251,9 @@ def test_active_still_running_after_list_traffic(client):
 
 def test_no_resume_endpoint_for_stopped(client):
     stopped = _create_stopped(client)
-    # FR-020: no resume/restart of historical session id
-    assert client.post(f"/simulation/sessions/{stopped['id']}/resume").status_code == 404
+    # FR-020: no resume/restart of historical STOPPED session id
+    resume = client.post(f"/simulation/sessions/{stopped['id']}/resume")
+    assert resume.status_code == 409
     restart = client.post(f"/simulation/sessions/{stopped['id']}/start")
     assert restart.status_code == 409
 
@@ -272,21 +272,35 @@ def test_full_audit_mode_visible_on_detail(client):
     assert detail["decisionLogMode"] == "full_audit"
 
 
-def test_recovery_freezes_orphan(client):
+def test_recovery_resumes_orphan_when_gates_pass(client):
     from app.simulation.recovery import recover_orphan_sessions
 
     created = client.post("/simulation/sessions", json=_body()).json()
     client.post(f"/simulation/sessions/{created['id']}/start")
     db = db_session.SessionLocal()
     try:
-        n = recover_orphan_sessions(db)
+        mock_svc = AsyncMock()
+        now = datetime.now(timezone.utc)
+        mock_svc.get_quote = AsyncMock(
+            return_value=MarketQuote(
+                symbol="btc_usdt",
+                lastPrice="65000.00",
+                source="XT",
+                observedAt=now,
+                retrievedAt=now,
+                status=MarketStatus.FRESH,
+            )
+        )
+        with patch("app.simulation.recovery.get_market_data_service", return_value=mock_svc):
+            with patch(
+                "app.simulation.recovery.apply_offline_gap_skip",
+                new=AsyncMock(return_value=(True, None)),
+            ):
+                n = recover_orphan_sessions(db)
         assert n == 1
         row = db.get(SimulationSessionRow, created["id"])
         assert row is not None
-        assert row.state == "STOPPED"
-        assert row.stop_reason == "backend_restart"
-        fr = parse_final_result(row.final_result_json)
-        assert fr is not None
-        assert fr["source"] == "recovery"
+        assert row.state == "RUNNING"
+        assert row.recovery_reason is None
     finally:
         db.close()

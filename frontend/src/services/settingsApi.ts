@@ -1,9 +1,16 @@
+import type { ProductIdentityFields } from "./productIdentity";
+
 /** Typed client for Feature 008 `/settings` contracts. */
 
 export type SettingsSource = "saved" | "starters";
 
 export interface OperatorSettings {
   symbol: string;
+  venue?: string;
+  baseAsset?: string;
+  quoteAsset?: string;
+  canonicalSymbol?: string;
+  venueProductId?: string;
   timeframe: string;
   startingCapital: string;
   allocatedCapital: string;

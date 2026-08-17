@@ -14,6 +14,7 @@ import {
   defaultStrategyConfig,
   type StrategyConfigValue,
 } from "../strategy/StrategyConfigFields";
+import { identityFromInput, KRAKEN_STARTER_IDENTITY } from "../../services/productIdentity";
 import { validateCapitalNesting } from "../../services/simulationApi";
 
 const INTERVALS = ["1m", "5m", "15m", "1h", "4h", "1d"] as const;
@@ -41,7 +42,10 @@ function toWriteBody(
   strategy: StrategyConfigValue,
 ): SettingsWriteBody {
   return {
-    symbol: values.symbol,
+    ...identityFromInput({
+      symbol: values.symbol,
+      venue: (values as { venue?: string }).venue,
+    }),
     timeframe: values.timeframe,
     startingCapital: values.startingCapital,
     allocatedCapital: values.allocatedCapital,
@@ -103,7 +107,7 @@ function applySettingsToState(
 
 function emptyValues() {
   return {
-    symbol: "btc_usdt",
+    symbol: KRAKEN_STARTER_IDENTITY.symbol,
     timeframe: "1h",
     startingCapital: "1000",
     allocatedCapital: "1000",

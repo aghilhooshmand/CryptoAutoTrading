@@ -369,3 +369,39 @@ def test_create_exposes_tpsl_fields_and_levels_while_long(client, tmp_path, monk
     assert again["entryFillPrice"] == "100"
     assert again["takeProfitPrice"] == "102"
     assert again["stopLossPrice"] == "99"
+
+
+def test_legacy_xt_symbol_infers_identity(client):
+    created = client.post("/simulation/sessions", json=_body()).json()
+    assert created["symbol"] == "btc_usdt"
+    assert created["venue"] == "xt"
+    assert created["baseAsset"] == "BTC"
+    assert created["quoteAsset"] == "USDT"
+    assert created["canonicalSymbol"] == "BTC/USDT"
+    assert created["venueProductId"] == "btc_usdt"
+    again = client.get(f"/simulation/sessions/{created['id']}").json()
+    assert again["venue"] == "xt"
+    assert again["venueProductId"] == "btc_usdt"
+
+
+def test_kraken_identity_round_trip(client):
+    created = client.post(
+        "/simulation/sessions",
+        json=_body(
+            symbol="BTC/EUR",
+            venue="kraken",
+            baseAsset="BTC",
+            quoteAsset="EUR",
+            canonicalSymbol="BTC/EUR",
+            venueProductId="XXBTZEUR",
+        ),
+    ).json()
+    assert created["venue"] == "kraken"
+    assert created["canonicalSymbol"] == "BTC/EUR"
+    assert created["venueProductId"] == "XXBTZEUR"
+    assert created["symbol"] == "BTC/EUR"
+    again = client.get(f"/simulation/sessions/{created['id']}").json()
+    assert again["venue"] == "kraken"
+    assert again["baseAsset"] == "BTC"
+    assert again["quoteAsset"] == "EUR"
+

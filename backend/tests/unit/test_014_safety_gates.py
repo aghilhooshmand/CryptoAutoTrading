@@ -22,14 +22,20 @@ from app.simulation.state_machine import SessionState, allows_strategy_execution
 
 def test_014_simulation_modules_do_not_import_xt_account():
     root = Path(__file__).resolve().parents[2] / "app" / "simulation"
+    # Feature 015 Real credential gates live in these modules; Simulation
+    # pipeline/control must still stay XT-account-free.
+    real_boundary = {"real_gates.py", "recovery.py", "session_service.py"}
     offenders: list[str] = []
     for path in root.rglob("*.py"):
+        if path.name in real_boundary:
+            continue
         text = path.read_text(encoding="utf-8")
         if "xt_account" in text or "XtPrivateClient" in text:
             offenders.append(str(path.relative_to(root.parent.parent)))
     assert offenders == []
 
 
+@pytest.mark.skip(reason="Superseded by Feature 015 Controlled Real execution")
 def test_real_execution_still_unavailable():
     from app.execution.port import ExecutionIntent
     from app.execution.real import REAL_EXECUTION_UNAVAILABLE, RealExecutionAdapter

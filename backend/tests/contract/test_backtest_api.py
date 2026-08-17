@@ -279,3 +279,43 @@ def test_create_persists_tpsl_percents(client):
     data = r.json()
     assert data["takeProfitPercent"] == "0.02"
     assert data["stopLossPercent"] == "0.01"
+
+
+def test_legacy_xt_symbol_infers_identity(client):
+    c, _Session = client
+    mock = AsyncMock()
+    mock.get_candles = AsyncMock(return_value=_mock_series(30))
+    with patch("app.backtest.service.get_market_data_service", return_value=mock):
+        r = c.post("/backtest/runs", json=_body())
+    assert r.status_code == 201, r.text
+    data = r.json()
+    assert data["venue"] == "xt"
+    assert data["symbol"] == "btc_usdt"
+    assert data["venueProductId"] == "btc_usdt"
+    again = c.get(f"/backtest/runs/{data['id']}").json()
+    assert again["canonicalSymbol"] == "BTC/USDT"
+
+
+def test_kraken_identity_round_trip(client):
+    c, _Session = client
+    mock = AsyncMock()
+    mock.get_candles = AsyncMock(return_value=_mock_series(30))
+    with patch("app.backtest.service.get_market_data_service", return_value=mock):
+        r = c.post(
+            "/backtest/runs",
+            json=_body(
+                symbol="BTC/EUR",
+                venue="kraken",
+                baseAsset="BTC",
+                quoteAsset="EUR",
+                canonicalSymbol="BTC/EUR",
+                venueProductId="XXBTZEUR",
+            ),
+        )
+    assert r.status_code == 201, r.text
+    data = r.json()
+    assert data["venue"] == "kraken"
+    assert data["canonicalSymbol"] == "BTC/EUR"
+    assert data["venueProductId"] == "XXBTZEUR"
+    assert mock.get_candles.await_args.args[0] == "XXBTZEUR"
+

@@ -14,6 +14,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.market_data.identity import ProductIdentityError, resolve_product_identity
 from app.market_data.models import ALLOWED_INTERVALS
 from app.settings import repository as repo
 from app.settings.starters import product_starter_defaults
@@ -110,10 +111,11 @@ def _validate_body(body: dict[str, Any]) -> dict[str, Any]:
 
     _validate_capital(starting, allocated, max_pos)
 
-    symbol = str(body["symbol"]).strip()
+    try:
+        ident = resolve_product_identity(body)
+    except ProductIdentityError as exc:
+        raise SettingsError("invalid_config", str(exc)) from exc
     timeframe = str(body["timeframe"]).strip()
-    if not symbol:
-        raise SettingsError("invalid_config", "symbol is required")
     if timeframe not in ALLOWED_INTERVALS:
         raise SettingsError(
             "invalid_config",
@@ -149,7 +151,12 @@ def _validate_body(body: dict[str, Any]) -> dict[str, Any]:
         raise SettingsError(exc.code, exc.message, 400) from exc
 
     return {
-        "symbol": symbol,
+        "symbol": ident.symbol_alias,
+        "venue": ident.venue,
+        "base_asset": ident.base_asset,
+        "quote_asset": ident.quote_asset,
+        "canonical_symbol": ident.canonical_symbol,
+        "venue_product_id": ident.venue_product_id,
         "timeframe": timeframe,
         "starting_capital": as_str(starting),
         "allocated_capital": as_str(allocated),
@@ -192,12 +199,31 @@ def _payload(
     decision_log_mode: str = DECISION_LOG_IMPORTANT_ONLY,
     take_profit_percent: str | None = None,
     stop_loss_percent: str | None = None,
+    venue: str | None = None,
+    base_asset: str | None = None,
+    quote_asset: str | None = None,
+    canonical_symbol: str | None = None,
+    venue_product_id: str | None = None,
     source: str,
     updated_at: str | None,
     warning: str | None = None,
 ) -> dict[str, Any]:
+    ident_payload: dict[str, Any] = {}
+    try:
+        ident_payload = resolve_product_identity(
+            {
+                "symbol": symbol,
+                "venue": venue,
+                "baseAsset": base_asset,
+                "quoteAsset": quote_asset,
+                "canonicalSymbol": canonical_symbol,
+                "venueProductId": venue_product_id,
+            }
+        ).to_api()
+    except ProductIdentityError:
+        ident_payload = {"symbol": symbol}
     return {
-        "symbol": symbol,
+        **ident_payload,
         "timeframe": timeframe,
         "startingCapital": starting_capital,
         "allocatedCapital": allocated_capital,
@@ -244,6 +270,11 @@ def _starters_response(*, warning: str | None = None) -> dict[str, Any]:
         decision_log_mode=body.get("decisionLogMode") or DECISION_LOG_IMPORTANT_ONLY,
         take_profit_percent=body.get("takeProfitPercent"),
         stop_loss_percent=body.get("stopLossPercent"),
+        venue=body.get("venue"),
+        base_asset=body.get("baseAsset"),
+        quote_asset=body.get("quoteAsset"),
+        canonical_symbol=body.get("canonicalSymbol"),
+        venue_product_id=body.get("venueProductId"),
         source="starters",
         updated_at=None,
         warning=warning,
@@ -271,6 +302,11 @@ def _validated_to_payload(validated: dict[str, Any], *, source: str, updated_at:
         decision_log_mode=validated.get("decision_log_mode") or DECISION_LOG_IMPORTANT_ONLY,
         take_profit_percent=validated.get("take_profit_percent"),
         stop_loss_percent=validated.get("stop_loss_percent"),
+        venue=validated.get("venue"),
+        base_asset=validated.get("base_asset"),
+        quote_asset=validated.get("quote_asset"),
+        canonical_symbol=validated.get("canonical_symbol"),
+        venue_product_id=validated.get("venue_product_id"),
         source=source,
         updated_at=updated_at,
         warning=None,
@@ -282,6 +318,11 @@ def _validate_stored_row(row: Any) -> dict[str, Any]:
     return _validate_body(
         {
             "symbol": row.symbol,
+            "venue": getattr(row, "venue", None),
+            "baseAsset": getattr(row, "base_asset", None),
+            "quoteAsset": getattr(row, "quote_asset", None),
+            "canonicalSymbol": getattr(row, "canonical_symbol", None),
+            "venueProductId": getattr(row, "venue_product_id", None),
             "timeframe": row.timeframe,
             "startingCapital": row.starting_capital,
             "allocatedCapital": row.allocated_capital,
@@ -346,6 +387,11 @@ def put_settings(db: Session, body: dict[str, Any]) -> dict[str, Any]:
         decision_log_mode=validated.get("decision_log_mode"),
         take_profit_percent=validated.get("take_profit_percent"),
         stop_loss_percent=validated.get("stop_loss_percent"),
+        venue=validated.get("venue"),
+        base_asset=validated.get("base_asset"),
+        quote_asset=validated.get("quote_asset"),
+        canonical_symbol=validated.get("canonical_symbol"),
+        venue_product_id=validated.get("venue_product_id"),
     )
     return _validated_to_payload(validated, source="saved", updated_at=_iso(row.updated_at))
 

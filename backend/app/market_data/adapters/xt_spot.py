@@ -103,6 +103,11 @@ def map_symbol_row(row: dict[str, Any]) -> Optional[TradingPair]:
         baseCurrency=base,
         quoteCurrency="usdt",
         status=PairStatus.TRADABLE,
+        venue="xt",
+        venueProductId=symbol,
+        canonicalSymbol=display.replace("_", "/"),
+        baseAsset=base.upper(),
+        quoteAsset="USDT",
     )
 
 
@@ -243,6 +248,9 @@ class XtSpotAdapter:
         self._pairs_cache = pairs
         self._pairs_cache_at = now
         return list(pairs)
+
+    async def list_spot_pairs(self) -> list[TradingPair]:
+        return await self.list_usdt_pairs()
 
     async def _ensure_supported(self, symbol: str) -> str:
         normalized = symbol.strip().lower()

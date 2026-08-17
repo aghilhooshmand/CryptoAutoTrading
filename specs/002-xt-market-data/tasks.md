@@ -289,3 +289,144 @@ Task: "Prefs/favorites tests in frontend/src/__tests__/marketPrefs.test.tsx"
 **Purpose**: Close gaps found by `/speckit-converge` between Feature 002 artifacts and the current codebase
 
 - [x] T051 Invalidate/hide candlestick series on pair or interval change and on history fetch failure in `frontend/src/features/market-data/useMarketData.ts` and `frontend/src/features/market-data/CandleChart.tsx` so prior OHLC cannot remain visible under a newer selection or error state per Edge cases (pair/interval race), US3/AC3, FR-008, plan race-safe selection (`partial`)
+
+---
+
+## Phase 10: Amendment 2026-08-17 — Kraken-first public market data
+
+**Purpose**: Living Feature 002 implementation. Historical T001–T051 remain
+DONE (XT as-built). Stop new XT development. No private Kraken. No Real
+orders. Do not change Strategy/Controller/Risk semantics.
+
+**Depends on**: Constitution XVI amendment (done in docs). Minimum identity
+cleanup in this phase.
+
+### Foundational identity
+
+- [x] T052 Add product identity fields (`venue`, `base_asset`, `quote_asset`,
+      `canonical_symbol`, `venue_product_id`) to market-data models in
+      `backend/app/market_data/models.py` per data-model.md amendment (FR-022,
+      FR-035)
+- [x] T053 [P] Add nullable identity columns on `simulation_sessions`,
+      backtest/comparison run tables as needed, and `operator_defaults` in
+      `backend/app/db/models.py` and additive migrations in
+      `backend/app/db/session.py` (FR-030, FR-034)
+- [x] T054 [P] Add nullable `quote_asset` on Simulation Portfolio persistence
+      (default existing book `usdt`) in `backend/app/db/models.py` /
+      `backend/app/portfolio/` without mixing Kraken account data (FR-033)
+- [x] T055 [P] Add additive `venue_order_id` on execution/session order
+      persistence in `backend/app/execution/port.py` and `backend/app/db/models.py`;
+      keep `xt_order_id` (012 minimum; unused for Kraken writes) (FR-022)
+- [x] T056 Generalize `MarketDataAdapter` in
+      `backend/app/market_data/adapters/base.py` from USDT-only
+      `list_usdt_pairs` to venue-neutral pair listing (FR-023)
+- [x] T057 Legacy NULL-venue + XT-form `symbol` inference to `venue=xt` in
+      `backend/app/market_data/service.py` and session/backtest loaders
+      (FR-034)
+
+### Kraken public adapter
+
+- [x] T058 Implement Kraken public adapter in
+      `backend/app/market_data/adapters/kraken_public.py` (AssetPairs, Ticker,
+      OHLC; XBT→BTC; no credentials) per research.md Decision 12 (FR-023,
+      FR-024, FR-025, FR-028, FR-029)
+- [x] T059 Wire venue factory default `kraken` with explicit `xt` →
+      `XtSpotAdapter` in `backend/app/market_data/service.py`; reject
+      cross-venue mix (FR-021, FR-027, FR-031)
+- [x] T060 Update `GET /market/pairs|quote|candles` in
+      `backend/app/api/market_data.py` per contracts amendment (default
+      Kraken, `?venue=xt`) (FR-021, FR-035)
+- [x] T061 [P] Unit tests for Kraken mapping in
+      `backend/tests/unit/test_kraken_public_adapter.py` from recorded
+      fixtures (FR-037)
+- [x] T062 [P] Contract tests for default Kraken pairs/quote/candles and
+      mix rejection in `backend/tests/contract/test_market_data.py` (keep
+      existing XT cases pinned to `venue=xt`) (FR-037, SC-012, SC-014)
+
+### Operator defaults and Dashboard
+
+- [x] T063 Kraken-first Settings starters in
+      `backend/app/settings/starters.py` without rewriting saved XT
+      Settings (FR-030, FR-036)
+- [x] T064 Dashboard/prefs: default Kraken product; do not send stored XT
+      ids to Kraken; favorites keyed by venue+product in
+      `frontend/src/features/market-data/prefs.ts`,
+      `frontend/src/features/market-data/PairSelector.tsx`,
+      `frontend/src/pages/DashboardPage.tsx` (FR-021, FR-027, FR-034)
+- [x] T065 Sim/Backtest/comparison create paths persist identity and fetch
+      matching venue only (`backend/app/simulation/pipeline.py`,
+      `backend/app/backtest/`, `backend/app/comparison/`) (FR-030, FR-031,
+      FR-032)
+
+### C1 — Create/read identity on Sim, Backtest, Comparison, Settings
+
+New Kraken-default creates MUST accept, persist, and return `venue`,
+`base_asset`, `quote_asset`, `canonical_symbol`, and `venue_product_id`.
+`symbol` is a compatibility alias only (legacy/XT-era rows). Do not rewrite
+historical sessions/backtests. Do not change Strategy/Controller/Risk
+semantics.
+
+- [x] T070 Simulation create/read (`POST/GET /simulation/sessions`) accept and
+      return identity fields in `backend/app/api/simulation.py` and
+      `backend/app/simulation/session_service.py` per
+      `specs/003-simulation-trading-core/contracts/simulation-api.md`
+      amendment (FR-022, FR-030, FR-034, FR-035)
+- [x] T071 [P] Backtest create/read (`POST/GET /backtest/runs`) accept and
+      return identity fields in `backend/app/api/backtest.py` and
+      `backend/app/backtest/service.py` per
+      `specs/004-backtesting-core/contracts/backtest-api.md` amendment
+      (FR-022, FR-030, FR-034, FR-035)
+- [x] T072 [P] Comparison create/read (`POST/GET /comparisons`) accept and
+      return identity fields in `backend/app/api/comparison.py` and
+      `backend/app/comparison/service.py` per
+      `specs/007-strategy-comparison/contracts/strategy-comparison-api.md`
+      amendment (FR-022, FR-030, FR-034, FR-035)
+- [x] T073 Settings GET/PUT/Reset accept and return identity fields in
+      `backend/app/api/settings.py`, `backend/app/settings/service.py`, and
+      `backend/app/settings/starters.py` per
+      `specs/008-trading-experiment-defaults/contracts/operator-defaults-api.md`
+      amendment; do not rewrite an already-saved XT Settings row (FR-030,
+      FR-036)
+- [x] T074 Frontend config forms MUST send identity fields (not only
+      `symbol: btc_usdt`) for new Kraken-default creates:
+      `frontend/src/features/simulation/SessionConfigForm.tsx`,
+      `frontend/src/features/backtest/BacktestConfigForm.tsx`,
+      `frontend/src/features/comparison/ComparisonConfigForm.tsx`,
+      `frontend/src/features/settings/SettingsPanel.tsx`,
+      `frontend/src/features/settings/mapSettingsToForm.ts`,
+      `frontend/src/services/simulationApi.ts` (and backtest/comparison/settings
+      clients). Dashboard/prefs remain T064 (FR-021, FR-030, FR-035)
+- [x] T075 [P] Contract tests: new creates with Kraken identity round-trip;
+      omitted venue + XT-form `symbol` still infers `venue=xt`; historical
+      NULL-venue rows still read in
+      `backend/tests/contract/test_simulation_api.py`,
+      `backend/tests/contract/test_backtest_api.py`,
+      `backend/tests/contract/test_comparison_api.py`,
+      `backend/tests/contract/test_settings_api.py` (FR-034, FR-037)
+
+### Minimum 009/010 quote identity (no semantic Risk change)
+
+- [x] T066 Quote-asset role in `backend/app/portfolio/identity.py` and
+      valuation via venue product (not hardcoded `{asset}_usdt` for Kraken
+      products) in `backend/app/portfolio/valuation.py` /
+      `backend/app/simulation/portfolio_risk.py` without converting Sim
+      Portfolio into a Kraken account and without globally renaming USDT
+      when book quote is still `usdt` (FR-033)
+
+### Invariance and docs
+
+- [x] T067 Recorded-candle Simulation and Backtest regression proving
+      unchanged trading outcomes in existing
+      `backend/tests/integration/test_simulation_pipeline.py` and
+      `backend/tests/integration/test_backtest_pipeline.py` (and/or
+      dedicated invariance tests) (FR-032, SC-013)
+- [x] T068 Confirm Strategy/Controller/Risk modules do not import Kraken or
+      XT adapter types (FR-028, FR-032, SC-011)
+- [x] T069 Update `README.md` smoke and
+      `specs/002-xt-market-data/quickstart.md` Kraken default curls (SC-010)
+
+**Checkpoint**: Default Dashboard/new runs are Kraken public; XT regression
+still green; no private/Real Kraken; Sim/Backtest engine invariance holds.
+
+**Do not start Feature 013 Kraken private or Feature 015 Kraken orders in
+this phase.**

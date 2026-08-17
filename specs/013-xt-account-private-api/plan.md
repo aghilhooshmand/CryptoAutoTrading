@@ -146,3 +146,25 @@ parallel to `market_data`, plus one Portfolio-area inspect page. No DB schema.
 ## Complexity Tracking
 
 > No constitution violations requiring justification.
+
+---
+
+## Amendment 2026-08-17 — Kraken private-read plan
+
+**Gate**: Feature 002 Kraken public (FR-021–FR-038) MUST be complete first.
+
+**Summary**: Venue-neutral private-account port + Kraken adapter. XT package
+remains. No place/cancel. No RealExecutionAdapter writes. Simulation
+Portfolio isolation unchanged.
+
+**Constitution**: XVI–XVIII, IV, XXXIX PASS (read-only, credentials, isolation).
+
+**Additive paths**:
+
+```text
+backend/app/account/port.py              # venue-neutral protocol (name may vary)
+backend/app/account/kraken_private.py    # Kraken adapter only
+# keep backend/app/xt_account/ for regression
+frontend Real Account UI (Kraken labeling); legacy real-xt may remain
+.env.example KRAKEN_API_KEY / KRAKEN_API_SECRET placeholders
+```

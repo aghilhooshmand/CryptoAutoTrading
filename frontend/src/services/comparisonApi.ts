@@ -1,3 +1,5 @@
+import type { ProductIdentityFields } from "./productIdentity";
+
 /** Typed client for Feature 007 `/comparisons` contracts. */
 
 export type ComparisonStatus = "running" | "completed" | "failed";
@@ -7,8 +9,7 @@ export interface ComparisonLegInput {
   strategyParams?: Record<string, number | string>;
 }
 
-export interface CreateComparisonRequest {
-  symbol: string;
+export interface CreateComparisonRequest extends ProductIdentityFields {
   timeframe: string;
   startTime: number;
   endTime: number;
@@ -47,6 +48,11 @@ export interface StrategyComparison {
   id: string;
   status: ComparisonStatus;
   symbol: string;
+  venue?: string;
+  baseAsset?: string;
+  quoteAsset?: string;
+  canonicalSymbol?: string;
+  venueProductId?: string;
   timeframe: string;
   startTime: number;
   endTime: number;

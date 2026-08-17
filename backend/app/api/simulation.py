@@ -16,7 +16,12 @@ router = APIRouter(prefix="/simulation", tags=["simulation"])
 
 class CreateSessionBody(BaseModel):
     mode: str = "simulation"
-    symbol: str
+    symbol: Optional[str] = None
+    venue: Optional[str] = None
+    baseAsset: Optional[str] = None
+    quoteAsset: Optional[str] = None
+    canonicalSymbol: Optional[str] = None
+    venueProductId: Optional[str] = None
     timeframe: str
     startingCapital: Optional[str] = None
     allocatedCapital: Optional[str] = None

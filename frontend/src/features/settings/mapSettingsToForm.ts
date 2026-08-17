@@ -1,6 +1,7 @@
 /** Map Operator Settings → create-form initial values (Feature 008). */
 
 import type { OperatorSettings } from "../../services/settingsApi";
+import { KRAKEN_STARTER_IDENTITY } from "../../services/productIdentity";
 import { COST_DEFAULTS } from "../shared/CostRateFields";
 import type { StrategyConfigValue } from "../strategy/StrategyConfigFields";
 import { defaultStrategyConfig } from "../strategy/StrategyConfigFields";
@@ -40,7 +41,7 @@ export function optionalMaxTradesToInput(value: number | null | undefined): stri
 
 export function settingsToSharedSeed(settings: OperatorSettings): SharedFormSeed {
   return {
-    symbol: settings.symbol || "btc_usdt",
+    symbol: settings.symbol || KRAKEN_STARTER_IDENTITY.symbol,
     timeframe: settings.timeframe || "1h",
     startingCapital: settings.startingCapital || "1000",
     allocatedCapital: settings.allocatedCapital || settings.startingCapital || "1000",

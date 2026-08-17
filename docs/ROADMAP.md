@@ -3,9 +3,18 @@
 ## Purpose
 
 CryptoAutoTrading is being developed incrementally from market observation and
-safe historical/simulated trading toward controlled real XT trading, then
-composable Torque trading programs, Grammatical Evolution, and eventually
+safe historical/simulated trading toward controlled real **Kraken** trading,
+then composable Torque trading programs, Grammatical Evolution, and eventually
 carefully controlled autonomous real-money trading (destination only).
+
+**Venue (2026-08-17):** Kraken is the intended live venue. Coinbase is out of
+scope. XT is no longer intended for live trading; existing XT adapters/tests
+may remain temporarily for regression and migration safety. Feature numbers
+are unchanged (no 026; no renumber). Implementation order: constitution/
+identity cleanup → Feature **002** Kraken public market data → Feature **013**
+Kraken private read → Feature **015** Controlled Real on Kraken. Do not place
+Real Kraken orders until 002 Kraken public and 013 Kraken private-read are
+complete.
 
 Post-Feature-014 audit (2026-08-16): Feature **025 Stage-1 Trading
 Gap-Close** and the **MVP-1 validation gate** are DONE; next delivery is
@@ -117,12 +126,19 @@ Status: `DONE`
 
 ## 002 — Market Data
 
-Established normalized public market data.
+Established normalized public market data (original delivery: XT Spot public
+adapter). **Amendment 2026-08-17:** Kraken is the default/active public venue.
+Add a Kraken public adapter (pair discovery, ticker, OHLC) behind the existing
+market-data boundary; keep the XT adapter for regression/`venue=xt` only.
+Product identity (`venue`, `base_asset`, `quote_asset`, `canonical_symbol`,
+`venue_product_id`) is defined here. Do not mix XT prices with Kraken
+sessions. No private Kraken API in this feature.
 
-Key outcomes:
+Key outcomes (living):
 
-- XT Spot public adapter;
-- trading-pair discovery;
+- Kraken public adapter as the active feed;
+- XT public adapter retained for regression only;
+- trading-pair discovery (quote asset from the selected product, not USDT-only);
 - quotes;
 - candlesticks;
 - normalized market-data models;
@@ -130,7 +146,7 @@ Key outcomes:
 - favorites/preferences;
 - historical candle range support used by Backtest.
 
-Status: `DONE`
+Status: `DONE` (XT as-built); **Kraken-first public amendment IN PROGRESS**
 
 ---
 
@@ -503,15 +519,18 @@ Status: `DONE`
 
 ## Goal
 
-Connect the mature trading pipeline to XT without immediately enabling
-autonomous real-money trading.
+Connect the mature trading pipeline to **Kraken** without immediately enabling
+autonomous real-money trading. XT is not the live destination. Coinbase is out.
 
 **Execution order in this phase (IDs are stable; do not renumber):**
 
 ```text
-013 DONE → 014 DONE → 025 Stage-1 Gap-Close → MVP-1 validation gate
-        → 015 Controlled Real → MVP-2
+002 Kraken public amendment → 013 Kraken private-read amendment
+        → 015 Controlled Real on Kraken → MVP-2
 ```
+
+Historical delivery already completed: 013 XT read DONE, 014 DONE, 025 DONE,
+MVP-1 gate DONE. Do not start 015 Kraken writes before 002+013 Kraken work.
 
 Feature **025** uses the next free numeric ID so Features **015–024** keep
 their established identifiers. Chronological delivery still places **025
@@ -519,31 +538,41 @@ before 015**.
 
 | ID | Feature | Status |
 |---|---|---|
-| 013 | XT Account / Private API Integration | DONE |
+| 013 | Private Account Integration (XT as-built; Kraken-first amendment) | DONE (XT read); **Kraken private-read amendment PLANNED** (after 002 Kraken public) |
 | 014 | Live Paper-Trading Hardening | DONE (**FREEZE** — expand only for concrete defects) |
 | 025 | Stage-1 Trading Gap-Close | DONE |
-| 015 | Real-Money Manual/Confirmed Execution | IN PROGRESS |
+| 015 | Real-Money Manual/Confirmed Execution | IN PROGRESS — **stop new XT live work**; Kraken Controlled Real **blocked** until 002 Kraken public + 013 Kraken private-read |
 
 ---
 
-## 013 — XT Account / Private API Integration
+## 013 — Private Account / API Integration
 
 ### Goal
 
-Introduce authenticated **read-only** account capabilities behind a private XT
-adapter (balances, open orders, order status), with fail-closed credentials and
-normalized private errors—without enabling live trading.
+**As-built (DONE):** authenticated **read-only** XT account capabilities
+(balances, open orders, order status), fail-closed credentials, normalized
+private errors, inspect UI separate from Simulation Portfolio — without live
+trading.
 
-### MVP scope (Feature 013)
+**Amendment 2026-08-17:** Feature 013 remains the private-account feature id.
+Rework the *living* boundary to a **venue-neutral private-account port** with
+**Kraken as the first implementation**. Keep XT private code for regression
+until Kraken read is proven; do not rename `XtAccountService` into a Kraken
+class as the architecture. Still **read-only**. No Real Kraken orders.
 
-- account authentication (signed private client);
-- account balances / available + locked;
-- open orders;
-- order status lookup;
-- normalized exchange errors (incl. `timestamp_invalid`, `rate_limited`);
-- bounded rate-limit handling on safe GETs;
-- credential configuration (env/secrets, fail closed);
-- minimal read-only inspect UI separate from Simulation Portfolio.
+Depends on Feature **002** Kraken public market data (product identity / venue).
+
+### MVP scope (Feature 013 — living Kraken-first)
+
+- venue-neutral private-account contract (`venue`, balances, open orders, order lookup);
+- Kraken private authentication/signing inside the Kraken adapter only;
+- credentials from environment/secrets (`KRAKEN_*`); never hard-code or commit secrets;
+- fail closed when credentials are absent/invalid;
+- read balances; distinguish available/free vs held/locked where Kraken supports it;
+- open orders; order lookup/status;
+- normalized private errors; bounded rate-limit handling;
+- explicit `venue = kraken` provenance;
+- read-only Real Account UI (Venue: Kraken), never mixed with Simulation Portfolio.
 
 ### Explicitly deferred (not Feature 013)
 
@@ -551,13 +580,14 @@ normalized private errors—without enabling live trading.
 - order cancellation;
 - RealExecutionAdapter live fills;
 - operator Real trading mode / confirmed execution (Feature 015);
-- crash/restart hardening (Feature 014).
+- crash/restart hardening (Feature 014);
+- Coinbase.
 
 ### Safety
 
 Private API integration does NOT mean autonomous trading.
 
-No strategy should call XT directly.
+No strategy should call the venue directly.
 
 Target (future trading path; RealExecutionAdapter stays unavailable in 013):
 
@@ -570,10 +600,11 @@ Risk
    ↓
 RealExecutionAdapter
    ↓
-XT Private Adapter
+Kraken private adapter
 ```
 
-Status: `DONE`
+Status: `DONE` (XT read as-built); **Kraken private-read amendment PLANNED**
+(implement after 002 Kraken public)
 
 ---
 
@@ -671,22 +702,26 @@ Status: `DONE` (operator acceptance 2026-08-16; no residual defect backlog)
 
 ### Goal
 
-First **Controlled Real** trading milestone on XT: tiny, operator-supervised
-sessions with confirmed exposure-increasing entries. Feature 015 is **NOT**
-autonomous trading.
+**Controlled Real** on **Kraken** (not XT): tiny, operator-supervised sessions
+with confirmed exposure-increasing entries. Feature 015 is **NOT** autonomous
+trading. Stop new XT live development.
 
 ### Preconditions
 
+- Feature **002** Kraken public market data complete (sessions priced from Kraken);
+- Feature **013** Kraken private-read complete;
 - Feature 025 DONE;
 - MVP-1 validation gate passed (or only residual defects scheduled);
-- Features 012–014 available as frozen/supporting infrastructure;
-- Feature 013 read path used to verify XT account/order state.
+- Features 012–014 available as frozen/supporting infrastructure.
+
+**Do not implement Real Kraken order placement until those 002 and 013
+amendments are complete.**
 
 ### Controlled Real MVP (MVP-2)
 
-- one trading pair per Real session initially;
+- one trading pair per Real session initially (Kraken product; `quote_asset` persisted);
 - one open position for that session;
-- tiny configurable capital;
+- tiny configurable capital (**max notional in session quote asset**; do not globally replace USDT with EUR);
 - short / local operator-supervised sessions initially;
 - **exposure-increasing entry** requires explicit operator confirmation;
 - **TP/SL exits** may execute automatically;
@@ -694,9 +729,10 @@ autonomous trading.
 - **emergency / STOP flatten** must not wait for confirmation when a safe
   execution is possible;
 - Controller and Risk remain authoritative immediately before Real execution;
-- XT order/account state must be **reconciled** rather than assuming success;
+- Kraken order/account state must be **reconciled** rather than assuming success;
 - Real mode must be **unmistakable** in the UI (targeted UI changes allowed;
-  do not redesign Portfolio as a separate project).
+  do not redesign Portfolio as a separate project);
+- Simulation Portfolio remains separate from Kraken balances.
 
 ### Architecture note
 
@@ -704,10 +740,10 @@ Prefer a path that can later move from confirmed entries → automatic entries
 within hard risk limits **without** a second execution pipeline. Do **not**
 implement autonomous Real entries in Feature 015.
 
-**Status (honest):** Feature 015 remains **IN PROGRESS**. Branch
-`015-controlled-real-execution` implements confirmed entry, auto exits, bounds/UI,
-reconcile-over-assume, and Real blocked recovery. Do **not** mark DONE until the
-operator accepts SC-001–SC-008 / quickstart evidence.
+**Status (honest):** Feature 015 remains **IN PROGRESS**. Existing XT-shaped
+Controlled Real code may remain for regression until Kraken execution is
+attached via Feature 012 `RealExecutionAdapter`. Do **not** mark DONE until
+operator acceptance of Controlled Real on Kraken (SC-001–SC-008 / quickstart).
 
 Example (entries):
 
@@ -717,10 +753,10 @@ Controller → APPROVE
 Risk → APPROVE
 Execution → WAITING FOR CONFIRMATION
 Operator confirms
-RealExecutionAdapter → XT
+RealExecutionAdapter → Kraken
 ```
 
-Status: `IN PROGRESS`
+Status: `IN PROGRESS` (Kraken execution **blocked** on 002 + 013 Kraken work)
 
 ---
 
@@ -1412,25 +1448,25 @@ Current completed foundation:
 
 ```text
 001 → DONE
-002 → DONE
+002 → DONE (XT as-built); Kraken-first public amendment IN PROGRESS
 003 → DONE
 004 → DONE
 005 → DONE
 006 → DONE
 007 → DONE (freeze polish)
 008 → DONE (freeze expansion)
-009 → DONE (freeze allocation expansion; no Portfolio redesign phase before 015)
-010 → DONE (freeze weight/advanced portfolio-risk expansion)
+009 → DONE (minimal quote_asset identity amendment; not a Kraken account)
+010 → DONE (minimal quote_asset wording; Risk semantics unchanged)
 011 → DONE
-012 → DONE
-013 → DONE
+012 → DONE (minimal venue_order_id additive; Sim/Backtest semantics unchanged)
+013 → DONE (XT read as-built); Kraken private-read amendment after 002
 014 → DONE (freeze recovery expansion)
 ```
 
 Current active milestone:
 
 ```text
-015 → Real-Money Manual/Confirmed Execution (MVP-2)
+015 → Controlled Real on Kraken (blocked until 002 Kraken public + 013 Kraken private-read)
         ↓
 016 → Torque MVP (composition; 018 merge direction)
         ↓

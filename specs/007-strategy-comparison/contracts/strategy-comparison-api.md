@@ -51,6 +51,15 @@ start/end, capital nesting, fee/slippage, optional common risk limits).
 | Oversized history estimate | `400` `oversized_history` (no row) |
 | Another comparison (or conflicting run lock) in flight | `409` as documented |
 
+### Amendment 2026-08-17 — Product identity (C1)
+
+Create and read MUST support `venue`, `baseAsset`, `quoteAsset`,
+`canonicalSymbol`, `venueProductId` on the comparison (shared across legs).
+`symbol` is a compatibility alias. New Kraken-default comparisons MUST persist
+and return identity fields. Omit `venue` + XT-form `symbol` ⇒ `venue=xt`. Do
+not rewrite historical comparison rows. Shared candles MUST come from the
+persisted venue only.
+
 ### Success response (`201`)
 
 ```json

@@ -14,7 +14,12 @@ router = APIRouter(prefix="/backtest", tags=["backtest"])
 
 
 class CreateBacktestBody(BaseModel):
-    symbol: str
+    symbol: Optional[str] = None
+    venue: Optional[str] = None
+    baseAsset: Optional[str] = None
+    quoteAsset: Optional[str] = None
+    canonicalSymbol: Optional[str] = None
+    venueProductId: Optional[str] = None
     timeframe: str
     startTime: int
     endTime: int

@@ -19,12 +19,12 @@ function safeStorage(): Storage | null {
 
 export function loadLastSymbol(): string | null {
   const storage = safeStorage();
-  const value = storage?.getItem(SYMBOL_KEY)?.trim().toLowerCase();
+  const value = storage?.getItem(SYMBOL_KEY)?.trim();
   return value || null;
 }
 
 export function saveLastSymbol(symbol: string): void {
-  safeStorage()?.setItem(SYMBOL_KEY, symbol.trim().toLowerCase());
+  safeStorage()?.setItem(SYMBOL_KEY, symbol.trim());
 }
 
 export function loadLastInterval(): CandleInterval {
@@ -49,7 +49,7 @@ export function loadFavorites(): string[] {
     if (!Array.isArray(parsed)) return [];
     return parsed
       .filter((item): item is string => typeof item === "string")
-      .map((s) => s.trim().toLowerCase())
+      .map((s) => s.trim())
       .filter(Boolean);
   } catch {
     return [];
@@ -58,22 +58,28 @@ export function loadFavorites(): string[] {
 
 export function saveFavorites(symbols: string[]): void {
   const normalized = [
-    ...new Set(symbols.map((s) => s.trim().toLowerCase()).filter(Boolean)),
+    ...new Set(symbols.map((s) => s.trim()).filter(Boolean)),
   ];
   safeStorage()?.setItem(FAVORITES_KEY, JSON.stringify(normalized));
 }
 
 export function toggleFavorite(symbol: string, current: string[]): string[] {
-  const key = symbol.trim().toLowerCase();
-  const next = current.includes(key)
-    ? current.filter((s) => s !== key)
+  const key = symbol.trim();
+  const found = current.find((s) => s.toUpperCase() === key.toUpperCase());
+  const next = found
+    ? current.filter((s) => s.toUpperCase() !== key.toUpperCase())
     : [...current, key];
   saveFavorites(next);
   return next;
 }
 
 export function pickDefaultSymbol(symbols: string[]): string | null {
-  if (symbols.includes("btc_usdt")) return "btc_usdt";
+  const preferred = ["BTC/EUR", "BTC/USD", "BTC/USDT", "btc_usdt"];
+  const byUpper = new Map(symbols.map((s) => [s.toUpperCase(), s]));
+  for (const item of preferred) {
+    const hit = byUpper.get(item.toUpperCase());
+    if (hit) return hit;
+  }
   return symbols[0] ?? null;
 }
 
@@ -81,6 +87,16 @@ export function resolveInitialSymbol(
   available: string[],
   persisted: string | null,
 ): string | null {
-  if (persisted && available.includes(persisted)) return persisted;
+  if (persisted) {
+    const hit = available.find(
+      (s) => s.toUpperCase() === persisted.toUpperCase(),
+    );
+    if (hit) return hit;
+    const looksXt = !persisted.includes("/") && persisted.includes("_");
+    const catalogIsKraken = available.some((s) => s.includes("/"));
+    if (looksXt && catalogIsKraken) {
+      return pickDefaultSymbol(available);
+    }
+  }
   return pickDefaultSymbol(available);
 }

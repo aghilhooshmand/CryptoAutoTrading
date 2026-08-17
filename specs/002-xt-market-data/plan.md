@@ -154,3 +154,96 @@ Dashboard presentation never imports XT types or URLs.
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
 | Constitution XV SQL persistence vs browser `localStorage` for pair/interval/favorites | Spec FR-018/FR-019 require local-device Dashboard selection prefs without accounts or server preference store; user direction forbids SQL just for Dashboard preferences | SQLite/Postgres preference tables would add ORM/migration surface with no multi-device or server requirement; UI prefs are not domain trading state |
+
+---
+
+## Amendment 2026-08-17 — Kraken-first public implementation plan
+
+**Status**: This is the implementation plan for the living Feature 002 work.
+Historical XT plan above remains the as-built record.
+
+### Summary
+
+Make **Kraken** the default/active public market-data venue. Add
+`KrakenPublicAdapter` (name may vary) behind the existing `MarketDataAdapter`
+boundary. Introduce product identity (`venue`, `base_asset`, `quote_asset`,
+`canonical_symbol`, `venue_product_id`). Keep `XtSpotAdapter` for `venue=xt`
+regression. Persist identity on new sessions/backtests/settings. Do not
+implement Kraken private API or Real orders. Do not change Strategy,
+Controller, or Risk semantics. Do not globally replace USDT with EUR.
+
+Implementation order for the migration (this feature is step 2 after the
+minimal constitution/identity docs):
+
+1. Identity models + additive DB columns + legacy NULL→XT inference
+2. Generalized adapter protocol (`list_spot_pairs`, not USDT-only protocol)
+3. Kraken public adapter (pairs, ticker, OHLC, mapping, stale)
+4. Service factory: default `kraken`; explicit `xt`
+5. HTTP contracts + Dashboard/Settings defaults
+6. Sim/Backtest/comparison fetch matching venue only
+7. Minimum 009 valuation identity (quote_asset; no Sim→Kraken book)
+8. Tests (FR-037)
+
+### Technical Context (amendment)
+
+**Language/Version**: Unchanged (Python 3.12, React/TS)
+
+**Primary Dependencies**: Existing `httpx`; Kraken public REST
+`https://api.kraken.com` (verify AssetPairs / Ticker / OHLC at implement)
+
+**Storage**: Additive SQLite columns on `simulation_sessions`, backtest runs,
+comparison runs/legs as needed, `operator_defaults`, and Simulation Portfolio
+`quote_asset` (default existing book `usdt`). Nullable on legacy rows.
+Dashboard prefs remain `localStorage` but MUST key venue+product (do not send
+XT ids to Kraken).
+
+**Testing**: New Kraken adapter unit tests from recorded public payloads;
+contract tests default Kraken; pin existing XT tests to `venue=xt`; recorded
+candle Sim/Backtest invariance.
+
+**Constraints**: No Kraken keys in 002. No mix of venues. No XT class rename.
+No Coinbase. Constitution XVI venue isolation.
+
+### Constitution Check (amendment)
+
+| Principle | Status | Notes |
+|-----------|--------|-------|
+| I–V Capital / pipeline / controller | Pass | Public data only; no orders |
+| XVI Exchange isolation | Pass | Kraken types in adapter; core venue-neutral |
+| XVII Public/private | Pass | No private Kraken |
+| XVIII Credentials | Pass | None required |
+| XXVIII–XXIX Tests / continuity | Pass | XT regression pinned; engine invariance |
+| XXXII Execution abstraction | Pass | No Real writes |
+| XXXIX Real-money enablement | Pass | Real orders deferred to 015 after 013 |
+
+**Gate result**: PASS for public-data amendment.
+
+### Phase 0 research (amendment)
+
+See [research.md](./research.md) Decision 12 (Kraken public REST). Verify live
+AssetPairs/Ticker/OHLC and XBT→BTC mapping before locking endpoints.
+
+### Phase 1 design (amendment)
+
+- [data-model.md](./data-model.md) identity fields
+- [contracts/market-data.md](./contracts/market-data.md) living contract
+- [quickstart.md](./quickstart.md) Kraken default curls
+- Minimum 009/010/012 spec notes (quote_asset, venue_order_id additive)
+
+### Project structure (additive)
+
+```text
+backend/app/market_data/adapters/kraken_public.py   # new
+backend/app/market_data/adapters/xt_spot.py         # keep, legacy
+backend/app/market_data/adapters/base.py            # generalize protocol
+backend/app/market_data/models.py                   # identity fields
+backend/app/market_data/service.py                  # venue factory, default kraken
+backend/app/db/models.py                            # additive columns
+backend/app/db/session.py                           # additive migrations
+backend/app/settings/starters.py                    # Kraken-first defaults
+backend/app/portfolio/identity.py                   # quote_asset role (min)
+backend/app/portfolio/valuation.py                  # venue product, not _usdt hardcode
+backend/app/execution/port.py                       # venue_order_id additive only
+```
+
+Do **not** delete `xt_spot.py` or XT tests.

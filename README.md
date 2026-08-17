@@ -3,8 +3,10 @@
 Responsive cryptocurrency auto-trading platform.
 
 Feature `001-app-foundation` provides the local shell (three primary areas +
-health). Feature `002-xt-market-data` adds public XT Spot market data on the
-Dashboard (USDT pairs, quote, history). Feature `003-simulation-trading-core`
+health). Feature `002-xt-market-data` originally added public XT Spot market
+data on the Dashboard. **Amendment 2026-08-17:** Kraken is the intended
+default/active public venue; XT remains as a regression adapter only. Feature
+`003-simulation-trading-core`
 adds simulation-only Auto Trading (dual EMA, journals, hard stops). Feature
 `004-backtesting-core` adds historical Dual EMA backtests under the same Auto
 Trading page (offline evaluation, no real orders). Feature
@@ -16,27 +18,30 @@ Bands, and Breakout on the same registry (five strategies total). Feature
 Trading (shared candles, 2–5 legs, no automatic winner). Feature
 `008-trading-experiment-defaults` centralizes reusable operator defaults.
 Feature `009-portfolio-capital-allocation` adds the **Simulation Portfolio**
-(fund USDT, fill-driven holdings, public valuation, compact capital
-reservation). Feature `015-controlled-real-execution` enables **Controlled
-Real** on the same Auto Trading session pipeline (`mode=real`): confirmed
-market BUY entries, automatic reducing exits, ≤50 USDT allocated budget,
-5-minute pending TTL, XT reconcile (not invented fills), and blocked recovery
-(never auto-resume). Real sessions do **not** write Simulation Portfolio
-holdings; local startingCapital/cash are budget only — not XT cash. See
-[`specs/015-controlled-real-execution/`](specs/015-controlled-real-execution/).
+(quote cash, fill-driven holdings, public valuation, compact capital
+reservation) — never a live Kraken account. Feature
+`015-controlled-real-execution` will enable **Controlled Real** on Kraken
+after Feature 002 Kraken public and Feature 013 Kraken private-read are
+complete. Stop new XT live development. Coinbase is out of scope. See
+[`docs/ROADMAP.md`](docs/ROADMAP.md) and
+[`specs/002-xt-market-data/`](specs/002-xt-market-data/).
 Sentiment and auth remain out of scope.
 
 ## Prerequisites
 
 - **Python 3.12** (project target; `>=3.12` may work for local development)
 - **Node.js LTS** (includes npm)
-- Network access to `https://sapi.xt.com` for live market data
-- **Public market data needs no XT credentials**
-- **Optional (Feature 013 / 015)**: `XT_API_KEY` and `XT_API_SECRET` for Real XT
-  account inspect (`/portfolio/real-xt`) and Controlled Real trading (015). Prefer
-  a key without withdrawal permission. Never commit real secrets. See `.env.example`,
-  [`specs/013-xt-account-private-api/quickstart.md`](specs/013-xt-account-private-api/quickstart.md),
-  and [`specs/015-controlled-real-execution/quickstart.md`](specs/015-controlled-real-execution/quickstart.md).
+- Network access to Kraken public REST (`https://api.kraken.com`) for the
+  intended live/public market-data venue (Feature 002 amendment)
+- Existing XT public adapter (`https://sapi.xt.com`) may remain for
+  `venue=xt` regression only
+- **Public market data needs no exchange credentials**
+- **Optional later (Feature 013 Kraken amendment)**: Kraken private key/secret
+  for read-only Real Account inspect. Prefer a key without withdrawal
+  permission. Never commit real secrets. XT `XT_API_KEY` / `XT_API_SECRET`
+  remain for the legacy XT inspect path until it is disabled.
+- **Do not enable Real Kraken order placement** until 002 Kraken public and
+  013 Kraken private-read are complete (Feature 015).
 
 ## Canonical routes
 
@@ -51,8 +56,10 @@ Opening `/` resolves to Dashboard (`/dashboard`).
 Unsupported paths show a dedicated **Not Found** page with primary navigation
 still available (no silent redirect).
 
-**Real XT Account** (Feature 013) is a read-only sub-route under Portfolio:
-`/portfolio/real-xt` — not a fourth primary nav item; separate from Simulation Portfolio.
+**Real Account** (Feature 013) is a read-only sub-route under Portfolio:
+`/portfolio/real-xt` (legacy XT path until the Kraken inspect UI replaces it)
+— not a fourth primary nav item; separate from Simulation Portfolio. Living
+direction: Venue Kraken; no trading buttons on this surface.
 
 ## Start locally
 
@@ -215,12 +222,15 @@ Expected: HTTP 200 and JSON `{"status":"healthy"}` in under 2 seconds.
 
 ## Market data (Feature 002)
 
-Normalized application contracts (not raw XT envelopes):
+Normalized application contracts (not raw exchange envelopes). Default venue is
+Kraken; pin XT with `?venue=xt`.
 
 ```bash
 curl -sS http://127.0.0.1:8000/market/pairs | head
-curl -sS "http://127.0.0.1:8000/market/quote?symbol=btc_usdt"
-curl -sS "http://127.0.0.1:8000/market/candles?symbol=btc_usdt&interval=1h&limit=3"
+curl -sS "http://127.0.0.1:8000/market/quote?symbol=BTC/EUR"
+curl -sS "http://127.0.0.1:8000/market/candles?symbol=BTC/EUR&interval=1h&limit=3"
+curl -sS "http://127.0.0.1:8000/market/pairs?venue=xt" | head
+curl -sS "http://127.0.0.1:8000/market/quote?venue=xt&symbol=btc_usdt"
 ```
 
 Contract: `specs/002-xt-market-data/contracts/market-data.md`

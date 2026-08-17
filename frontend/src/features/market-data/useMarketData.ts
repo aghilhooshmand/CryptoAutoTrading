@@ -9,6 +9,7 @@ import {
   type MarketQuote,
   type TradingPair,
 } from "../../services/marketDataApi";
+import { isXtFormSymbol } from "../../services/productIdentity";
 import { displayMarketStatus } from "./freshness";
 import {
   loadFavorites,
@@ -80,9 +81,10 @@ export function useMarketData(): MarketDataState {
     setCandles(null);
 
     try {
+      const venue = isXtFormSymbol(symbol) ? "xt" : undefined;
       const [nextQuote, nextCandles] = await Promise.all([
-        fetchQuote(symbol, controller.signal),
-        fetchCandles(symbol, nextInterval, controller.signal),
+        fetchQuote(symbol, controller.signal, venue),
+        fetchCandles(symbol, nextInterval, controller.signal, venue),
       ]);
       if (requestId !== requestIdRef.current) return;
       setQuote(nextQuote);
@@ -120,7 +122,7 @@ export function useMarketData(): MarketDataState {
         if (cancelled) return;
         const available = response.pairs.map((p) => p.symbol);
         const supportedFavorites = loadFavorites().filter((f) =>
-          available.includes(f),
+          available.some((a) => a.toUpperCase() === f.toUpperCase()),
         );
         setFavorites(supportedFavorites);
         setPairs(response.pairs);
@@ -131,7 +133,7 @@ export function useMarketData(): MarketDataState {
           await loadMarket(initial, loadLastInterval());
         } else {
           setStatus("unavailable");
-          setPairsError("No USDT Spot pairs available from XT");
+          setPairsError("No tradable spot pairs available");
         }
       } catch (error) {
         if (cancelled) return;

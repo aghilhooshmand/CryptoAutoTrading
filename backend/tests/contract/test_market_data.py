@@ -46,6 +46,9 @@ class FakeAdapter:
             raise MarketDataAdapterError("Unable to retrieve XT Spot pairs")
         return list(self.pairs)
 
+    async def list_spot_pairs(self) -> list[TradingPair]:
+        return await self.list_usdt_pairs()
+
     async def get_quote(self, symbol: str) -> MarketQuote:
         symbol = symbol.lower()
         if symbol not in {p.symbol for p in self.pairs}:
@@ -99,7 +102,7 @@ class FakeAdapter:
 
 @pytest.fixture(autouse=True)
 def _install_fake_service() -> None:
-    set_market_data_service(MarketDataService(FakeAdapter()))
+    set_market_data_service(MarketDataService(FakeAdapter(), venue="xt"))
     yield
     set_market_data_service(None)
 
@@ -117,7 +120,7 @@ def test_pairs_returns_usdt_only_normalized() -> None:
 
 
 def test_pairs_failure_returns_error_without_invented_pairs() -> None:
-    set_market_data_service(MarketDataService(FakeAdapter(fail_pairs=True)))
+    set_market_data_service(MarketDataService(FakeAdapter(fail_pairs=True), venue="xt"))
     response = client.get("/market/pairs")
     assert response.status_code == 502
     body = response.json()
@@ -176,3 +179,84 @@ def test_candles_invalid_interval() -> None:
     )
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "invalid_interval"
+
+
+class FakeKrakenAdapter:
+    def __init__(self) -> None:
+        self.pairs = [
+            TradingPair(
+                symbol="BTC/EUR",
+                displayName="BTC/EUR",
+                baseCurrency="btc",
+                quoteCurrency="eur",
+                status=PairStatus.TRADABLE,
+                venue="kraken",
+                venueProductId="XXBTZEUR",
+                canonicalSymbol="BTC/EUR",
+                baseAsset="BTC",
+                quoteAsset="EUR",
+            )
+        ]
+
+    async def list_spot_pairs(self) -> list[TradingPair]:
+        return list(self.pairs)
+
+    async def get_quote(self, symbol: str) -> MarketQuote:
+        now = datetime(2026, 8, 17, 12, 0, 0, tzinfo=timezone.utc)
+        return MarketQuote(
+            symbol="BTC/EUR",
+            lastPrice="91234.5",
+            changePercent="1.37",
+            source="kraken",
+            observedAt=now,
+            retrievedAt=now,
+            status=MarketStatus.FRESH,
+        )
+
+    async def get_candles(
+        self,
+        symbol: str,
+        interval: CandleInterval,
+        limit: int,
+        start_time: int | None = None,
+        end_time: int | None = None,
+    ) -> CandlestickSeries:
+        now = datetime(2026, 8, 17, 12, 0, 1, tzinfo=timezone.utc)
+        return CandlestickSeries(
+            symbol="BTC/EUR",
+            interval=interval,
+            candles=[
+                Candlestick(
+                    openTime=1786287600000,
+                    open="91000.0",
+                    high="92000.0",
+                    low="90000.0",
+                    close="91234.5",
+                )
+            ],
+            source="kraken",
+            retrievedAt=now,
+        )
+
+
+def test_pairs_default_kraken_source() -> None:
+    set_market_data_service(MarketDataService(FakeKrakenAdapter(), venue="kraken"))
+    response = client.get("/market/pairs")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source"] == "kraken"
+    assert body["pairs"][0]["canonicalSymbol"] == "BTC/EUR"
+    assert body["pairs"][0]["venueProductId"] == "XXBTZEUR"
+
+
+def test_xt_venue_query_stays_xt() -> None:
+    set_market_data_service(MarketDataService(FakeAdapter(), venue="xt"))
+    response = client.get("/market/pairs", params={"venue": "xt"})
+    assert response.status_code == 200
+    assert response.json()["source"] == "XT"
+
+
+def test_factory_default_venue_is_kraken() -> None:
+    set_market_data_service(None)
+    assert MarketDataService().venue == "kraken"
+

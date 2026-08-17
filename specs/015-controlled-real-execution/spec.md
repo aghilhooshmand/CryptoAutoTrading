@@ -2,7 +2,12 @@
 
 **Feature Branch**: `015-controlled-real-execution`  
 **Created**: 2026-08-16  
-**Status**: Clarified (session 2026-08-16); remediated I1–I4 (2026-08-16)
+**Status**: Clarified (session 2026-08-16); remediated I1–I4 (2026-08-16).
+**Amendment 2026-08-17:** Controlled Real destination is **Kraken**. Stop new
+XT live development. **Do not implement Real Kraken order placement until
+Feature 002 Kraken public and Feature 013 Kraken private-read are complete.**
+Existing XT-shaped 015 code may remain for regression until replaced.
+
 **Feature ID**: `015`  
 **Input**: Roadmap Controlled Real MVP (MVP-2) after Feature 025 + MVP-1 gate DONE
 
@@ -11,7 +16,65 @@
 Stage-1 paper path (Backtest → Simulation) is closed: Features 012–014 frozen
 infrastructure, Feature 013 private read path, Feature 025 per-position TP/SL,
 MVP-1 acceptance passed. Feature **015** is the first **Controlled Real**
-milestone on XT. It is **not** autonomous trading.
+milestone. **Living destination: Kraken**, not XT. It is **not** autonomous
+trading.
+
+## Amendment 2026-08-17 — Kraken Controlled Real
+
+Safety architecture is unchanged:
+
+```text
+Strategy intent → Controller → Risk → WAIT FOR OPERATOR CONFIRMATION
+  → risk/account re-check → RealExecutionAdapter → Kraken
+```
+
+**Locks:**
+
+1. Attach Kraken through Feature 012 `RealExecutionAdapter`. No second engine.
+2. Confirmation TTL 5 minutes, re-validate on confirm, reducing exits skip
+   confirm, blocked recovery, never auto-resume Real, no Sim Portfolio writes.
+3. Tiny cap remains a **max notional in the session `quote_asset`** (numeric
+   50 as MVP cap). Do **not** globally replace USDT with EUR. Persist
+   `quote_asset` from the selected Kraken product.
+4. Local budget ≠ Kraken cash. Fills only from Kraken reconcile (013).
+5. `venue_order_id` is the living order identity; `xt_order_id` may remain as
+   legacy until the XT Real path is disabled.
+6. Reason codes that name XT SHOULD gain venue-neutral aliases for the Kraken
+   path (`venue_reconcile_unsettled`, `insufficient_venue_quote`,
+   `venue_order_rejected`) without requiring a global string replace on XT
+   regression tests until XT Real is removed.
+7. **Implementation of Kraken place/reconcile is blocked** on 002 Kraken
+   public + 013 Kraken private-read.
+8. Coinbase out. Stop new XT live work.
+
+Original FR-001–FR-011 remain the safety spec with “XT” read as “the live
+venue adapter” for historical XT code. **Living Kraken requirements:
+FR-012–FR-020.**
+
+- **FR-012**: Controlled Real living destination MUST be Kraken via
+  RealExecutionAdapter. Strategy/Controller/Risk MUST remain venue-independent.
+- **FR-013**: Real Kraken sessions MUST use Kraken-compatible market data
+  (Feature 002). Mixing XT public prices with Kraken execution is forbidden.
+- **FR-014**: Feature 015 MUST NOT place Kraken orders until Feature 002 Kraken
+  public and Feature 013 Kraken private-read are complete.
+- **FR-015**: Session MUST persist `venue=kraken`, product identity, and
+  `quote_asset`. MVP allocated cap is 50 units of session `quote_asset` (not
+  a global EUR conversion of USDT).
+- **FR-016**: Pre-submit free-balance gate MUST use Kraken free/available
+  **quote** from 013 (not XT free USDT) once Kraken execution is enabled.
+- **FR-017**: Local `startingCapital`/cash remain budget only — not Kraken cash.
+- **FR-018**: Reconcile MUST use 013 Kraken private reads. Submission ≠ fill.
+- **FR-019**: Operator UI MUST label Venue: Kraken / Real (not XT cash as the
+  living copy). No autonomous entries.
+- **FR-020**: Existing XT Real adapter/tests MAY remain until Kraken execution
+  replaces them; do not extend XT live behavior.
+
+### Amendment success criteria (Kraken path)
+
+SC-001–SC-008 apply to Kraken with mocks; live smoke optional and
+credential-gated **after** 002+013 Kraken work.
+
+---
 
 ## Clarifications
 

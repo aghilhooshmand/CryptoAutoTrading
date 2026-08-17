@@ -9,9 +9,10 @@ from sqlalchemy.orm import Session
 
 from app.db.models import SimulationSessionRow, TradeJournalRow
 from app.execution.tpsl import evaluate_triggers
+from app.market_data.identity import identity_from_row
 from app.market_data.models import MarketStatus
 from app.market_data.public_retry import PublicRetryExhausted, with_public_retry
-from app.market_data.service import get_market_data_service
+from app.market_data.service import bound_service_for_identity, get_market_data_service
 from app.simulation.accounting import liquidation_equity, session_net_pnl
 from app.simulation.clock import Clock
 from app.simulation.control.controller import TradingController
@@ -51,12 +52,15 @@ def _as_utc(dt: datetime) -> datetime:
     return dt.astimezone(timezone.utc)
 
 
-async def _closed_candles(symbol: str, timeframe: str, clock: Clock) -> list[CandleClose]:
+async def _closed_candles(row: SimulationSessionRow, clock: Clock) -> list[CandleClose]:
+    ident = identity_from_row(row)
+    service, key = bound_service_for_identity(ident, injected=get_market_data_service())
+
     async def _call():
-        return await get_market_data_service().get_candles(symbol, timeframe)
+        return await service.get_candles(key, row.timeframe)
 
     series = await with_public_retry(_call)
-    interval = INTERVAL_SECONDS[timeframe]
+    interval = INTERVAL_SECONDS[row.timeframe]
     now_ms = int(clock.now().timestamp() * 1000)
     closed: list[CandleClose] = []
     for c in series.candles:
@@ -73,11 +77,13 @@ async def _closed_candles(symbol: str, timeframe: str, clock: Clock) -> list[Can
     return closed
 
 
-async def _quote_mark(symbol: str) -> tuple[Decimal | None, bool]:
+async def _quote_mark(row: SimulationSessionRow) -> tuple[Decimal | None, bool]:
+    ident = identity_from_row(row)
+    service, key = bound_service_for_identity(ident, injected=get_market_data_service())
     try:
 
         async def _call():
-            return await get_market_data_service().get_quote(symbol)
+            return await service.get_quote(key)
 
         quote = await with_public_retry(_call)
     except (PublicRetryExhausted, Exception):  # noqa: BLE001
@@ -290,7 +296,7 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
             await stop_session_async(db, row.id, "duration_elapsed", clock=clock)
             return
 
-    mark, safe = await _quote_mark(row.symbol)
+    mark, safe = await _quote_mark(row)
     if not safe:
         # Unsafe mark: increment streak; while long, early return blocks entries
         # (Risk would also reject; we never reach strategy on unsafe mark).
@@ -324,7 +330,7 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
         return
 
     try:
-        closes = await _closed_candles(row.symbol, row.timeframe, clock)
+        closes = await _closed_candles(row, clock)
     except (PublicRetryExhausted, Exception):  # noqa: BLE001
         row.unsafe_quote_streak += 1
         row.updated_at = clock.now()
@@ -552,7 +558,7 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
         if row.strategy_fill_count >= row.max_trades:
             await stop_session_async(db, row.id, "max_trades", clock=clock)
             return
-        mark2, safe2 = await _quote_mark(row.symbol)
+        mark2, safe2 = await _quote_mark(row)
         if safe2 and mark2 is not None:
             liq2 = liquidation_equity(
                 d(row.cash),

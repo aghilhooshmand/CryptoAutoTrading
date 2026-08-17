@@ -13,6 +13,7 @@ import {
   MIN_COMPARISON_LEGS,
   validateLegCount,
 } from "../../services/comparisonApi";
+import { identityFromInput, KRAKEN_STARTER_IDENTITY } from "../../services/productIdentity";
 import { getSettings } from "../../services/settingsApi";
 import {
   comparisonSecondaryLegStarter,
@@ -46,7 +47,7 @@ function emptyLeg(): StrategyConfigValue {
 }
 
 export function ComparisonConfigForm({ disabled, busy, error, onSubmit }: Props) {
-  const [symbol, setSymbol] = useState("btc_usdt");
+  const [symbol, setSymbol] = useState(KRAKEN_STARTER_IDENTITY.symbol);
   const [timeframe, setTimeframe] = useState<CandleInterval>("1h");
   const [startLocal, setStartLocal] = useState("");
   const [endLocal, setEndLocal] = useState("");
@@ -174,7 +175,7 @@ export function ComparisonConfigForm({ disabled, busy, error, onSubmit }: Props)
       return;
     }
     const body: CreateComparisonRequest = {
-      symbol: symbol.trim(),
+      ...identityFromInput({ symbol: symbol.trim() }),
       timeframe,
       startTime,
       endTime,
@@ -254,7 +255,7 @@ export function ComparisonConfigForm({ disabled, busy, error, onSubmit }: Props)
             <input
               value={symbol}
               onChange={(e) => setSymbol(e.target.value)}
-              placeholder="btc_usdt"
+              placeholder="BTC/EUR"
               autoComplete="off"
             />
           </label>

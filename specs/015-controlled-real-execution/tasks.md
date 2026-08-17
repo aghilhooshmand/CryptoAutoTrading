@@ -313,3 +313,25 @@ pass (roadmap Controlled Real MVP includes exits, bounds, reconcile, recovery).
 - Prefer XT fakes in CI; optional live smoke is manual/gated
 - Do not extend Feature 014 Simulation auto-recovery into Real
 - Commit only when explicitly asked
+
+---
+
+## Phase 9: Amendment 2026-08-17 — Kraken Controlled Real
+
+**Blocked on Feature 002 T052–T069 and Feature 013 T053–T060.** Do not
+implement these tasks yet. Stop new XT live development.
+
+- [ ] T049 Attach Kraken private **write** (place + get order) only through
+      `backend/app/execution/real.py` / Feature 012 `RealExecutionAdapter`
+      (FR-012, FR-018)
+- [ ] T050 Persist `venue=kraken`, product identity, `quote_asset`,
+      `venue_order_id`; MVP cap 50 in session quote asset (FR-015, FR-016)
+- [ ] T051 Reject XT market data on Kraken Real sessions (FR-013)
+- [ ] T052 Confirmation / TTL / re-validate / reducing exits / blocked
+      recovery unchanged in semantics; UI Venue: Kraken; local budget ≠
+      Kraken cash; no Sim Portfolio writes (FR-017, FR-019)
+- [ ] T053 Tests with Kraken fakes (no live orders required in CI); keep XT
+      Real tests as regression until XT path is disabled (FR-020)
+
+Historical T001–T048 remain the XT-shaped as-built and MUST NOT be extended
+with new XT live behavior.

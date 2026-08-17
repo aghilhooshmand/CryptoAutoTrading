@@ -1,3 +1,5 @@
+import type { ProductIdentityFields } from "./productIdentity";
+
 /** Typed client for Feature 003 `/simulation` contracts. */
 
 export type SessionState =
@@ -57,6 +59,11 @@ export interface SimulationSession {
   mode: string;
   state: SessionState;
   symbol: string;
+  venue?: string;
+  baseAsset?: string;
+  quoteAsset?: string;
+  canonicalSymbol?: string;
+  venueProductId?: string;
   timeframe: string;
   strategyId: string;
   strategyParams?: Record<string, number | string>;
@@ -135,6 +142,11 @@ export interface HistoryListItem {
   label?: "SIMULATION" | "REAL";
   state: SessionState;
   symbol: string;
+  venue?: string;
+  baseAsset?: string;
+  quoteAsset?: string;
+  canonicalSymbol?: string;
+  venueProductId?: string;
   timeframe: string;
   strategyId: string;
   startedAt: string | null;
@@ -151,9 +163,8 @@ export interface SessionListResponse {
   offset: number;
 }
 
-export interface CreateSessionRequest {
+export interface CreateSessionRequest extends ProductIdentityFields {
   mode?: string;
-  symbol: string;
   timeframe: CandleInterval;
   startingCapital: string;
   allocatedCapital?: string;

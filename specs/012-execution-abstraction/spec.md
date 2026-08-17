@@ -29,6 +29,20 @@ These locks MUST appear in planning and implementation and MUST be verified by r
 5. **Backtest / historical evaluation MUST NOT** gain a **Portfolio** dependency (no reserved/deployed binding, no Portfolio holdings updates from backtest fills).
 6. **Real** execution in this feature is an **interface / stub only**; placing or managing real exchange orders and XT private integration are **deferred to Feature 013+**.
 
+## Amendment 2026-08-17 — venue_order_id (minimum)
+
+Feature 012 semantics for Historical/Simulation/Backtest are **unchanged**.
+
+Minimum additive change: `FillResult` MAY include `venue_order_id` (generic).
+Keep `xt_order_id` as a legacy alias until Feature 015 Kraken execution
+replaces XT writes. Real Kraken order placement is **not** Feature 012 work;
+it remains Feature 015 after 002+013 Kraken public/private-read.
+
+- **FR-018**: `FillResult` MUST allow a venue-neutral `venue_order_id`.
+  Simulation/Backtest fill outcomes MUST NOT change.
+
+---
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - One execution contract for modes (Priority: P1)

@@ -43,6 +43,21 @@ Comparison create bodies.
 | `warning` | Optional string when read fail-closed to starters |
 | `updatedAt` | Present for saved rows; may be null/omitted for pure starter responses before first Save/Reset |
 
+### Amendment 2026-08-17 — Product identity (C1)
+
+Settings GET/PUT/Reset MUST include `venue`, `baseAsset`, `quoteAsset`,
+`canonicalSymbol`, `venueProductId`. Product starters are **Kraken-first**
+(default product among actually listed BTC pairs: BTC/EUR, then BTC/USD, then
+BTC/USDT). `symbol` remains a compatibility alias (starters MAY set it to
+`canonicalSymbol`).
+
+Do **not** rewrite an already-saved Settings row that still has XT-form
+`symbol` and NULL venue. Fresh installs / Reset-to-starters get Kraken
+identity. Frontend create forms seeded from Settings MUST POST the identity
+fields, not only `symbol: btc_usdt`.
+
+---
+
 ---
 
 ## `GET /settings`

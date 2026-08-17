@@ -19,7 +19,13 @@ from app.backtest.limits import (
 from app.db.models import BacktestRunRow
 from app.execution.tpsl import validate_percents
 from app.market_data.adapters.base import MarketDataAdapterError, UnsupportedSymbolError
-from app.market_data.service import get_market_data_service
+from app.market_data.identity import (
+    ProductIdentityError,
+    identity_api_from_row,
+    persistence_columns,
+    resolve_product_identity,
+)
+from app.market_data.service import bound_service_for_identity, get_market_data_service
 from app.simulation.money import DEFAULT_FEE_RATE, DEFAULT_SLIPPAGE_RATE, as_str, d
 from app.strategy.params import StrategyParamError
 from app.strategy.registry import UnknownStrategyError, validate_and_materialize
@@ -47,10 +53,11 @@ def _dec(value: str, field: str) -> Decimal:
 
 
 def validate_config(body: dict[str, Any]) -> dict[str, Any]:
-    symbol = str(body.get("symbol") or "").strip()
+    try:
+        ident = resolve_product_identity(body)
+    except ProductIdentityError as exc:
+        raise BacktestError("invalid_config", str(exc)) from exc
     timeframe = str(body.get("timeframe") or "").strip()
-    if not symbol:
-        raise BacktestError("invalid_config", "symbol is required")
     try:
         assert_supported_interval(timeframe)
     except ValueError as exc:
@@ -144,7 +151,7 @@ def validate_config(body: dict[str, Any]) -> dict[str, Any]:
     min_history = instance.min_history_candles()
 
     return {
-        "symbol": symbol,
+        **persistence_columns(ident),
         "timeframe": timeframe,
         "start_time": start_time,
         "end_time": end_time,
@@ -178,9 +185,10 @@ async def create_and_run(db: Session, body: dict[str, Any], *, wire_shared: bool
     run = repo.create_running_run(db, fields)
 
     try:
-        service = get_market_data_service()
+        ident = resolve_product_identity(fields)
+        service, key = bound_service_for_identity(ident, injected=get_market_data_service())
         series = await service.get_candles(
-            fields["symbol"],
+            key,
             fields["timeframe"],
             limit=5000,
             start_time=fields["start_time"],
@@ -310,7 +318,7 @@ def run_to_dict(db: Session, run: BacktestRunRow, *, include_summary: bool = Tru
     out: dict[str, Any] = {
         "id": run.id,
         "status": run.status,
-        "symbol": run.symbol,
+        **identity_api_from_row(run),
         "timeframe": run.timeframe,
         "startTime": run.start_time,
         "endTime": run.end_time,

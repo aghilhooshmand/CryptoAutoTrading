@@ -53,6 +53,10 @@ implementation bodies.
 | reason_message | optional | recommended |
 | fill | FillQuote | null |
 | qty | decimal | null |
+| venue_order_id | optional / null | optional (amendment 2026-08-17) |
+
+Keep legacy `xt_order_id` until Feature 015 Kraken writes. Simulation/Backtest
+fill outcomes MUST NOT change (FR-018).
 
 ### Established failure codes (must remain stable)
 

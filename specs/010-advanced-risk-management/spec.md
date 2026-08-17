@@ -6,6 +6,19 @@
 
 **Status**: Draft
 
+## Amendment 2026-08-17 — Quote asset (minimum)
+
+Risk **semantics are unchanged**. Catalog codes, precedence, dual ledgers, and
+Simulation-only portfolio-aware rules remain.
+
+Minimum: treat money as the session/book `quote_asset`. Messages may still
+say USDT when that is the book quote. Per-symbol caps still exclude the quote
+asset (not “USDT” as a hardcoded special case once quote can be EUR/USD).
+Do not import Kraken/XT types into Risk. Do not unify Sim cash with Kraken
+balances.
+
+---
+
 **Input**: User description: "Feature 010 — Advanced Risk Management. Audit-approved MVP: keep one shared Risk authority on the existing pipeline (Market Data → Strategy → Controller → Risk → Execution → Portfolio/Accounting). Catalog and reuse existing session risk/control/execution reject and stop reasons; extend with portfolio-aware codes. Wire Simulation Risk to Feature 009 available / reserved / deployed and per-allocation exposure limits (deferred from 009). Add one clear Simulation Portfolio-level loss stop. Optional simple per-symbol exposure limit. Persist effective risk configuration on session/run create; Settings remain defaults only. Do not create a second risk engine for Portfolio, Backtest, Torque, or real trading. New portfolio-aware rules apply to Simulation; Backtest continues to reuse shared session Risk only. Out of scope: XT private API, real-money execution, reconciliation, execution-abstraction rewrite, Torque/GE-specific risk engines, autonomous trading, daily loss limits, unifying session cash with Portfolio USDT into one wallet."
 
 ## Clarifications

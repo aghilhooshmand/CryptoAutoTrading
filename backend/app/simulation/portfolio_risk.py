@@ -17,9 +17,7 @@ from app.simulation.state_machine import SessionState
 
 
 def base_asset_from_symbol(symbol: str) -> str:
-    # e.g. btc_usdt → btc
-    parts = symbol.lower().split("_")
-    return parts[0] if parts else symbol.lower()
+    return portfolio_svc.asset_from_symbol(symbol)
 
 
 def portfolio_available_amount(db: Session) -> Decimal:

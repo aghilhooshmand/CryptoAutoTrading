@@ -19,18 +19,18 @@ class MarketDataAdapterError(Exception):
 class UnsupportedSymbolError(MarketDataAdapterError):
     def __init__(self, symbol: str) -> None:
         super().__init__(
-            f"Symbol is not a supported USDT Spot pair: {symbol}",
+            f"Symbol is not a supported spot pair: {symbol}",
             code="unsupported",
         )
         self.symbol = symbol
 
 
 class MarketDataAdapter(Protocol):
-    async def list_usdt_pairs(self) -> list[TradingPair]:
-        """Return supported XT Spot pairs quoted in USDT."""
+    async def list_spot_pairs(self) -> list[TradingPair]:
+        """Return supported spot pairs for this venue."""
 
     async def get_quote(self, symbol: str) -> MarketQuote:
-        """Return normalized quote for a supported symbol."""
+        """Return normalized quote for a supported venue product id or alias."""
 
     async def get_candles(
         self,

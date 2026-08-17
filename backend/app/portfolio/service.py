@@ -118,7 +118,10 @@ def quote_cash_amount(db: Session) -> Decimal:
 
 
 def asset_from_symbol(symbol: str) -> str:
-    code = (symbol or "").strip().lower()
+    code = (symbol or "").strip()
+    if "/" in code:
+        return code.split("/", 1)[0].lower()
+    code = code.lower()
     if code.endswith("_usdt") and len(code) > 5:
         return code[: -len("_usdt")]
     if "_" in code:

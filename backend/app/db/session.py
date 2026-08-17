@@ -74,11 +74,22 @@ def init_db() -> None:
         ("xt_order_id", "TEXT"),
         ("real_reconcile_status", "TEXT"),
         ("real_submit_status", "TEXT"),
+        ("venue_order_id", "TEXT"),
+        ("venue", "TEXT"),
+        ("base_asset", "TEXT"),
+        ("quote_asset", "TEXT"),
+        ("canonical_symbol", "TEXT"),
+        ("venue_product_id", "TEXT"),
     ):
         _ensure_column(engine, "simulation_sessions", col, typ)
     for col, typ in (
         ("take_profit_percent", "TEXT"),
         ("stop_loss_percent", "TEXT"),
+        ("venue", "TEXT"),
+        ("base_asset", "TEXT"),
+        ("quote_asset", "TEXT"),
+        ("canonical_symbol", "TEXT"),
+        ("venue_product_id", "TEXT"),
     ):
         _ensure_column(engine, "backtest_runs", col, typ)
     for col, typ in (
@@ -90,8 +101,23 @@ def init_db() -> None:
         # Feature 025 protective TP/SL defaults
         ("take_profit_percent", "TEXT"),
         ("stop_loss_percent", "TEXT"),
+        ("venue", "TEXT"),
+        ("base_asset", "TEXT"),
+        ("quote_asset", "TEXT"),
+        ("canonical_symbol", "TEXT"),
+        ("venue_product_id", "TEXT"),
     ):
         _ensure_column(engine, "operator_defaults", col, typ)
+    for col, typ in (
+        ("venue", "TEXT"),
+        ("base_asset", "TEXT"),
+        ("quote_asset", "TEXT"),
+        ("canonical_symbol", "TEXT"),
+        ("venue_product_id", "TEXT"),
+    ):
+        _ensure_column(engine, "strategy_comparisons", col, typ)
+    _ensure_column(engine, "portfolio", "quote_asset", "TEXT")
+    _ensure_column(engine, "real_order_reconcile", "venue_order_id", "TEXT")
     # Feature 014: journal uniqueness for existing SQLite DBs (create_all alone is insufficient).
     _ensure_unique_index(
         engine,

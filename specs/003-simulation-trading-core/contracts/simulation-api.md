@@ -31,6 +31,25 @@ When omitted on create:
 `mode: "real_money"` MUST be rejected at create/start with
 `real_money_unavailable`. Feature 003 does not implement real XT execution.
 
+### Amendment 2026-08-17 — Product identity (C1)
+
+Create and read MUST support:
+
+| Field | Notes |
+|-------|--------|
+| `venue` | `kraken` (new default) or `xt` (legacy). Omit + XT-form `symbol` (e.g. `btc_usdt`) ⇒ infer `venue=xt`. Omit + no XT-form symbol on a **new** create ⇒ `venue=kraken` when other identity fields or Settings supply a Kraken product. |
+| `baseAsset` | Canonical base (e.g. `BTC`) |
+| `quoteAsset` | From the selected product (not assumed USDT or EUR) |
+| `canonicalSymbol` | Operator identity (e.g. `BTC/EUR`) |
+| `venueProductId` | Adapter wire id (Kraken pair id, or XT `btc_usdt`) |
+
+`symbol` is a **compatibility alias** only. New Kraken-default creates MUST
+persist and return the identity fields above; `symbol` MAY echo
+`canonicalSymbol`. Do **not** rewrite historical sessions. NULL-venue rows
+with XT-form `symbol` keep working as `venue=xt`.
+
+---
+
 ### `maxTrades`
 
 Limits **strategy-driven** fills only. After `strategyFillCount` reaches

@@ -11,6 +11,26 @@ from app.db import session as db_session
 from app.db.models import Base
 from app.main import app
 from app.settings.starters import product_starter_defaults
+from app.market_data.identity import is_xt_form_symbol
+
+
+_KRAKEN_IDENTITY_KEYS = (
+    "venue",
+    "baseAsset",
+    "quoteAsset",
+    "canonicalSymbol",
+    "venueProductId",
+)
+
+
+def _valid_body(**overrides):
+    body = product_starter_defaults()
+    symbol = overrides.get("symbol")
+    if symbol and is_xt_form_symbol(str(symbol)):
+        for key in _KRAKEN_IDENTITY_KEYS:
+            body.pop(key, None)
+    body.update(overrides)
+    return body
 
 
 @pytest.fixture()
@@ -24,17 +44,13 @@ def client(tmp_path, monkeypatch):
         yield c
 
 
-def _valid_body(**overrides):
-    body = product_starter_defaults()
-    body.update(overrides)
-    return body
-
-
 def test_get_empty_returns_starters(client):
     r = client.get("/settings")
     assert r.status_code == 200
     data = r.json()
     assert data["source"] == "starters"
+    assert data["symbol"] == "BTC/EUR"
+    assert data["venue"] == "kraken"
     assert data["startingCapital"] == "1000"
     assert data["strategyId"] == "dual_ema"
     assert data["decisionLogMode"] == "important_only"
@@ -106,7 +122,10 @@ def test_reset_restores_starters(client):
     r = client.post("/settings/reset")
     assert r.status_code == 200
     data = r.json()
-    assert data["symbol"] == "btc_usdt"
+    assert data["symbol"] == "BTC/EUR"
+    assert data["venue"] == "kraken"
+    assert data["canonicalSymbol"] == "BTC/EUR"
+    assert data["venueProductId"] == "XXBTZEUR"
     assert data["startingCapital"] == "1000"
     assert data["decisionLogMode"] == "important_only"
     assert data["source"] == "saved"

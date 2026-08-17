@@ -9,9 +9,10 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.db.models import SimulationSessionRow
+from app.market_data.identity import identity_from_row
 from app.market_data.models import MarketStatus
 from app.market_data.public_retry import PublicRetryExhausted, with_public_retry
-from app.market_data.service import get_market_data_service
+from app.market_data.service import bound_service_for_identity, get_market_data_service
 from app.simulation.control import reasons as risk_reasons
 from app.simulation.gap_skip import apply_offline_gap_skip
 from app.simulation.pending_confirmation import discard_all_pending_for_session
@@ -27,7 +28,9 @@ async def _mark_safe_for_row(row: SimulationSessionRow) -> bool:
     try:
 
         async def _call():
-            return await get_market_data_service().get_quote(row.symbol)
+            ident = identity_from_row(row)
+            service, key = bound_service_for_identity(ident, injected=get_market_data_service())
+            return await service.get_quote(key)
 
         quote = await with_public_retry(_call)
     except (PublicRetryExhausted, Exception):  # noqa: BLE001

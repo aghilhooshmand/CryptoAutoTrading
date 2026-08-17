@@ -14,8 +14,9 @@ from app.backtest.limits import is_insufficient_count, is_oversized_count
 from app.comparison import repository as repo
 from app.comparison.metrics import leg_metrics_from_summary
 from app.db.models import StrategyComparisonRow
+from app.market_data.identity import identity_api_from_row, resolve_product_identity
 from app.market_data.adapters.base import MarketDataAdapterError, UnsupportedSymbolError
-from app.market_data.service import get_market_data_service
+from app.market_data.service import bound_service_for_identity, get_market_data_service
 from app.strategy.params import StrategyParamError
 from app.strategy.registry import UnknownStrategyError, validate_and_materialize
 from app.strategy.serialize import display_strategy_id, dumps_params, effective_params_for_row
@@ -53,6 +54,8 @@ def _shared_fields_from_body(body: dict[str, Any]) -> dict[str, Any]:
     fields.pop("strategy_params_obj", None)
     fields.pop("strategy_id", None)
     fields.pop("strategy_params", None)
+    fields.pop("take_profit_percent", None)
+    fields.pop("stop_loss_percent", None)
     return fields
 
 
@@ -127,7 +130,7 @@ def comparison_to_dict(db: Session, row: StrategyComparisonRow) -> dict[str, Any
     return {
         "id": row.id,
         "status": row.status,
-        "symbol": row.symbol,
+        **identity_api_from_row(row),
         "timeframe": row.timeframe,
         "startTime": row.start_time,
         "endTime": row.end_time,
@@ -190,9 +193,10 @@ async def create_and_run(db: Session, body: dict[str, Any]) -> dict[str, Any]:
             )
 
         try:
-            service = get_market_data_service()
+            ident = resolve_product_identity(shared)
+            service, key = bound_service_for_identity(ident, injected=get_market_data_service())
             series = await service.get_candles(
-                shared["symbol"],
+                key,
                 shared["timeframe"],
                 limit=5000,
                 start_time=shared["start_time"],

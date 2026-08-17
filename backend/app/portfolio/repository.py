@@ -33,11 +33,14 @@ def get_portfolio(db: Session) -> PortfolioRow | None:
 def ensure_portfolio(db: Session) -> PortfolioRow:
     row = get_portfolio(db)
     if row is not None:
+        if getattr(row, "quote_asset", None) in (None, ""):
+            row.quote_asset = QUOTE_ASSET
         return row
     now = _now()
     row = PortfolioRow(
         id=PORTFOLIO_ID,
         cash="0",
+        quote_asset=QUOTE_ASSET,
         deployed="0",
         realized_pnl="0",
         unrealized_pnl="0",

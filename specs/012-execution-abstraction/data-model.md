@@ -95,3 +95,6 @@ None at persistence layer. In-memory only:
 
 Not persisted. Reason code `real_execution_unavailable` is a new stable
 literal for the Real stub only; existing Simulation/Backtest codes unchanged.
+
+**Amendment 2026-08-17:** `venue_order_id` optional on `FillResult`; unused for
+Kraken writes until Feature 015.

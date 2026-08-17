@@ -116,7 +116,7 @@ def test_real_orphan_always_blocks_and_never_auto_resumes(db):
     db.commit()
     with patch("app.simulation.recovery.get_market_data_service", return_value=_fresh_quote_svc()):
         with patch(
-            "app.simulation.gap_skip.apply_offline_gap_skip",
+            "app.simulation.recovery.apply_offline_gap_skip",
             new=AsyncMock(return_value=(True, None)),
         ):
             n = recover_orphan_sessions(db, now=now)
@@ -180,7 +180,7 @@ def test_unsettled_blocks_strategy_and_resume(db):
     async def _resume():
         with patch("app.simulation.recovery.get_market_data_service", return_value=_fresh_quote_svc()):
             with patch(
-                "app.simulation.gap_skip.apply_offline_gap_skip",
+                "app.simulation.recovery.apply_offline_gap_skip",
                 new=AsyncMock(return_value=(True, None)),
             ):
                 return await resume_session_async(db, row.id, clock=FakeClock(now))
@@ -206,7 +206,7 @@ def test_real_resume_succeeds_after_safe_reconcile(db):
     async def _resume():
         with patch("app.simulation.recovery.get_market_data_service", return_value=_fresh_quote_svc()):
             with patch(
-                "app.simulation.gap_skip.apply_offline_gap_skip",
+                "app.simulation.recovery.apply_offline_gap_skip",
                 new=AsyncMock(return_value=(True, None)),
             ):
                 return await resume_session_async(db, row.id, clock=FakeClock(now))

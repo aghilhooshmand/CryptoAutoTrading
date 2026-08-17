@@ -296,10 +296,14 @@ Decimal-safe representations rather than binary floating point.
 
 ## XVI. Exchange Isolation
 
-Exchange-specific behavior MUST remain behind adapters.
+Exchange-specific behavior MUST remain behind venue adapters.
 
 Core strategy, Controller, Risk, Backtest, Torque, GE, and accounting logic
-MUST NOT depend directly on XT-specific types.
+MUST NOT depend directly on venue-specific types, product identifiers,
+authentication schemes, or order/balance payloads.
+
+The intended live venue is a product choice recorded in the roadmap and
+feature specifications. It is not a constitutional constant.
 
 ---
 
@@ -686,3 +690,10 @@ changed.
 Detailed implementation decisions belong in feature specifications and design
 documents rather than being added to this constitution unless they represent
 durable project-wide rules.
+
+### Amendment 2026-08-17 (XVI)
+
+Principle XVI previously named XT as the example of types that must not leak
+into core. That wording is replaced with venue-neutral isolation. The current
+product choice of live venue (Kraken) belongs in `docs/ROADMAP.md` and feature
+specifications, not as a permanent constitutional requirement.

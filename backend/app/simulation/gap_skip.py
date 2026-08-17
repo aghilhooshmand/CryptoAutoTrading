@@ -9,8 +9,9 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.db.models import SimulationSessionRow, SkippedGapAuditRow
+from app.market_data.identity import identity_from_row
 from app.market_data.public_retry import PublicRetryExhausted, with_public_retry
-from app.market_data.service import get_market_data_service
+from app.market_data.service import bound_service_for_identity, get_market_data_service
 from app.simulation.reconcile import GATE_GAP
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,9 @@ async def _fetch_closed_open_times(row: SimulationSessionRow) -> list[int]:
         raise ValueError(f"Unsupported timeframe: {row.timeframe}")
 
     async def _call():
-        return await get_market_data_service().get_candles(row.symbol, row.timeframe)
+        ident = identity_from_row(row)
+        service, key = bound_service_for_identity(ident, injected=get_market_data_service())
+        return await service.get_candles(key, row.timeframe)
 
     series = await with_public_retry(_call)
     now_ms = int(clock.now().timestamp() * 1000)

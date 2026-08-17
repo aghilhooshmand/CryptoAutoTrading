@@ -7,8 +7,9 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from app.market_data.adapters.base import UnsupportedSymbolError
+from app.market_data.identity import VENUE_KRAKEN, VENUE_XT
 from app.market_data.models import MarketQuote, MarketStatus
-from app.market_data.service import get_market_data_service
+from app.market_data.service import bound_market_data_service, get_market_data_service
 from app.portfolio import identity
 
 QUOTE_ASSET = identity.QUOTE_ASSET
@@ -76,23 +77,36 @@ def classify_market_quote(quote: MarketQuote, now: datetime | None = None) -> Qu
     return QuoteView(price=price, status="stale" if stale else "fresh")
 
 
+def valuation_pair(asset: str, quote_asset: str) -> tuple[str, str]:
+    quote = (quote_asset or QUOTE_ASSET).lower()
+    base = asset.lower().strip()
+    if quote == "usdt":
+        return VENUE_XT, f"{base}_usdt"
+    return VENUE_KRAKEN, f"{base.upper()}/{quote.upper()}"
+
+
 async def fetch_quotes(
     assets: list[str],
     *,
     now: datetime | None = None,
     service=None,
+    quote_asset: str | None = None,
 ) -> dict[str, QuoteView]:
-    """Fetch public `{asset}_usdt` quotes. Failures become unavailable, not invented prices."""
+    """Fetch public quotes for holdings vs the book quote asset. Never invent prices."""
     now = now or datetime.now(timezone.utc)
-    md = service or get_market_data_service()
+    book_quote = (quote_asset or QUOTE_ASSET).lower()
     out: dict[str, QuoteView] = {}
     for raw in assets:
         asset = raw.lower().strip()
-        if asset == QUOTE_ASSET:
+        if asset == book_quote:
             out[asset] = usdt_quote()
             continue
+        venue, symbol = valuation_pair(asset, book_quote)
+        md = service or bound_market_data_service(
+            venue, symbol, injected=get_market_data_service()
+        )
         try:
-            quote = await md.get_quote(f"{asset}_usdt")
+            quote = await md.get_quote(symbol)
             out[asset] = classify_market_quote(quote, now)
         except UnsupportedSymbolError:
             out[asset] = QuoteView(price=None, status="unavailable")

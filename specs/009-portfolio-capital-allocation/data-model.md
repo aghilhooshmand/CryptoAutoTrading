@@ -48,6 +48,9 @@ Inspection-only: `price`, `priceStatus`, `marketValue`, `weight`,
 USDT quantity **is** quote cash. USDT unrealized P&L is not stored or
 invented (inspection: null).
 
+**Amendment 2026-08-17:** Quote cash is the holding of `quote_asset` (still
+`usdt` for existing Simulation books). Do not treat 009 as a Kraken wallet.
+
 Non-USDT rows are created only by `apply_simulation_fill`, never by operator
 upsert.
 

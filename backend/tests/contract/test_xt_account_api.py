@@ -208,13 +208,16 @@ def test_public_market_works_without_private_credentials(client: TestClient) -> 
                 )
             ]
 
+        async def list_spot_pairs(self):
+            return await self.list_usdt_pairs()
+
         async def get_quote(self, symbol: str):
             raise MarketDataAdapterError("unused")
 
         async def get_candles(self, *args, **kwargs):
             raise MarketDataAdapterError("unused")
 
-    set_market_data_service(MarketDataService(adapter=FakeAdapter()))
+    set_market_data_service(MarketDataService(adapter=FakeAdapter(), venue="xt"))
     set_xt_account_service(XtAccountService(environ={}))
     market = client.get("/market/pairs")
     assert market.status_code == 200

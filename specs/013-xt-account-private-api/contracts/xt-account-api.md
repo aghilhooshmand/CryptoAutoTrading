@@ -165,3 +165,14 @@ No `place_order` / `cancel_order` methods in 013.
 Rate limit: max one retry; `Retry-After` capped at 3s; else 0.5s backoff; then `rate_limited`.
 
 Signing: HMAC-SHA256 headers per XT v4; recvWindow default 5000 ms.
+
+---
+
+## Amendment 2026-08-17 — Living private-account contract
+
+New Kraken read routes MUST be venue-neutral (example: `/account/*` or
+documented equivalent) returning `venue: "kraken"`. Legacy `/xt-account/*`
+MAY remain. No place/cancel routes. Secrets never in request bodies or UI.
+
+Kraken adapter methods (internal): `get_balances`, `list_open_orders`,
+`get_order` only. No `AddOrder` in 013.

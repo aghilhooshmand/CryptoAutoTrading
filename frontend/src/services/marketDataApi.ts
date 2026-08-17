@@ -16,6 +16,11 @@ export interface TradingPair {
   baseCurrency: string;
   quoteCurrency: string;
   status: string;
+  venue?: string;
+  venueProductId?: string | null;
+  canonicalSymbol?: string | null;
+  baseAsset?: string | null;
+  quoteAsset?: string | null;
 }
 
 export interface PairsResponse {
@@ -75,16 +80,24 @@ async function parseJson<T>(response: Response): Promise<T> {
   return body as T;
 }
 
-export async function fetchPairs(signal?: AbortSignal): Promise<PairsResponse> {
-  const response = await fetch("/market/pairs", { signal });
+export async function fetchPairs(
+  signal?: AbortSignal,
+  venue?: string,
+): Promise<PairsResponse> {
+  const params = new URLSearchParams();
+  if (venue) params.set("venue", venue);
+  const suffix = params.toString() ? `?${params}` : "";
+  const response = await fetch(`/market/pairs${suffix}`, { signal });
   return parseJson<PairsResponse>(response);
 }
 
 export async function fetchQuote(
   symbol: string,
   signal?: AbortSignal,
+  venue?: string,
 ): Promise<MarketQuote> {
   const params = new URLSearchParams({ symbol });
+  if (venue) params.set("venue", venue);
   const response = await fetch(`/market/quote?${params}`, { signal });
   return parseJson<MarketQuote>(response);
 }
@@ -93,8 +106,10 @@ export async function fetchCandles(
   symbol: string,
   interval: CandleInterval,
   signal?: AbortSignal,
+  venue?: string,
 ): Promise<CandlestickSeries> {
   const params = new URLSearchParams({ symbol, interval });
+  if (venue) params.set("venue", venue);
   const response = await fetch(`/market/candles?${params}`, { signal });
   return parseJson<CandlestickSeries>(response);
 }

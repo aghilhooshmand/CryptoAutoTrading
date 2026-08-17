@@ -4,9 +4,92 @@
 
 **Created**: 2026-08-16
 
-**Status**: Clarified (session 2026-08-16)
+**Status**: Clarified (session 2026-08-16). **DONE (XT private read as-built).**
+**Amendment 2026-08-17 — venue-neutral private-account + Kraken implementation:
+PLANNED (implement after Feature 002 Kraken public). No Real orders in 013.**
 
 **Input**: Feature 013 — Private XT account integration (primarily read-only). Establish authenticated private-exchange connectivity for real XT account balances, open orders, and order status, with credential configuration that fails closed, normalized private errors, basic rate-limit handling, and an explicit Real XT account representation that never merges with Simulation Portfolio. Locked out: operator Real trading mode, Strategy→XT orders, RealExecutionAdapter live fills, **all place/cancel capability** (unconditionally deferred to Feature 015+), autonomous trading, withdrawals/transfers, Features 014–015 hardening/confirmed execution. Architecture lock: strategies never call XT; future path remains Strategy → Controller → Risk → RealExecutionAdapter → XT Private Client, but RealExecutionAdapter remains unavailable for live trading in this feature.
+
+## Amendment 2026-08-17 — Kraken-first private read
+
+Living direction for Feature 013 (same feature id; do not create 026; do not
+rename `XtAccountService` to a Kraken class as the architecture).
+
+**Locks:**
+
+1. Venue-neutral private-account **port** (balances, open orders, order
+   lookup) with **Kraken as the first implementation**.
+2. Feature 013 remains **read-only**. No place/cancel. No Real Kraken orders.
+3. Credentials: environment/secrets only (`KRAKEN_API_KEY` /
+   `KRAKEN_API_SECRET` or equivalent documented names). Never hard-code or
+   commit secrets. Fail closed if missing/invalid.
+4. Kraken signing/payloads stay inside the Kraken private adapter.
+5. Provenance `venue = kraken`. Simulation Portfolio never written or merged.
+6. Keep XT private code/UI temporarily for regression; not the live
+   destination. Stop new XT development.
+7. Coinbase out. Depends on Feature **002** Kraken public (product identity).
+8. Strategy, Controller, Risk MUST NOT import Kraken private types.
+9. RealExecutionAdapter MUST remain unavailable for live fills in 013.
+10. Operator UI: **Real Account / Venue: Kraken**; no trading buttons.
+    Prefer available/held in product assets over “XT Portfolio” / “USDT-only
+    real account”.
+
+Original FR-001–FR-017 describe the XT as-built. **Living amendment
+requirements are FR-018–FR-030.** Where they conflict, FR-018–FR-030 win.
+
+- **FR-018**: Feature 013 MUST expose a venue-neutral private-account boundary
+  (balances, open orders, order status) that core and UI consume without
+  Kraken or XT types.
+- **FR-019**: The first implementation of that boundary MUST be a **Kraken**
+  private adapter. Do not implement Coinbase. Do not treat a renamed XT
+  service as the architecture.
+- **FR-020**: Kraken private authentication/signing MUST remain inside the
+  Kraken adapter. Core MUST NOT construct Kraken signatures.
+- **FR-021**: Credentials MUST load from environment/secrets only; fail closed
+  with `credentials_missing` / `authentication_failed` (same meanings as
+  XT as-built). Placeholders only in `.env.example`.
+- **FR-022**: The system MUST read Kraken balances and map available/free vs
+  held/locked **only where Kraken actually provides that split**; MUST NOT
+  invent locked amounts. Omit zero/zero after normalization.
+- **FR-023**: The system MUST list open orders and look up order status on
+  Kraken, normalized to venue-neutral order identity (`venue_order_id`,
+  `venue_product_id`).
+- **FR-024**: Private errors MUST be normalized to stable codes (at least
+  credentials_missing, authentication_failed, timestamp_invalid, rate_limited,
+  venue_private_unavailable, order_not_found). XT-specific code names MAY
+  remain as legacy aliases on the XT adapter only.
+- **FR-025**: Rate-limit handling MUST remain bounded (at most one automatic
+  retry; honor Retry-After within a bound or short backoff).
+- **FR-026**: Account data MUST carry `venue = kraken` provenance and MUST NOT
+  write or merge into Feature 009 Simulation Portfolio.
+- **FR-027**: Minimal read-only Real Account UI (Venue: Kraken) MUST exist;
+  MUST NOT accept secrets or expose place/cancel/Real trading controls.
+  Legacy `/portfolio/real-xt` MAY remain until replaced.
+- **FR-028**: Public Feature 002 (including Kraken public) MUST remain usable
+  without private credentials.
+- **FR-029**: Feature 013 MUST NOT enable RealExecutionAdapter live fills or
+  any order placement/cancel. Deferred to Feature 015 after this Kraken read
+  path is complete.
+- **FR-030**: Implement this amendment only after Feature 002 Kraken public
+  market data (identity + public adapter) is complete. Automated tests MUST
+  cover Kraken signing fixtures (no live keys), fail-closed credentials,
+  normalize, isolation, and absence of trading controls.
+
+### Amendment success criteria
+
+- **SC-009**: No credentials → 100% Kraken account reads fail closed.
+- **SC-010**: Fixtures retrieve Kraken balances/orders with `venue=kraken`
+  without mutating Simulation Portfolio.
+- **SC-011**: Inspect UI has no trading controls.
+- **SC-012**: RealExecutionAdapter still places no exchange order from 013.
+- **SC-013**: Strategy/Controller/Risk have no Kraken private imports.
+
+### Amendment out of scope
+
+Place/cancel, Real trading mode, withdrawals/transfers, Coinbase, XT live
+trading, autonomous trading, Feature 015 execution.
+
+---
 
 ## Clarifications
 
@@ -213,3 +296,22 @@ These items are identified for planning and are **not** stakeholder FRs:
 7. **Tests**: FR-017 list.
 8. **Defer to 015+**: all place/cancel capability (client methods, RealExecutionAdapter live fills, confirmed real execution UX).
 9. **Bounded wait for Retry-After**: plan should pick a concrete max wait (e.g. a few seconds) so operator UX stays responsive.
+
+---
+
+## Amendment 2026-08-17 — Kraken private-read implementation plan
+
+**Implement after Feature 002 Kraken public is complete.**
+
+Add a Kraken private adapter behind a venue-neutral private-account port.
+Keep `backend/app/xt_account/` for regression. Do not rename it to Kraken.
+Do not add place/cancel. Do not wire RealExecutionAdapter writes.
+
+- Kraken private REST signing per current Kraken docs (verify at implement;
+  do not copy XT `validate-*` headers).
+- Env: `KRAKEN_API_KEY`, `KRAKEN_API_SECRET`.
+- Map balances / open orders / order lookup to venue-neutral DTOs with
+  `venue=kraken`.
+- Free vs locked: only fields Kraken actually returns; never invent.
+- UI: Real Account, Venue: Kraken; no order buttons.
+- Tests: recorded signing vectors; fail closed; Portfolio isolation.
