@@ -70,6 +70,10 @@ def init_db() -> None:
         ("take_profit_price", "TEXT"),
         ("stop_loss_price", "TEXT"),
         ("entry_fill_candle_open_time", "INTEGER"),
+        # Feature 015 Controlled Real
+        ("xt_order_id", "TEXT"),
+        ("real_reconcile_status", "TEXT"),
+        ("real_submit_status", "TEXT"),
     ):
         _ensure_column(engine, "simulation_sessions", col, typ)
     for col, typ in (

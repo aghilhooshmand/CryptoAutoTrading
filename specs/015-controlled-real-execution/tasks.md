@@ -53,8 +53,8 @@ only after quickstart gates pass.
 
 **Purpose**: Align docs and confirm touch points; no Real trading behavior yet
 
-- [ ] T001 Verify Feature 015 is `IN PROGRESS` on `docs/ROADMAP.md` and branch is `015-controlled-real-execution`; confirm MVP-1 / 025 DONE and no Torque/GE/014-auto-recovery-for-Real scope creep
-- [ ] T002 [P] Add brief Controlled Real operator notes to `README.md` (confirmed BUY; market only; ≤50 USDT; 5m pending TTL; blocked recovery; no Sim Portfolio writes) pointing at `specs/015-controlled-real-execution/` without inventing undocumented APIs
+- [X] T001 Verify Feature 015 is `IN PROGRESS` on `docs/ROADMAP.md` and branch is `015-controlled-real-execution`; confirm MVP-1 / 025 DONE and no Torque/GE/014-auto-recovery-for-Real scope creep
+- [X] T002 [P] Add brief Controlled Real operator notes to `README.md` (confirmed BUY; market only; ≤50 USDT; 5m pending TTL; blocked recovery; no Sim Portfolio writes) pointing at `specs/015-controlled-real-execution/` without inventing undocumented APIs
 
 ---
 
@@ -65,15 +65,15 @@ client, adapter scaffolding, and shared reason codes required by all stories
 
 **⚠️ CRITICAL**: No user-story Real trading until this phase completes
 
-- [ ] T003 Extend `SimulationSessionRow` (and add `PendingEntryConfirmationRow` and/or `RealOrderReconcileRow` as chosen in `data-model.md`) in `backend/app/db/models.py`; add `_ensure_column` / `create_all` support in `backend/app/db/session.py` `init_db()` for pending + Real order fields (`xt_order_id`, `reconcile_status`, etc.)
-- [ ] T004 [P] Add stable Real reason/error codes (e.g. `real_capital_cap_exceeded`, `pending_confirmation_expired`, `confirm_validation_failed`, `limit_orders_unavailable`, `xt_reconcile_unsettled`, `resume_unavailable`, `no_pending_confirmation`) in `backend/app/simulation/control/reasons.py` and/or session error module used by API
-- [ ] T005 Allow `mode="real"` create in `backend/app/simulation/session_service.py`: enforce `allocated_capital ≤ 50`, `0 < max_position_size ≤ allocated_capital`, one symbol; set `starting_capital = allocated_capital` and initial `cash` as **local budget only** (FR-004b — never treat/present as XT cash); require credentials at create; when XT balances readable, fail closed if free USDT < allocated (FR-004a); **skip** Simulation Portfolio reserve/bind/writes for Real; reject invalid Real config fail-closed; keep Simulation create path unchanged; expose `mode` and budget-vs-XT labeling in `session_to_dict`
-- [ ] T006 [P] Implement `PendingEntryConfirmation` create/get/expire/discard helpers in `backend/app/simulation/pending_confirmation.py` (5-minute TTL; at most one `pending` per session; terminal statuses immutable) per `contracts/confirmation-gate.md` and `data-model.md`
-- [ ] T007 [P] Add signed `place_market_order` (MARKET / SPOT only) on `XtPrivateClient` in `backend/app/xt_account/client.py` using Feature 013 signing; do **not** add public HTTP place/cancel/withdraw routes under `/xt-account/`
-- [ ] T008 Replace Real stub body in `backend/app/execution/real.py` with adapter scaffold that still fails closed until wired (`credentials_missing` / controlled unavailable), rejects non-MARKET, and is the **only** intended caller of `place_market_order`; keep `ExecutionEngine` protocol in `backend/app/execution/port.py` (extend intent only if strictly required)
-- [ ] T009 [P] Contract/create tests for Real mode bounds + Portfolio non-mutation at create in `backend/tests/contract/test_real_session_api.py` (and/or extend `backend/tests/contract/test_simulation_api.py`): `allocatedCapital > 50` → `real_capital_cap_exceeded`; valid Real create returns `mode: "real"`; Sim Portfolio holdings unchanged
-- [ ] T010 [P] Unit tests for pending TTL helpers in `backend/tests/unit/test_real_pending_ttl.py` (expire after 5m; no reuse of expired intent)
-- [ ] T011 [P] Assert Feature 013 HTTP surface still has no arbitrary place/cancel in `backend/tests/contract/test_xt_account_api.py` while allowing `XtPrivateClient.place_market_order` to exist for adapter use
+- [X] T003 Extend `SimulationSessionRow` (and add `PendingEntryConfirmationRow` and/or `RealOrderReconcileRow` as chosen in `data-model.md`) in `backend/app/db/models.py`; add `_ensure_column` / `create_all` support in `backend/app/db/session.py` `init_db()` for pending + Real order fields (`xt_order_id`, `reconcile_status`, etc.)
+- [X] T004 [P] Add stable Real reason/error codes (e.g. `real_capital_cap_exceeded`, `pending_confirmation_expired`, `confirm_validation_failed`, `limit_orders_unavailable`, `xt_reconcile_unsettled`, `resume_unavailable`, `no_pending_confirmation`) in `backend/app/simulation/control/reasons.py` and/or session error module used by API
+- [X] T005 Allow `mode="real"` create in `backend/app/simulation/session_service.py`: enforce `allocated_capital ≤ 50`, `0 < max_position_size ≤ allocated_capital`, one symbol; set `starting_capital = allocated_capital` and initial `cash` as **local budget only** (FR-004b — never treat/present as XT cash); require credentials at create; when XT balances readable, fail closed if free USDT < allocated (FR-004a); **skip** Simulation Portfolio reserve/bind/writes for Real; reject invalid Real config fail-closed; keep Simulation create path unchanged; expose `mode` and budget-vs-XT labeling in `session_to_dict`
+- [X] T006 [P] Implement `PendingEntryConfirmation` create/get/expire/discard helpers in `backend/app/simulation/pending_confirmation.py` (5-minute TTL; at most one `pending` per session; terminal statuses immutable) per `contracts/confirmation-gate.md` and `data-model.md`
+- [X] T007 [P] Add signed `place_market_order` (MARKET / SPOT only) on `XtPrivateClient` in `backend/app/xt_account/client.py` using Feature 013 signing; do **not** add public HTTP place/cancel/withdraw routes under `/xt-account/`
+- [X] T008 Replace Real stub body in `backend/app/execution/real.py` with adapter scaffold that still fails closed until wired (`credentials_missing` / controlled unavailable), rejects non-MARKET, and is the **only** intended caller of `place_market_order`; keep `ExecutionEngine` protocol in `backend/app/execution/port.py` (extend intent only if strictly required)
+- [X] T009 [P] Contract/create tests for Real mode bounds + Portfolio non-mutation at create in `backend/tests/contract/test_real_session_api.py` (and/or extend `backend/tests/contract/test_simulation_api.py`): `allocatedCapital > 50` → `real_capital_cap_exceeded`; valid Real create returns `mode: "real"`; Sim Portfolio holdings unchanged
+- [X] T010 [P] Unit tests for pending TTL helpers in `backend/tests/unit/test_real_pending_ttl.py` (expire after 5m; no reuse of expired intent)
+- [X] T011 [P] Assert Feature 013 HTTP surface still has no arbitrary place/cancel in `backend/tests/contract/test_xt_account_api.py` while allowing `XtPrivateClient.place_market_order` to exist for adapter use
 
 **Checkpoint**: Real create + schema + pending helpers + XT place client + adapter scaffold ready; pipeline still Simulation-only for fills until US1
 
@@ -91,20 +91,20 @@ confirm-fail → no order / no phantom position
 
 ### Tests for User Story 1
 
-- [ ] T012 [P] [US1] Unit/pipeline tests for confirmation gate in `backend/tests/unit/test_real_confirmation_gate.py` (BUY after Risk does not call place; decline/stop discard; confirm-time validation failure clears/rejects with no XT)
-- [ ] T013 [P] [US1] Contract tests for confirm/decline routes in `backend/tests/contract/test_real_session_api.py` (`POST .../confirm-entry`, `POST .../decline-entry`; expired → `pending_confirmation_expired`)
-- [ ] T014 [P] [US1] Adapter unit tests with fake XT in `backend/tests/unit/test_real_execution_adapter.py` (place ack alone does not yield filled `FillResult`; filled only after get_order/reconcile evidence)
+- [X] T012 [P] [US1] Unit/pipeline tests for confirmation gate in `backend/tests/unit/test_real_confirmation_gate.py` (BUY after Risk does not call place; decline/stop discard; confirm-time validation failure clears/rejects with no XT)
+- [X] T013 [P] [US1] Contract tests for confirm/decline routes in `backend/tests/contract/test_real_session_api.py` (`POST .../confirm-entry`, `POST .../decline-entry`; expired → `pending_confirmation_expired`)
+- [X] T014 [P] [US1] Adapter unit tests with fake XT in `backend/tests/unit/test_real_execution_adapter.py` (place ack alone does not yield filled `FillResult`; filled only after get_order/reconcile evidence)
 
 ### Implementation for User Story 1
 
-- [ ] T015 [US1] Branch Real path in `backend/app/simulation/pipeline.py`: after Controller+Risk APPROVE exposure-increasing BUY, create pending confirmation and **do not** call RealExecutionAdapter; expose `pendingConfirmation` via `session_to_dict` / status
-- [ ] T016 [US1] Wire worker/pipeline to expire pendings (TTL) without stopping session; discard pending on session stop in `backend/app/simulation/session_service.py` / `pending_confirmation.py`
-- [ ] T017 [US1] Implement confirm-entry final validation (mark trust, risk, capital cap, flat→long rules, **XT free USDT ≥ intended notional** per FR-004a) then call RealExecutionAdapter market BUY in `backend/app/simulation/session_service.py` (or dedicated confirm module); decline-entry discards without XT
-- [ ] T018 [US1] Complete `RealExecutionAdapter.execute` in `backend/app/execution/real.py`: MARKET place via `XtPrivateClient`, poll/reconcile with **≤5s** budget; apply fills only from XT evidence; on timeout **retain `xt_order_id`**, set unsettled, block new orders (FR-006c); on partial fill record exposure and signal caller to enter `RECOVERY_BLOCKED` (FR-006b); apply Real session cash/position **without** Portfolio mutations and without treating budget cash as XT cash
-- [ ] T019 [US1] Add FastAPI routes confirm-entry / decline-entry in `backend/app/api/simulation.py` per `contracts/session-real-api.md`
-- [ ] T020 [US1] Select RealExecutionAdapter for `mode=real` in pipeline/execution wiring (Simulation adapter remains for `mode=simulation`)
-- [ ] T021 [US1] Minimal frontend: Real pending confirm/decline UI + API client in `frontend/src/services/simulationApi.ts`, `frontend/src/features/simulation/SessionStatusPanel.tsx` and/or `SimulationSessionDetailPage.tsx`, `useSimulationSession.ts`
-- [ ] T022 [P] [US1] Frontend smoke test for pending confirm actions in `frontend/src/__tests__/controlledRealUi015.test.tsx` (~375px)
+- [X] T015 [US1] Branch Real path in `backend/app/simulation/pipeline.py`: after Controller+Risk APPROVE exposure-increasing BUY, create pending confirmation and **do not** call RealExecutionAdapter; expose `pendingConfirmation` via `session_to_dict` / status
+- [X] T016 [US1] Wire worker/pipeline to expire pendings (TTL) without stopping session; discard pending on session stop in `backend/app/simulation/session_service.py` / `pending_confirmation.py`
+- [X] T017 [US1] Implement confirm-entry final validation (mark trust, risk, capital cap, flat→long rules, **XT free USDT ≥ intended notional** per FR-004a) then call RealExecutionAdapter market BUY in `backend/app/simulation/session_service.py` (or dedicated confirm module); decline-entry discards without XT
+- [X] T018 [US1] Complete `RealExecutionAdapter.execute` in `backend/app/execution/real.py`: MARKET place via `XtPrivateClient`, poll/reconcile with **≤5s** budget; apply fills only from XT evidence; on timeout **retain `xt_order_id`**, set unsettled, block new orders (FR-006c); on partial fill record exposure and signal caller to enter `RECOVERY_BLOCKED` (FR-006b); apply Real session cash/position **without** Portfolio mutations and without treating budget cash as XT cash
+- [X] T019 [US1] Add FastAPI routes confirm-entry / decline-entry in `backend/app/api/simulation.py` per `contracts/session-real-api.md`
+- [X] T020 [US1] Select RealExecutionAdapter for `mode=real` in pipeline/execution wiring (Simulation adapter remains for `mode=simulation`)
+- [X] T021 [US1] Minimal frontend: Real pending confirm/decline UI + API client in `frontend/src/services/simulationApi.ts`, `frontend/src/features/simulation/SessionStatusPanel.tsx` and/or `SimulationSessionDetailPage.tsx`, `useSimulationSession.ts`
+- [X] T022 [P] [US1] Frontend smoke test for pending confirm actions in `frontend/src/__tests__/controlledRealUi015.test.tsx` (~375px)
 
 **Checkpoint**: US1 MVP — confirmed Real entry works end-to-end with fakes
 

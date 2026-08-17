@@ -27,6 +27,19 @@ PORTFOLIO_MAX_LOSS = "portfolio_max_loss"
 PORTFOLIO_MAX_LOSS_UNCOMPUTABLE = "portfolio_max_loss_uncomputable"
 PER_SYMBOL_EXPOSURE_EXCEEDED = "per_symbol_exposure_exceeded"
 
+# Feature 015 Controlled Real
+REAL_CAPITAL_CAP_EXCEEDED = "real_capital_cap_exceeded"
+PENDING_CONFIRMATION_EXPIRED = "pending_confirmation_expired"
+CONFIRM_VALIDATION_FAILED = "confirm_validation_failed"
+LIMIT_ORDERS_UNAVAILABLE = "limit_orders_unavailable"
+XT_RECONCILE_UNSETTLED = "xt_reconcile_unsettled"
+RESUME_UNAVAILABLE = "resume_unavailable"
+NO_PENDING_CONFIRMATION = "no_pending_confirmation"
+INSUFFICIENT_XT_FREE = "insufficient_xt_free"
+PARTIAL_FILLED_BLOCKED = "partial_filled_blocked"
+XT_ORDER_REJECTED = "xt_order_rejected"
+CREDENTIALS_MISSING = "credentials_missing"
+
 # Stop trigger aliases (session stop_reason / RiskDecision.trigger_stop).
 STOP_MAX_TRADES = "max_trades"
 STOP_PROFIT_TARGET = "profit_target"
@@ -52,6 +65,17 @@ _MESSAGES: dict[str, str] = {
     PORTFOLIO_MAX_LOSS: "Portfolio maximum loss bound reached.",
     PORTFOLIO_MAX_LOSS_UNCOMPUTABLE: "Portfolio loss metric cannot be computed; new buys blocked.",
     PER_SYMBOL_EXPOSURE_EXCEEDED: "Trade would exceed the per-symbol weight cap.",
+    REAL_CAPITAL_CAP_EXCEEDED: "Real allocated capital exceeds the 50 USDT MVP safety cap.",
+    PENDING_CONFIRMATION_EXPIRED: "Pending Real entry confirmation has expired.",
+    CONFIRM_VALIDATION_FAILED: "Final pre-submit validation failed; no XT order placed.",
+    LIMIT_ORDERS_UNAVAILABLE: "Limit orders are not available for Controlled Real MVP.",
+    XT_RECONCILE_UNSETTLED: "XT order outcome unsettled; new orders blocked until reconcile.",
+    RESUME_UNAVAILABLE: "Resume unavailable until Real reconciliation proves safe.",
+    NO_PENDING_CONFIRMATION: "No pending Real entry confirmation for this session.",
+    INSUFFICIENT_XT_FREE: "XT free USDT is insufficient for the intended Real entry.",
+    PARTIAL_FILLED_BLOCKED: "Partial XT fill recorded; session blocked until reconcile/Resume.",
+    XT_ORDER_REJECTED: "XT rejected the Real order.",
+    CREDENTIALS_MISSING: "XT private credentials are not configured.",
 }
 
 

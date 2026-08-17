@@ -34,6 +34,8 @@ interface Props {
   onStop?: () => void;
   onEmergencyStop?: () => void;
   onResume?: () => void;
+  onConfirmEntry?: () => void;
+  onDeclineEntry?: () => void;
 }
 
 export function SessionStatusPanel({
@@ -42,6 +44,8 @@ export function SessionStatusPanel({
   onStop,
   onEmergencyStop,
   onResume,
+  onConfirmEntry,
+  onDeclineEntry,
 }: Props) {
   if (!session) {
     return (
@@ -55,12 +59,14 @@ export function SessionStatusPanel({
   const runningOrStopping = session.state === "RUNNING" || session.state === "STOPPING";
   const recoveryBlocked = session.state === "RECOVERY_BLOCKED";
   const showStopActions = runningOrStopping || recoveryBlocked;
+  const pending = session.pendingConfirmation;
+  const isReal = session.label === "REAL" || session.mode === "real";
 
   return (
     <section className="simulation-status" data-testid="simulation-status" aria-labelledby="sim-status-title">
       <div className="sim-status-header">
         <h2 id="sim-status-title">Session status</h2>
-        <SimulationBadge />
+        <SimulationBadge label={isReal ? "REAL" : "SIMULATION"} />
       </div>
       <dl className="sim-dl">
         <div>
@@ -124,7 +130,15 @@ export function SessionStatusPanel({
         </div>
         <div>
           <Term>Cash</Term>
-          <dd>{session.cash} USDT</dd>
+          <dd>
+            {session.cash} USDT
+            {session.cashIsLocalBudgetOnly ? (
+              <span className="note" data-testid="sim-cash-budget-note">
+                {" "}
+                (local budget only — not XT cash)
+              </span>
+            ) : null}
+          </dd>
         </div>
         <div>
           <Term
@@ -232,6 +246,47 @@ export function SessionStatusPanel({
           </div>
         ) : null}
       </dl>
+      {pending ? (
+        <section
+          className="real-pending-confirm"
+          data-testid="real-pending-confirm"
+          aria-labelledby="real-pending-title"
+        >
+          <h3 id="real-pending-title">Real entry confirmation required</h3>
+          <p className="note">
+            Strategy approved a BUY. Confirm to place a market order on XT, or decline to skip.
+            Expires {pending.expiresAt}.
+          </p>
+          <dl className="sim-dl">
+            <div>
+              <dt>Notional</dt>
+              <dd data-testid="real-pending-notional">{pending.proposedNotional} USDT</dd>
+            </div>
+            <div>
+              <dt>Reference price</dt>
+              <dd>{pending.referencePrice}</dd>
+            </div>
+          </dl>
+          <div className="sim-actions">
+            <button
+              type="button"
+              data-testid="real-confirm-entry"
+              disabled={busy}
+              onClick={onConfirmEntry}
+            >
+              Confirm Real entry
+            </button>
+            <button
+              type="button"
+              data-testid="real-decline-entry"
+              disabled={busy}
+              onClick={onDeclineEntry}
+            >
+              Decline
+            </button>
+          </div>
+        </section>
+      ) : null}
       {showStopActions ? (
         <div className="sim-actions">
           {recoveryBlocked ? (

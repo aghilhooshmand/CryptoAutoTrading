@@ -7,7 +7,9 @@ import type {
   TradeItem,
 } from "../../services/simulationApi";
 import {
+  confirmEntry,
   createSession,
+  declineEntry,
   emergencyStopSession,
   fetchActiveSession,
   fetchDecisions,
@@ -132,6 +134,36 @@ export function useSimulationSession() {
     }
   }
 
+  async function confirmRealEntry() {
+    if (!session) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await confirmEntry(session.id);
+      setSession(updated);
+      await loadJournals(updated.id);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function declineRealEntry() {
+    if (!session) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await declineEntry(session.id);
+      setSession(updated);
+      await loadJournals(updated.id);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const configDisabled =
     busy ||
     session?.state === "RUNNING" ||
@@ -149,5 +181,7 @@ export function useSimulationSession() {
     stop,
     emergencyStop,
     resume,
+    confirmRealEntry,
+    declineRealEntry,
   };
 }

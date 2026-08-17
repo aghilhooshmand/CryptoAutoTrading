@@ -17,8 +17,11 @@ from app.simulation.clock import Clock
 from app.simulation.control.controller import TradingController
 from app.simulation.control.risk import UNSAFE_QUOTE_LIMIT, RiskContext, RiskManager
 from app.simulation.decision_log_mode import should_persist_hold
-from app.simulation.execution.port import ExecutionIntent, SimulationExecutionEngine
+from app.simulation.execution.port import ExecutionIntent
+from app.simulation.execution_adapter import execution_engine_for
 from app.simulation.money import as_str, d
+from app.simulation.pending_confirmation import create_pending, expire_due_for_session, get_active_pending
+from app.simulation.position_sizing import intended_notional
 from app.simulation.session_service import (
     _apply_fill,
     add_decision,
@@ -139,7 +142,7 @@ async def _try_protective_exit(
     )
     controller = TradingController()
     risk = RiskManager()
-    engine = SimulationExecutionEngine()
+    engine = execution_engine_for(row)
 
     ctrl = controller.review(SessionState(row.state), signal)
     if not ctrl.approved:
@@ -260,6 +263,9 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
     if row.state != SessionState.RUNNING.value:
         return
 
+    if row.mode == "real":
+        expire_due_for_session(db, row.id, now=clock.now())
+
     if row.started_at is not None:
         elapsed = (clock.now() - _as_utc(row.started_at)).total_seconds()
         if elapsed >= row.duration_seconds:
@@ -342,7 +348,6 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
     signal = strategy.evaluate(closes)
     controller = TradingController()
     risk = RiskManager()
-    engine = SimulationExecutionEngine()
 
     ctrl = controller.review(SessionState(row.state), signal)
     if signal.side == SignalSide.HOLD:
@@ -419,6 +424,46 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
             await stop_session_async(db, row.id, risk_dec.trigger_stop, clock=clock)
         return
 
+    # Real exposure-increasing BUY: confirmation gate (no XT until operator confirm).
+    if (
+        row.mode == "real"
+        and signal.side == SignalSide.BUY
+        and row.position_side == "flat"
+    ):
+        if get_active_pending(db, row.id) is not None:
+            row.last_processed_candle_open_time = newest.open_time
+            db.commit()
+            return
+        notional = intended_notional(
+            d(row.cash),
+            d(row.fee_rate),
+            d(row.allocated_capital),
+            d(row.max_position_size),
+        )
+        create_pending(
+            db,
+            session_id=row.id,
+            symbol=row.symbol,
+            proposed_notional=notional,
+            reference_price=mark,
+            now=clock.now(),
+        )
+        add_decision(
+            db,
+            row,
+            signal="BUY",
+            outcome="pending_confirmation",
+            candle_open_time=signal.candle_open_time,
+            reason_code="awaiting_real_confirm",
+            reason_message="Real BUY awaiting operator confirmation",
+            fast_ema=as_str(signal.fast_ema) if signal.fast_ema is not None else None,
+            slow_ema=as_str(signal.slow_ema) if signal.slow_ema is not None else None,
+            clock=clock,
+        )
+        row.last_processed_candle_open_time = newest.open_time
+        db.commit()
+        return
+
     # Idempotency: refuse duplicate fill for same candle (restart / retry).
     if (
         row.last_processed_candle_open_time is not None
@@ -429,6 +474,7 @@ async def process_session_tick(db: Session, row: SimulationSessionRow, clock: Cl
         db.commit()
         return
 
+    engine = execution_engine_for(row)
     intent = ExecutionIntent(
         side=signal.side.value,
         symbol=row.symbol,

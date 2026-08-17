@@ -40,7 +40,7 @@ def _parse_retry_after(header_value: str | None) -> Optional[float]:
 
 
 class XtPrivateClient:
-    """Signed GET client for balances / open orders / order status only."""
+    """Signed XT Spot private client — reads (013) + market place (015, adapter-only)."""
 
     def __init__(
         self,
@@ -73,6 +73,35 @@ class XtPrivateClient:
 
     async def get_order(self, order_id: str) -> Any:
         return await self._signed_get(f"/v4/order/{order_id}")
+
+    async def place_market_order(
+        self,
+        *,
+        symbol: str,
+        side: str,
+        quantity: str | None = None,
+        quote_qty: str | None = None,
+    ) -> Any:
+        """Place SPOT MARKET order. Only RealExecutionAdapter should call this."""
+        side_u = side.upper()
+        if side_u not in ("BUY", "SELL"):
+            raise XtPrivateError(XT_PRIVATE_UNAVAILABLE, "Invalid order side.")
+        if (quantity is None) == (quote_qty is None):
+            raise XtPrivateError(
+                XT_PRIVATE_UNAVAILABLE,
+                "Market order requires exactly one of quantity or quoteQty.",
+            )
+        body: dict[str, str] = {
+            "symbol": symbol,
+            "side": side_u,
+            "type": "MARKET",
+            "bizType": "SPOT",
+        }
+        if quantity is not None:
+            body["quantity"] = quantity
+        if quote_qty is not None:
+            body["quoteQty"] = quote_qty
+        return await self._signed_post("/v4/order", body=body)
 
     async def _signed_get(
         self,
@@ -114,6 +143,65 @@ class XtPrivateClient:
                 path, params=params, response=response, retried=_retried
             )
 
+        return self._parse_response(response)
+
+    async def _signed_post(
+        self,
+        path: str,
+        *,
+        body: Mapping[str, str],
+        _retried: bool = False,
+    ) -> Any:
+        import json
+
+        body_text = json.dumps(body, separators=(",", ":"), ensure_ascii=False)
+        headers = signed_headers(
+            api_key=self._credentials.api_key,
+            api_secret=self._credentials.api_secret,
+            timestamp_ms=self._clock_ms(),
+            method="POST",
+            path=path,
+            query="",
+            body=body_text,
+        )
+        request_headers = {
+            **headers,
+            "accept": "*/*",
+            "Content-Type": "application/json",
+        }
+        try:
+            response = await self._client.post(path, headers=request_headers, content=body_text)
+        except httpx.TimeoutException as exc:
+            raise XtPrivateError(
+                XT_PRIVATE_UNAVAILABLE,
+                "XT private request timed out.",
+            ) from exc
+        except httpx.HTTPError as exc:
+            raise XtPrivateError(
+                XT_PRIVATE_UNAVAILABLE,
+                "XT private request failed due to a network error.",
+            ) from exc
+
+        if response.status_code == 429:
+            if _retried:
+                raise XtPrivateError(
+                    RATE_LIMITED,
+                    "XT private rate limit exceeded after one retry.",
+                )
+            delay = _parse_retry_after(response.headers.get("Retry-After"))
+            if delay is None:
+                delay = SHORT_BACKOFF_S
+            if delay > MAX_RETRY_AFTER_WAIT_S:
+                raise XtPrivateError(
+                    RATE_LIMITED,
+                    "XT private rate limited; Retry-After exceeds the allowed wait bound.",
+                )
+            await self._sleep(delay)
+            return await self._signed_post(path, body=body, _retried=True)
+
+        return self._parse_response(response)
+
+    def _parse_response(self, response: httpx.Response) -> Any:
         try:
             payload: Any = response.json()
         except ValueError as exc:

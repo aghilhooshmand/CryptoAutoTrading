@@ -17,7 +17,14 @@ Trading (shared candles, 2–5 legs, no automatic winner). Feature
 `008-trading-experiment-defaults` centralizes reusable operator defaults.
 Feature `009-portfolio-capital-allocation` adds the **Simulation Portfolio**
 (fund USDT, fill-driven holdings, public valuation, compact capital
-reservation). Real-money trading, sentiment, and auth remain out of scope.
+reservation). Feature `015-controlled-real-execution` enables **Controlled
+Real** on the same Auto Trading session pipeline (`mode=real`): confirmed
+market BUY entries, automatic reducing exits, ≤50 USDT allocated budget,
+5-minute pending TTL, XT reconcile (not invented fills), and blocked recovery
+(never auto-resume). Real sessions do **not** write Simulation Portfolio
+holdings; local startingCapital/cash are budget only — not XT cash. See
+[`specs/015-controlled-real-execution/`](specs/015-controlled-real-execution/).
+Sentiment and auth remain out of scope.
 
 ## Prerequisites
 
@@ -25,10 +32,11 @@ reservation). Real-money trading, sentiment, and auth remain out of scope.
 - **Node.js LTS** (includes npm)
 - Network access to `https://sapi.xt.com` for live market data
 - **Public market data needs no XT credentials**
-- **Optional (Feature 013)**: `XT_API_KEY` and `XT_API_SECRET` for read-only Real XT
-  account inspect (`/portfolio/real-xt`). Use a **read-scoped** key without withdrawal
-  permission. Never commit real secrets. See `.env.example` and
-  [`specs/013-xt-account-private-api/quickstart.md`](specs/013-xt-account-private-api/quickstart.md).
+- **Optional (Feature 013 / 015)**: `XT_API_KEY` and `XT_API_SECRET` for Real XT
+  account inspect (`/portfolio/real-xt`) and Controlled Real trading (015). Prefer
+  a key without withdrawal permission. Never commit real secrets. See `.env.example`,
+  [`specs/013-xt-account-private-api/quickstart.md`](specs/013-xt-account-private-api/quickstart.md),
+  and [`specs/015-controlled-real-execution/quickstart.md`](specs/015-controlled-real-execution/quickstart.md).
 
 ## Canonical routes
 
@@ -113,10 +121,19 @@ Optional per-position **take-profit / stop-loss percentages** on Simulation and
 Backtest creates. Absolute levels are derived from the entry fill; triggers use
 candle high/low (never the entry-fill candle). Fills stay mode-native —
 Simulation live mark vs Backtest next-open — and never use the TP/SL price.
-Protective exits do not consume `maxTrades`. No Real trading.
+Protective exits do not consume `maxTrades`.
 
 Semantics (intentional Sim vs Backtest differences):
 [`specs/025-stage1-trading-gap-close/contracts/sim-vs-backtest-semantics.md`](specs/025-stage1-trading-gap-close/contracts/sim-vs-backtest-semantics.md)
+
+### Controlled Real (Feature 015 — IN PROGRESS)
+
+Operator-supervised Real sessions on XT (`mode=real`) under Auto Trading:
+confirmed market entries, automatic protective/reducing exits, hard ≤50 USDT
+allocated budget, 5-minute pending confirmation TTL, XT free-balance gate before
+entry, and `RECOVERY_BLOCKED` after restart / partial / unsettled (no Feature 014
+auto-resume for Real). Spec and validation:
+[`specs/015-controlled-real-execution/`](specs/015-controlled-real-execution/).
 
 ## Historical backtesting (Feature 004)
 

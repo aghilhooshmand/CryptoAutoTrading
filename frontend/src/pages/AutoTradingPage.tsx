@@ -39,6 +39,8 @@ export function AutoTradingPage() {
     stop,
     emergencyStop,
     resume,
+    confirmRealEntry,
+    declineRealEntry,
   } = useSimulationSession();
 
   const backtest = useBacktest();
@@ -48,7 +50,9 @@ export function AutoTradingPage() {
     <section className="page auto-trading-page" aria-labelledby="auto-trading-title">
       <header className="sim-page-header">
         <h1 id="auto-trading-title">Auto Trading</h1>
-        {tab === "simulation" ? <SimulationBadge /> : null}
+        {tab === "simulation" ? (
+          <SimulationBadge label={session?.label === "REAL" ? "REAL" : "SIMULATION"} />
+        ) : null}
       </header>
 
       <div
@@ -138,6 +142,12 @@ export function AutoTradingPage() {
           }}
           onResume={() => {
             void resume();
+          }}
+          onConfirmEntry={() => {
+            void confirmRealEntry();
+          }}
+          onDeclineEntry={() => {
+            void declineRealEntry();
           }}
         />
 

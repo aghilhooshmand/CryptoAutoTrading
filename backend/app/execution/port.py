@@ -31,6 +31,10 @@ class FillResult:
     reason_message: str | None = None
     fill: FillQuote | None = None
     qty: Decimal | None = None
+    # Feature 015 Real reconcile metadata (optional)
+    xt_order_id: str | None = None
+    reconcile_status: str | None = None
+    blocked: bool = False
 
 
 class ExecutionEngine(Protocol):

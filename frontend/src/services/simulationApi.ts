@@ -35,6 +35,23 @@ export interface SessionEconomics {
   markSafe: boolean;
 }
 
+export interface PendingConfirmation {
+  id: string;
+  symbol: string;
+  side: string;
+  proposedNotional: string;
+  referencePrice: string;
+  status: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface RealReconcileSummary {
+  xtOrderId: string | null;
+  submitStatus: string | null;
+  reconcileStatus: string | null;
+}
+
 export interface SimulationSession {
   id: string;
   mode: string;
@@ -65,6 +82,8 @@ export interface SimulationSession {
   takeProfitPrice?: string | null;
   stopLossPrice?: string | null;
   cash: string;
+  cashIsLocalBudgetOnly?: boolean;
+  startingCapitalIsLocalBudgetOnly?: boolean;
   positionSide: string;
   positionQty: string;
   tradeCount: number;
@@ -78,9 +97,11 @@ export interface SimulationSession {
   recoveryDetail?: string | null;
   lastRecoveryAt?: string | null;
   skippedGap?: SkippedGapSummary | null;
+  pendingConfirmation?: PendingConfirmation | null;
+  realReconcile?: RealReconcileSummary | null;
   economics: SessionEconomics;
   finalResult?: FinalResult | null;
-  label: "SIMULATION";
+  label: "SIMULATION" | "REAL";
 }
 
 export interface FinalResult {
@@ -253,6 +274,28 @@ export async function resumeSession(
   signal?: AbortSignal,
 ): Promise<SimulationSession> {
   const response = await fetch(`/simulation/sessions/${id}/resume`, {
+    method: "POST",
+    signal,
+  });
+  return parseJson<SimulationSession>(response);
+}
+
+export async function confirmEntry(
+  id: string,
+  signal?: AbortSignal,
+): Promise<SimulationSession> {
+  const response = await fetch(`/simulation/sessions/${id}/confirm-entry`, {
+    method: "POST",
+    signal,
+  });
+  return parseJson<SimulationSession>(response);
+}
+
+export async function declineEntry(
+  id: string,
+  signal?: AbortSignal,
+): Promise<SimulationSession> {
+  const response = await fetch(`/simulation/sessions/${id}/decline-entry`, {
     method: "POST",
     signal,
   });

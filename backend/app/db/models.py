@@ -75,6 +75,46 @@ class SimulationSessionRow(Base):
     take_profit_price: Mapped[str | None] = mapped_column(String(64), nullable=True)
     stop_loss_price: Mapped[str | None] = mapped_column(String(64), nullable=True)
     entry_fill_candle_open_time: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Feature 015 — Controlled Real order / reconcile (session-level shortcuts)
+    xt_order_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    real_reconcile_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    real_submit_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
+
+class PendingEntryConfirmationRow(Base):
+    """Approved Real BUY awaiting operator confirm (Feature 015)."""
+
+    __tablename__ = "pending_entry_confirmations"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(36), index=True)
+    symbol: Mapped[str] = mapped_column(String(64))
+    side: Mapped[str] = mapped_column(String(8), default="BUY")
+    proposed_notional: Mapped[str] = mapped_column(String(64))
+    reference_price: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    decision_journal_ref: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class RealOrderReconcileRow(Base):
+    """Local Real order submit/reconcile trail (Feature 015)."""
+
+    __tablename__ = "real_order_reconcile"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(36), index=True)
+    client_intent_id: Mapped[str] = mapped_column(String(64))
+    xt_order_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    side: Mapped[str] = mapped_column(String(8))
+    order_type: Mapped[str] = mapped_column(String(16), default="MARKET")
+    submit_status: Mapped[str] = mapped_column(String(32), default="not_submitted")
+    reconcile_status: Mapped[str] = mapped_column(String(32), default="unsettled")
+    filled_qty: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    avg_price: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    fee: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class DecisionJournalRow(Base):

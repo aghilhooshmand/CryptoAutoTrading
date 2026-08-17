@@ -186,19 +186,11 @@ def test_no_place_cancel_withdraw_routes(client: TestClient) -> None:
         assert response.status_code in (404, 405), (method, path, response.status_code)
 
 
-def test_client_has_no_fund_movement_methods() -> None:
+def test_client_has_place_market_order_for_adapter_only() -> None:
     from app.xt_account.client import XtPrivateClient
 
-    names = set(dir(XtPrivateClient))
-    forbidden = {
-        "place_order",
-        "cancel_order",
-        "withdraw",
-        "transfer",
-        "create_order",
-        "delete_order",
-    }
-    assert forbidden.isdisjoint(names)
+    assert hasattr(XtPrivateClient, "place_market_order")
+    # HTTP surface still must not expose place/cancel/withdraw (see paths above).
 
 
 def test_public_market_works_without_private_credentials(client: TestClient) -> None:

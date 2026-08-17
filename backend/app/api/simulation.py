@@ -18,7 +18,7 @@ class CreateSessionBody(BaseModel):
     mode: str = "simulation"
     symbol: str
     timeframe: str
-    startingCapital: str
+    startingCapital: Optional[str] = None
     allocatedCapital: Optional[str] = None
     maxPositionSize: str
     targetNetProfitRate: str
@@ -93,6 +93,32 @@ async def stop_session(session_id: str) -> dict[str, Any]:
     db = db_session.SessionLocal()
     try:
         row = await svc.stop_session_async(db, session_id, "manual")
+        return await svc.session_to_dict(row, db=db)
+    except svc.SessionError as err:
+        _raise(err)
+        raise  # pragma: no cover
+    finally:
+        db.close()
+
+
+@router.post("/sessions/{session_id}/confirm-entry")
+async def confirm_entry(session_id: str) -> dict[str, Any]:
+    db = db_session.SessionLocal()
+    try:
+        row = await svc.confirm_entry_async(db, session_id)
+        return await svc.session_to_dict(row, db=db)
+    except svc.SessionError as err:
+        _raise(err)
+        raise  # pragma: no cover
+    finally:
+        db.close()
+
+
+@router.post("/sessions/{session_id}/decline-entry")
+async def decline_entry(session_id: str) -> dict[str, Any]:
+    db = db_session.SessionLocal()
+    try:
+        row = svc.decline_entry(db, session_id)
         return await svc.session_to_dict(row, db=db)
     except svc.SessionError as err:
         _raise(err)

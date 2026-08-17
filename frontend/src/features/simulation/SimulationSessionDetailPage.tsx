@@ -116,7 +116,7 @@ export function SimulationSessionDetailPage() {
           </p>
           <h1>Simulation session</h1>
         </div>
-        <SimulationBadge />
+        <SimulationBadge label={session.label === "REAL" ? "REAL" : "SIMULATION"} />
       </header>
 
       {error ? (
