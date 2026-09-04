@@ -20,4 +20,7 @@
 ## Notes
 
 - Implementation may start after 002+013; Feature 015 is paused.
-- Exact Torque syntax and ParamSpec shapes deferred to `/speckit-plan` when 016 starts.
+- Exact Torque syntax and ParamSpec shapes: see `research.md` R5–R6 and
+  `contracts/torque-bind-api.md` (plan complete 2026-09-04).
+- Plan artifacts: `plan.md`, `research.md`, `data-model.md`, `contracts/`,
+  `quickstart.md`.

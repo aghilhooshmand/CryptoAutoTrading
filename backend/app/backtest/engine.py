@@ -18,7 +18,7 @@ from app.simulation.control.controller import TradingController
 from app.simulation.control.risk import RiskContext, RiskManager
 from app.simulation.money import DEFAULT_FEE_RATE, DEFAULT_SLIPPAGE_RATE, as_str, d, quantize_money
 from app.simulation.state_machine import SessionState
-from app.strategy.base import CandleClose, SignalSide, StrategySignal
+from app.strategy.base import CandleClose, SignalSide, Strategy, StrategySignal
 from app.strategy.registry import build_from_stored
 
 # Sentinels when optional early-exit / max_trades omitted
@@ -68,10 +68,14 @@ def run_engine(
     strategy_params: dict[str, Any] | None = None,
     take_profit_percent: Decimal | None = None,
     stop_loss_percent: Decimal | None = None,
+    strategy: Strategy | None = None,
 ) -> dict[str, Any]:
     """
     Process candles. When wire_shared is False (T020 skeleton), only walks candles
     and records HOLD stubs without Dual EMA/control/risk fills.
+
+    When ``strategy`` is provided (e.g. Torque CompositeStrategy), it is used
+    instead of ``build_from_stored(strategy_id, strategy_params)``.
     """
     state = EngineState(
         cash=starting_capital,
@@ -79,9 +83,13 @@ def run_engine(
         stop_loss_percent=stop_loss_percent,
     )
     adapter = HistoricalExecutionAdapter()
-    strategy = (
-        build_from_stored(strategy_id, strategy_params) if wire_shared else None
-    )
+    if not wire_shared:
+        strategy_inst: Strategy | None = None
+    elif strategy is not None:
+        strategy_inst = strategy
+    else:
+        strategy_inst = build_from_stored(strategy_id, strategy_params)
+    strategy = strategy_inst
     controller = TradingController() if wire_shared else None
     risk = RiskManager() if wire_shared else None
     closes: list[CandleClose] = []

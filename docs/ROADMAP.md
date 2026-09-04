@@ -22,9 +22,11 @@ complete.
 **calls** general FORGE packages — `torque` (program form / `check`) and
 `uge` (grammar-agnostic search) — the same reuse pattern as FORCE for ML.
 Install/import only (**pip / editable dependency**). **MUST NOT copy, vendor,
-or paste FORGE source into this repo.** CryptoAutoTrading owns strategy
-meaning, Backtest/Simulation evaluation, BNF, and fitness. Trading logic
-MUST NOT move into FORGE.
+or paste FORGE source into this repo.** Local FORGE checkout (operator):
+`/home/aghil/Documents/my document/limerick/projects/FORGE` — see
+[`docs/FORGE_INTEGRATION.md`](FORGE_INTEGRATION.md). CryptoAutoTrading owns
+strategy meaning, Backtest/Simulation evaluation, BNF, and fitness. Trading
+logic MUST NOT move into FORGE.
 
 **Delivery order (operator lock 2026-09-04):** Prove Torque + UGE on
 **Simulation / Backtest only** first (find useful strategy × parameter ×
@@ -32,8 +34,8 @@ composition programs without Real money). Then return to Feature **015**
 Controlled Real on Kraken. Do **not** place Real Kraken orders from Torque/UGE
 MVP. 002 + 013 Kraken gates remain satisfied for when 015 resumes.
 
-Post-Feature-014 audit (2026-08-16) remains: 025 and MVP-1 DONE. **Active
-next delivery is 016 → 019 (sim/search), then 015 Controlled Real.**
+Post-Feature-014 audit (2026-08-16) remains: 025 and MVP-1 DONE. **016 Torque
+DONE.** **Active next delivery is 019 UGE (sim/search), then 015 Controlled Real.**
     
 This roadmap defines:
 
@@ -801,7 +803,7 @@ wire RealExecutionAdapter.
 
 | ID | Feature | Status |
 |---|---|---|
-| 016 | Torque Trading Program Core | **PLANNED / NEXT** (FORGE `torque`; sim/Backtest; **absorbs** 018) |
+| 016 | Torque Trading Program Core | **DONE** (FORGE `torque`; sim/Backtest evaluate; absorbs 018 MVP; HTTP smoke optional) |
 | 017 | Torque Capital Allocation | PLANNED (**DEFER** heavily — Risk/Portfolio own capital in Torque v1) |
 | 018 | Torque Signal Composition | PLANNED (**MERGE direction into 016**; keep ID; do not implement as a separate near-term feature) |
 
@@ -829,6 +831,11 @@ wire RealExecutionAdapter.
 ---
 
 ## 016 — Torque Trading Program Core
+
+**Status**: `DONE` (2026-09-04) — `backend/app/torque_bind/` binds FORGE
+`torque.check` phenotypes to registry leaves + AND/OR/vote, evaluates via
+Feature 004 `run_engine` (`run_bound_backtest` / `evaluate_phenotype`). Optional
+HTTP smoke (T020–T021) not implemented.
 
 ### Goal
 

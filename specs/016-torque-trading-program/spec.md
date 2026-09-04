@@ -4,8 +4,9 @@
 
 **Created**: 2026-09-04
 
-**Status**: PLANNED / **NEXT** (Simulation + Backtest only; Controlled Real
-**015** paused until this + Feature 019 sim/search MVP)
+**Status**: **DONE** (2026-09-04) — Simulation + Backtest evaluate via
+`app.torque_bind`; Controlled Real **015** remains paused until Feature 019
+sim/search MVP.
 
 **Input**: Compose existing CryptoAutoTrading strategies into searchable Torque
 programs using the general **FORGE `torque`** package for program form
@@ -71,7 +72,8 @@ chosen parameters to run through deterministic Backtest so I can see PnL with
 fees/slippage.
 
 **Independent Test**: Fixed candles + fixed phenotype → same metrics on replay;
-intent still passes Controller/Risk.
+intent still passes Controller/Risk (Feature 004 Backtest path). Composition
+vs single leaf differs on a documented fixture (SC-002).
 
 ### User Story 3 - Evaluate API for UGE (Priority: P2)
 
@@ -85,18 +87,23 @@ keys not required for historical evaluation.
 
 - **FR-001**: System MUST depend on FORGE `torque` and use `check` (or documented
   equivalent) for phenotype well-formedness.
-- **FR-002**: System MUST register existing strategy leaves with parameter
-  schemas/bounds usable by Torque programs and later BNF.
-- **FR-003**: System MUST support searchable strategy parameters (e.g. period
-  variants), not only fixed starter params.
+- **FR-002**: System MUST register existing strategy leaves and expose their
+  registry ParamDef names/bounds for Torque keyword binding. Full BNF grammar
+  authoring for UGE is **out of 016** (Feature 019); 016 only needs metadata
+  the bind layer and later grammar can read from the registry/catalogue.
+- **FR-003**: System MUST bind any ParamDef-validated keyword values within
+  registered bounds (e.g. `period=14` vs `period=21`), not only hard-coded
+  starter defaults. Parameter *search* / evolution is Feature 019.
 - **FR-004**: System MUST implement MVP composition **AND / OR / vote** (or
   documented equivalents) with explicit buy/sell/hold agreement semantics.
 - **FR-005**: Valid phenotypes MUST evaluate via Feature **004** Backtest
-  and/or Feature **003** Simulation (same engines; no parallel trading core).
-  MVP fitness for UGE SHOULD prefer deterministic Backtest fixtures.
+  (same engines; no parallel trading core). Feature **003** Simulation wiring
+  MAY be added inside 016 if cheap but is **not** required for 016 DONE.
+  MVP fitness for UGE MUST use deterministic Backtest fixtures.
 - **FR-006**: Torque MUST NOT bypass Controller or Risk.
-- **FR-007**: System MUST expose an evaluate/fitness-ready interface for
-  Feature 019 (metrics only; no UGE engine required in 016).
+- **FR-007**: System MUST expose a Python `evaluate_phenotype` (metrics only;
+  no UGE engine in 016). Optional HTTP smoke routes are **not** required for
+  016 DONE when unit/integration tests cover the Python API.
 - **FR-008**: Invalid phenotype MUST fail closed (no invented fills).
 - **FR-009**: Feature 016 MUST NOT place Real exchange orders or enable
   Controlled Real mode.
@@ -125,6 +132,10 @@ keys not required for historical evaluation.
 
 ## Assumptions
 
-- FORGE `torque` is installable (path/editable/published) when 016 starts.
+- FORGE lives at
+  `/home/aghil/Documents/my document/limerick/projects/FORGE` on the
+  operator workstation (see [`docs/FORGE_INTEGRATION.md`](../../docs/FORGE_INTEGRATION.md)).
+- Install editable: `pip install -e <FORGE>` and
+  `pip install -e <FORGE>/packages/uge` into the backend venv.
 - Features 002 and 013 are done; Feature 015 is intentionally paused.
 - Existing strategies remain the first leaf catalogue.

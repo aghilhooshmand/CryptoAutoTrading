@@ -36,6 +36,9 @@ Sentiment and auth remain out of scope.
 
 - **Python 3.12** (project target; `>=3.12` may work for local development)
 - **Node.js LTS** (includes npm)
+- **FORGE** (Torque + UGE) as editable installs for Features 016/019 — see
+  [`docs/FORGE_INTEGRATION.md`](docs/FORGE_INTEGRATION.md). Never copy FORGE
+  source into this repo.
 - Network access to Kraken public REST (`https://api.kraken.com`) for the
   intended live/public market-data venue (Feature 002 amendment)
 - Existing XT public adapter (`https://sapi.xt.com`) may remain for

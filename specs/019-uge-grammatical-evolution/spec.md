@@ -121,6 +121,8 @@ process.
 ## Assumptions
 
 - Feature 016 evaluate bridge exists and is deterministic.
-- FORGE `uge` is installable when 019 starts.
+- FORGE path / editable install:
+  [`docs/FORGE_INTEGRATION.md`](../../docs/FORGE_INTEGRATION.md)
+  (`UGEEngine`, `Grammar`, `EvaluationResult`, `Fitness`).
 - First data is recorded/historical candles (Feature 002 venue), not live
   private fills.
