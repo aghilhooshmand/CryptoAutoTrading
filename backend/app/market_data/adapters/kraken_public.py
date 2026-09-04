@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any, Optional
 
 import httpx
@@ -40,13 +40,27 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _strip_trailing_zeros(text: str) -> str:
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return text if text else "0"
+
+
 def _as_decimal_string(value: Any) -> Optional[str]:
     if value is None or value == "":
         return None
     try:
-        return format(Decimal(str(value)), "f")
+        return _strip_trailing_zeros(format(Decimal(str(value)), "f"))
     except (InvalidOperation, ValueError):
         return None
+
+
+def _format_decimal(value: Decimal, *, max_places: int) -> str:
+    """Bounded decimal string for quote UI (avoids long division residue)."""
+    quant = Decimal("1").scaleb(-max_places)
+    return _strip_trailing_zeros(
+        format(value.quantize(quant, rounding=ROUND_HALF_UP), "f")
+    )
 
 
 def _require_result(payload: Any) -> Any:
@@ -113,13 +127,10 @@ def map_ticker_result(
         try:
             last_d = Decimal(last_price)
             open_d = Decimal(open_price)
-            change_abs = format(last_d - open_d, "f")
+            change_abs = _format_decimal(last_d - open_d, max_places=8)
             if open_d != 0:
                 points = (last_d - open_d) / open_d * Decimal("100")
-                text = format(points, "f")
-                if "." in text:
-                    text = text.rstrip("0").rstrip(".")
-                change_pct = text if text else "0"
+                change_pct = _format_decimal(points, max_places=4)
         except (InvalidOperation, ValueError):
             pass
     high = row.get("h")

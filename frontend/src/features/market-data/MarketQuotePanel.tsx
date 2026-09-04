@@ -1,4 +1,8 @@
 import type { MarketQuote } from "../../services/marketDataApi";
+import {
+  formatMarketAmount,
+  formatMarketPercent,
+} from "./formatMarketNumber";
 import { MarketStatusBadge } from "./MarketStatusBadge";
 
 interface Props {
@@ -53,7 +57,9 @@ export function MarketQuotePanel({
         <>
           <p className="market-price">
             <span className="market-price__label">Last price</span>
-            <span className="market-price__value">{quote.lastPrice}</span>
+            <span className="market-price__value">
+              {formatMarketAmount(quote.lastPrice) ?? quote.lastPrice}
+            </span>
             {status === "stale" ? (
               <span className="market-price__stale-note"> (not current)</span>
             ) : null}
@@ -61,15 +67,22 @@ export function MarketQuotePanel({
           <dl className="market-stats">
             <Stat
               label="Change %"
-              value={
-                quote.changePercent != null ? `${quote.changePercent}%` : null
-              }
+              value={formatMarketPercent(quote.changePercent)}
             />
-            <Stat label="Change" value={quote.changeAbsolute} />
-            <Stat label="24h high" value={quote.high24h} />
-            <Stat label="24h low" value={quote.low24h} />
-            <Stat label="Volume (base)" value={quote.volumeBase} />
-            <Stat label="Volume (quote)" value={quote.volumeQuote} />
+            <Stat
+              label="Change"
+              value={formatMarketAmount(quote.changeAbsolute)}
+            />
+            <Stat label="24h high" value={formatMarketAmount(quote.high24h)} />
+            <Stat label="24h low" value={formatMarketAmount(quote.low24h)} />
+            <Stat
+              label="Volume (base)"
+              value={formatMarketAmount(quote.volumeBase)}
+            />
+            <Stat
+              label="Volume (quote)"
+              value={formatMarketAmount(quote.volumeQuote)}
+            />
           </dl>
           <p className="market-meta">
             Source: <strong>{quote.source}</strong>

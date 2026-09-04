@@ -364,13 +364,14 @@ a {
 
 .market-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
-  gap: 0.55rem;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.75rem;
   margin: 0.85rem 0;
 }
 
 .market-stat {
   margin: 0;
+  min-width: 0;
 }
 
 .market-stat dt {
@@ -382,6 +383,8 @@ a {
   margin: 0.15rem 0 0;
   font-weight: 600;
   color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 .market-meta,

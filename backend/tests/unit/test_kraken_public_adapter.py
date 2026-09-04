@@ -81,8 +81,11 @@ def test_map_ticker_decimal_strings_and_percent_points() -> None:
     assert quote.lastPrice == "91234.5"
     assert quote.source == "kraken"
     assert isinstance(quote.changePercent, str)
-    # (91234.5 - 90000) / 90000 * 100 = 1.3716...
-    assert quote.changePercent.startswith("1.37")
+    # (91234.5 - 90000) / 90000 * 100 = 1.3716... → 4dp display
+    assert quote.changePercent == "1.3717"
+    assert quote.changeAbsolute == "1234.5"
+    assert quote.high24h == "91500"
+    assert quote.volumeBase == "40"
 
 
 def test_map_ohlc_unix_seconds_to_ms() -> None:
@@ -96,5 +99,5 @@ def test_map_ohlc_unix_seconds_to_ms() -> None:
     assert series.symbol == "BTC/EUR"
     assert series.source == "kraken"
     assert series.candles[0].openTime == 1700000000 * 1000
-    assert series.candles[0].open == "100.0"
+    assert series.candles[0].open == "100"
     assert series.candles[1].close == "101.5"
