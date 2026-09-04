@@ -560,6 +560,10 @@ Portfolio/accounting state remains authoritative.
 Torque may describe compositions of strategies, parameters, time windows,
 capital allocations, and signal-composition logic.
 
+When a general Torque language package is available (FORGE `torque`), this
+project MUST use it for program form / well-formedness and MUST keep trading
+semantics, Backtest evaluation, and pipeline binding in CryptoAutoTrading.
+
 Torque programs MUST ultimately produce trading intent that enters the same:
 
 Controller → Risk → Execution → Accounting
@@ -570,20 +574,26 @@ Torque MUST NOT directly mutate balances or positions or call exchange trading
 APIs.
 
 The Torque language and grammar SHOULD remain sufficiently general for
-Grammatical Evolution to generate valid programs.
+Grammatical Evolution (UGE) to generate valid programs.
 
 ---
 
 ## XXXVI. Grammatical Evolution Searches Programs, Not Execution Paths
 
-Grammatical Evolution MAY search over valid Torque programs, strategy choices,
-strategy parameters, capital allocation, temporal composition, and other
-explicitly permitted grammar constructs.
+Grammatical Evolution (UGE / FORGE `uge` when used) MAY search over valid
+Torque programs, strategy choices, strategy parameters, capital allocation,
+temporal composition, and other explicitly permitted grammar constructs.
 
-GE MUST NOT generate code that bypasses the authoritative trading pipeline.
+This project MUST own the grammar (BNF) and fitness when using an external UGE
+engine. UGE MUST NOT own crypto Backtest semantics.
+
+GE/UGE MUST NOT generate code that bypasses the authoritative trading pipeline.
 
 Every evaluated individual MUST be reproducible from its genotype, grammar,
 effective configuration, market-data window, and evaluation settings.
+
+First GE/UGE milestones SHOULD prefer offline/batch evaluation; continuous
+live re-search during markets is not required for early milestones.
 
 ---
 

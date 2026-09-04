@@ -22,9 +22,13 @@ Feature `009-portfolio-capital-allocation` adds the **Simulation Portfolio**
 reservation) — never a live Kraken account. Feature
 `015-controlled-real-execution` will enable **Controlled Real** on Kraken
 after Feature 002 Kraken public and Feature 013 Kraken private-read are
-complete. Stop new XT live development. Coinbase is out of scope. See
-[`docs/ROADMAP.md`](docs/ROADMAP.md) and
-[`specs/002-xt-market-data/`](specs/002-xt-market-data/).
+complete. Later (after 015): Feature **016** will call FORGE **`torque`** to
+compose strategies; Feature **019** will call FORGE **`uge`** to search that
+space offline (BNF + fitness stay in this project). Stop new XT live
+development. Coinbase is out of scope. See
+[`docs/ROADMAP.md`](docs/ROADMAP.md),
+[`specs/016-torque-trading-program/`](specs/016-torque-trading-program/), and
+[`specs/019-uge-grammatical-evolution/`](specs/019-uge-grammatical-evolution/).
 Sentiment and auth remain out of scope.
 
 ## Prerequisites

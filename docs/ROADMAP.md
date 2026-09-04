@@ -4,8 +4,10 @@
 
 CryptoAutoTrading is being developed incrementally from market observation and
 safe historical/simulated trading toward controlled real **Kraken** trading,
-then composable Torque trading programs, Grammatical Evolution, and eventually
-carefully controlled autonomous real-money trading (destination only).
+then composable Torque trading programs (via the general **FORGE `torque`**
+language), **UGE** Grammatical Evolution search (via **FORGE `uge`**), and
+eventually carefully controlled autonomous real-money trading (destination
+only).
 
 **Venue (2026-08-17):** Kraken is the intended live venue. Coinbase is out of
 scope. XT is no longer intended for live trading; existing XT adapters/tests
@@ -16,9 +18,16 @@ Kraken private read → Feature **015** Controlled Real on Kraken. Do not place
 Real Kraken orders until 002 Kraken public and 013 Kraken private-read are
 complete.
 
+**Torque / UGE (locked 2026-09-04):** After Controlled Real (015), this project
+**calls** general FORGE packages — `torque` (program form / `check`) and
+`uge` (grammar-agnostic search) — the same reuse pattern as FORCE for ML.
+CryptoAutoTrading owns strategy meaning, Backtest evaluation, BNF, and
+fitness. Trading logic MUST NOT move into FORGE. Do not start 016/019 before
+015 MVP-2.
+
 Post-Feature-014 audit (2026-08-16): Feature **025 Stage-1 Trading
 Gap-Close** and the **MVP-1 validation gate** are DONE; next delivery is
-**015 Controlled Real**, then Torque composition (016), then minimal GE —
+**015 Controlled Real**, then Torque composition (016), then UGE/GE (019) —
 while freezing expansion of completed infrastructure features unless a
 concrete defect requires it.
     
@@ -544,10 +553,10 @@ before 015**.
 
 | ID | Feature | Status |
 |---|---|---|
-| 013 | Private Account Integration (XT as-built; Kraken-first amendment) | DONE (XT read); **Kraken private-read amendment IN PROGRESS** |
+| 013 | Private Account Integration (XT as-built; Kraken-first amendment) | DONE (XT read); **Kraken private-read implemented** (close when validated) |
 | 014 | Live Paper-Trading Hardening | DONE (**FREEZE** — expand only for concrete defects) |
 | 025 | Stage-1 Trading Gap-Close | DONE |
-| 015 | Real-Money Manual/Confirmed Execution | IN PROGRESS — **stop new XT live work**; Kraken Controlled Real **blocked** until 013 Kraken private-read |
+| 015 | Real-Money Manual/Confirmed Execution | IN PROGRESS — **stop new XT live work**; Kraken Controlled Real next after 013 closure |
 
 ---
 
@@ -609,7 +618,8 @@ RealExecutionAdapter
 Kraken private adapter
 ```
 
-Status: `DONE` (XT read as-built); **Kraken private-read amendment IN PROGRESS**
+Status: `DONE` (XT read as-built); **Kraken private-read implemented**
+(mark amendment DONE when operator validation complete)
 
 ---
 
@@ -772,16 +782,37 @@ Status: `IN PROGRESS` (Kraken execution **blocked** on 002 + 013 Kraken work)
 Build a compositional trading-program representation on top of the already
 working trading infrastructure.
 
-Torque is a program layer, not another trading engine.
+Torque is a **program layer**, not another trading engine. The **language and
+`check` API** come from the general **FORGE `torque` package** (reusable across
+apps such as FORCE for ML and this trading app). This project registers what
+names like `rsi` / `macd` / composition ops **mean** for crypto trading and
+routes phenotypes into the existing pipeline.
 
 **Start Torque only after Feature 015 / MVP-2** (tiny controlled Real lifecycle
-proven). Do not let Torque/GE delay the primary path to Controlled Real.
+proven). Do not let Torque/UGE delay the primary path to Controlled Real.
 
 | ID | Feature | Status |
 |---|---|---|
-| 016 | Torque Trading Program Core | PLANNED (minimum useful Torque MVP; **absorbs** min. composition from 018) |
+| 016 | Torque Trading Program Core | PLANNED (FORGE `torque`; min. composition; **absorbs** 018) |
 | 017 | Torque Capital Allocation | PLANNED (**DEFER** heavily — Risk/Portfolio own capital in Torque v1) |
 | 018 | Torque Signal Composition | PLANNED (**MERGE direction into 016**; keep ID; do not implement as a separate near-term feature) |
+
+### Locked decisions (session 2026-09-04)
+
+1. **Depend on FORGE** — install/import `torque` for well-formedness (`check`).
+   Do not reimplement a second Torque language in this repo.
+2. **Domain stays here** — strategy catalogue, ParamSpec/bounds, Backtest,
+   Controller/Risk binding, BNF, and fitness live in CryptoAutoTrading (same
+   ownership split as FORCE vs Torque: FORGE owns form; the app owns meaning).
+3. **Why Torque exists** — humans cannot exhaust strategy × parameter ×
+   combination space (e.g. RSI(9,21) vs RSI(10,22), alone vs with MACD). Torque
+   spells candidate programs; UGE searches that space later (019).
+4. **Composition MVP** — agreement-style ops such as **AND / OR / vote**
+   (both/all agree → buy/sell/hold). A name like `AVG` is allowed only when
+   Feature 016 defines exact signal semantics (do not assume arithmetic mean
+   of indicator series unless specified).
+5. **Leaves** — first MVP binds **existing Feature 005/006 strategies**
+   (and their parameters), not a parallel free-form OHLCV indicator engine.
 
 ---
 
@@ -791,42 +822,41 @@ proven). Do not let Torque/GE delay the primary path to Controlled Real.
 
 Minimum useful Torque MVP after Controlled Real (015): compose existing
 strategy/signal primitives into programs that feed the **same** trading
-pipeline.
+pipeline, using FORGE `torque` for program form.
+
+Spec: [`specs/016-torque-trading-program/`](../specs/016-torque-trading-program/).
 
 ### Torque MVP must support
 
-- invoking existing strategy/signal primitives;
-- parameters;
+- depend on FORGE `torque` (`check` / program tree);
+- register this project's strategy leaves + parameter schemas;
+- invoke existing strategy/signal primitives with searchable parameters;
 - **simple composition** such as AND / OR / vote (minimum useful portion of
   Feature 018 absorbed here);
 - producing decisions through Controller → Risk → Execution → Portfolio;
-- deterministic Backtest evaluation;
-- one initial fitness interface for later GE.
+- deterministic Backtest evaluation of a phenotype string;
+- one initial fitness/evaluate interface for later UGE (019).
 
 ### Torque MVP must NOT
 
 - own execution or bypass Controller/Risk;
+- put trading/backtest logic into FORGE packages;
 - require Torque-owned capital allocation (Feature 017 deferred);
-- redesign the trading engine.
+- redesign the trading engine;
+- require online/realtime UGE search.
 
-Basic building blocks may also include sequence/time windows where useful,
-but **signal composition is required** for the first useful Torque (combining
-strategies is the point).
-
-Exact Torque syntax belongs in Feature 016.
+Exact Torque surface syntax belongs in Feature 016 (aligned with FORGE Torque).
 
 ### Architectural rule
 
 ```text
-Torque Program
+FORGE torque.check(phenotype)
+      ↓
+CryptoAutoTrading bind + evaluate
       ↓
 Trading Intent
       ↓
-Controller
-      ↓
-Risk
-      ↓
-Execution
+Controller → Risk → Execution → Portfolio/Accounting
 ```
 
 Status: `PLANNED`
@@ -843,7 +873,7 @@ branches.
 ### Direction (post-audit 2026-08-16)
 
 **DEFER heavily.** For the first Torque version, existing **Risk / Portfolio**
-remain responsible for capital. Do not block Torque MVP or GE on Feature 017.
+remain responsible for capital. Do not block Torque MVP or UGE/GE on Feature 017.
 Keep this feature ID for a later capital-in-Torque capability; do not delete
 or renumber yet.
 
@@ -874,79 +904,93 @@ Status: `PLANNED` (merge direction into 016)
 
 ---
 
-# Phase E — Grammatical Evolution
+# Phase E — Grammatical Evolution (UGE)
 
 ## Goal
 
-Use Grammatical Evolution to search the space of valid Torque trading
-programs.
+Use **UGE** (FORGE Grammatical Evolution engine) to search the space of valid
+Torque trading programs. In this roadmap, Feature **019** is that search;
+“GE” and “UGE” refer to the same role (UGE = the FORGE package name).
 
 **Start after minimum Torque (016).** Feature 024 Autonomous Real remains a
-destination only — not a near-term driver.
+destination only — not a near-term driver. **Realtime / continuous live
+re-search is deferred** (UGE may take long enough that prices move; first
+milestone is offline/batch on historical windows).
 
 | ID | Feature | Status |
 |---|---|---|
-| 019 | Grammatical Evolution Search | PLANNED (after 016) |
+| 019 | Grammatical Evolution Search (UGE) | PLANNED (after 016; FORGE `uge`) |
 | 020 | Evolution Experiments & Results | PLANNED (**DEFER** rich UI/persistence) |
 | 021 | Train / Validation / Test | PLANNED (**minimum accompanies first GE** — simple chronological) |
 | 022 | Advanced Fitness | PLANNED (**DEFER**) |
 | 023 | Regime-Aware Programs | PLANNED (**DEFER**) |
 
+### Locked decisions (session 2026-09-04)
+
+1. **Call FORGE `uge`** — grammar-agnostic search engine; no crypto deps in UGE.
+2. **This project owns** BNF, constraints (depth, banned combos, param ranges),
+   and fitness (PnL, Sharpe, drawdown, fees/slippage — exact set in 019).
+3. **Flow** — BNF → UGE phenotype string → `torque.check` → CryptoAutoTrading
+   Backtest/evaluate → `Fitness` / metrics back to UGE.
+4. **Offline first** — run search on fixed historical data (and later scheduled
+   batch). Applying a **frozen** best phenotype to Simulation / Controlled Real
+   may come after search works. Continuous UGE during live markets is **out of
+   MVP** (speed/staleness challenge acknowledged; tackle later).
+
 ---
 
-## 019 — Grammatical Evolution Search
+## 019 — Grammatical Evolution Search (UGE)
 
 ### Goal
 
-Map GE genotypes through a grammar into executable Torque trading programs.
+Map UGE genotypes through a **CryptoAutoTrading-owned grammar** into Torque
+phenotype strings, evaluate them with deterministic Backtest, and return
+fitness to UGE.
+
+Spec: [`specs/019-uge-grammatical-evolution/`](../specs/019-uge-grammatical-evolution/).
 
 Architecture:
 
 ```text
-Genotype
+UGEEngine (FORGE)
+   ↓ genotype → phenotype (BNF owned here)
+Torque phenotype string
+   ↓ torque.check (FORGE)
+CryptoAutoTrading evaluate / Backtest
    ↓
-Grammar
+Metrics → Fitness (owned here)
    ↓
-Torque Phenotype
-   ↓
-Torque Evaluator
-   ↓
-Backtest
-   ↓
-Metrics
-   ↓
-Fitness
+UGE selection / next generation
 ```
 
-The grammar may eventually search:
+The grammar may search:
 
-- strategy type;
-- strategy parameters;
-- strategy order;
-- time windows;
-- signal composition;
-- (later) capital allocation — not required for first GE.
+- strategy type (existing registry leaves);
+- strategy parameters (why RSI(9,21) vs RSI(10,22));
+- strategy combinations (AND / OR / vote / later richer ops);
+- time windows (if in grammar);
+- (later) capital allocation — not required for first UGE.
 
-### First GE milestone (with Feature 019)
+### First UGE milestone (with Feature 019)
 
 Requires:
 
-- small grammar producing valid Torque programs;
+- FORGE `uge` dependency wired;
+- small BNF producing valid Torque programs over existing strategies;
 - deterministic Backtest evaluation;
 - simple fitness;
-- population;
-- selection / crossover / mutation;
-- reproducible seed / config;
+- population / selection / crossover / mutation via UGE;
+- reproducible seed / config / data snapshot;
 - **simple chronological train / validation / test** protection (minimum
-  necessary portion of Feature 021 accompanies this work — not an elaborate
-  ML/walk-forward framework yet).
+  necessary portion of Feature 021 — not elaborate walk-forward yet).
 
-Defer rich experiment UI/persistence (020), advanced multi-objective fitness
-(022), and regime-aware evolution (023).
+Defer: rich experiment UI (020), advanced multi-objective fitness (022),
+regime-aware evolution (023), realtime continuous search, autonomous Real
+from evolved programs (024).
 
 ### Initial fitness
 
-Initial formulation:
+Initial formulation (may be refined in 019):
 
 ```text
 Fitness =
@@ -954,18 +998,10 @@ Fitness =
     - BuyAndHoldNetProfit
 ```
 
-where both use comparable:
+where both use comparable capital, symbol, historical period, market data,
+fees, and slippage. Higher is better. Cost-aware results are mandatory.
 
-- capital;
-- symbol;
-- historical period;
-- market data;
-- fee assumptions;
-- slippage assumptions.
-
-Higher fitness is better.
-
-Exact fitness and GE mechanics must be specified in Feature 019.
+Exact fitness and UGE wiring must be specified in Feature 019.
 
 Status: `PLANNED`
 
@@ -1280,11 +1316,10 @@ Do not implement these merely because they are listed here.
         │                      │
         └──────────┬───────────┘
                    ▼
-          016 Torque Program Core
-              (includes min. composition; 018 merge direction)
+          016 Torque Program Core (FORGE torque; min. composition; 018 merge)
                    │
                    ▼
-          019 GE Search (+ min. 021 train/val/test)
+          019 UGE / GE Search (FORGE uge; + min. 021 train/val/test)
                    │
                    ├── 017 Torque Capital  (DEFERRED)
                    ├── 018 richer composition (after 016 MVP if needed)
@@ -1337,17 +1372,18 @@ The project should progressively converge on these shared authorities:
         Journal / Metrics
 ```
 
-GE sits above Torque:
+GE / UGE sits above Torque:
 
 ```text
-GE
+FORGE uge (search)
  ↓
-Torque Program
+Torque phenotype (FORGE torque.check + this project's binding)
  ↓
-existing trading architecture
+existing trading architecture (Backtest / Controller / Risk / Execution)
 ```
 
 It does not receive its own Controller, Risk, Execution, or Accounting engine.
+Fitness and BNF stay in CryptoAutoTrading.
 
 ---
 
@@ -1369,18 +1405,20 @@ Before Feature 015:
 
 ---
 
-## Gate B — Before GE
+## Gate B — Before UGE / GE
 
 Before Feature 019:
 
 - Torque programs must execute deterministically (016 MVP including simple
-  composition);
-- Torque must reuse Backtest;
+  composition) via FORGE `torque.check` + this project's binding;
+- Torque must reuse Backtest for phenotype evaluation;
 - capital remains under Risk/Portfolio for Torque v1 (017 deferred);
 - strategy composition semantics must be specified (in 016);
+- FORGE `uge` is the search engine; BNF + fitness owned here;
+- evaluation is **offline/batch** first (realtime continuous search deferred);
 - evaluation configuration must be persistable at least enough for
   reproducibility (full 020 UI deferred);
-- simple chronological train/validation/test accompanies first GE (021 min).
+- simple chronological train/validation/test accompanies first UGE (021 min).
 
 ---
 
@@ -1464,18 +1502,18 @@ Current completed foundation:
 010 → DONE (minimal quote_asset wording; Risk semantics unchanged)
 011 → DONE
 012 → DONE (minimal venue_order_id additive; Sim/Backtest semantics unchanged)
-013 → DONE (XT read as-built); Kraken private-read amendment IN PROGRESS
+013 → DONE (XT read as-built); Kraken private-read amendment implemented (close when validated)
 014 → DONE (freeze recovery expansion)
 ```
 
 Current active milestone:
 
 ```text
-015 → Controlled Real on Kraken (blocked until 013 Kraken private-read)
+015 → Controlled Real on Kraken (next after 013 Kraken private-read closure)
         ↓
-016 → Torque MVP (composition; 018 merge direction)
+016 → Torque MVP (FORGE torque; composition; 018 merge direction)
         ↓
-019 → GE (+ minimum 021)
+019 → UGE / GE (FORGE uge; + minimum 021)
 ```
 
 Completed immediately prior:
@@ -1494,6 +1532,7 @@ Deferred / destination (do not drive near-term work):
 022 Advanced Fitness — DEFER
 023 Regime — DEFER
 024 Autonomous Real — destination only
+realtime continuous UGE during live markets — DEFER (offline/batch first)
 ```
 
 The near-term objective is therefore:
@@ -1501,9 +1540,9 @@ The near-term objective is therefore:
 ```text
 controlled Real with confirmation (015)
         ↓
-compose with Torque (016)
+compose with FORGE Torque (016)
         ↓
-search with minimal GE (019 + 021 min)
+search with FORGE UGE (019 + 021 min; offline first)
 ```
 
 ---
