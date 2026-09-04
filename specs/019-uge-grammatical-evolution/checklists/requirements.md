@@ -19,5 +19,6 @@
 
 ## Notes
 
-- Implementation blocked until Feature 016 Torque MVP.
+- Implementation blocked only until Feature 016 Torque MVP (sim/Backtest).
+- Feature 015 Controlled Real is paused until this sim/search MVP.
 - Exact fitness metrics and BNF text deferred to plan when 019 starts.

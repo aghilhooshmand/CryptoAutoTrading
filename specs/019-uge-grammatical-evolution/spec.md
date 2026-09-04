@@ -4,14 +4,15 @@
 
 **Created**: 2026-09-04
 
-**Status**: PLANNED (do not implement before Feature **016** Torque MVP)
+**Status**: PLANNED (after Feature **016**; Simulation/Backtest fitness only;
+Feature **015** remains paused until this sim/search MVP)
 
 **Input**: Use the general **FORGE `uge`** Grammatical Evolution engine to
 search a large space of Torque trading programs (strategy choice × parameters
 × composition). CryptoAutoTrading owns the BNF, constraints, and fitness;
 FORGE UGE owns search operators. Evaluation is **offline/batch** via Feature
-004 Backtest through the Feature 016 evaluate bridge. Clarifications from
-operator session 2026-09-04.
+004 Backtest (and optionally Simulation) through the Feature 016 evaluate
+bridge. Operator lock 2026-09-04: prove useful combinations in sim before Real.
 
 ## Clarifications
 
@@ -29,6 +30,8 @@ operator session 2026-09-04.
   re-search during live markets is **out of MVP**.
 - Q: Where does fitness live? → A: **This project** (e.g. net profit vs buy &
   hold, later Sharpe/drawdown). UGE does not own crypto metrics.
+- Q: Real money before search? → A: **No.** Prove UGE on historical/sim
+  evaluation first; Controlled Real (015) after a useful sim/search MVP.
 
 ## Behavior locks (non-negotiable)
 
@@ -37,13 +40,14 @@ operator session 2026-09-04.
    source into this repository.
 2. **BNF + fitness** MUST be owned by CryptoAutoTrading.
 3. Every individual MUST be evaluated through Feature **016** binding +
-   Feature **004** Backtest (Controller/Risk intact). No bypass pipeline.
+   Feature **004** Backtest (Controller/Risk intact). Optional Simulation
+   path MUST NOT bypass Risk. No RealExecutionAdapter in 019.
 4. **Offline/batch first** — MUST NOT require realtime UGE completion for
    Feature 019 DONE.
 5. **Leakage** — MUST NOT select individuals using final holdout/test
    performance (constitution XXXVIII); minimum chronological train/val/test
    (Feature 021 min) accompanies first UGE.
-6. Evolved phenotypes MUST NOT auto-enable Real or autonomous trading (024).
+6. Evolved phenotypes MUST NOT auto-enable Real or autonomous trading (015/024).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -92,8 +96,8 @@ process.
   config.
 - **FR-007**: Minimum chronological train/validation/(test) split MUST
   accompany first UGE (021 min).
-- **FR-008**: Feature 019 MUST NOT place Real orders or start continuous live
-  re-evolution.
+- **FR-008**: Feature 019 MUST NOT place Real orders, enable Controlled Real,
+  or start continuous live re-evolution.
 
 ## Success Criteria
 

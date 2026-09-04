@@ -18,19 +18,22 @@ Kraken private read → Feature **015** Controlled Real on Kraken. Do not place
 Real Kraken orders until 002 Kraken public and 013 Kraken private-read are
 complete.
 
-**Torque / UGE (locked 2026-09-04):** After Controlled Real (015), this project
+**Torque / UGE (locked 2026-09-04; order amended 2026-09-04):** This project
 **calls** general FORGE packages — `torque` (program form / `check`) and
 `uge` (grammar-agnostic search) — the same reuse pattern as FORCE for ML.
 Install/import only (**pip / editable dependency**). **MUST NOT copy, vendor,
 or paste FORGE source into this repo.** CryptoAutoTrading owns strategy
-meaning, Backtest evaluation, BNF, and fitness. Trading logic MUST NOT move
-into FORGE. Do not start 016/019 before 015 MVP-2.
+meaning, Backtest/Simulation evaluation, BNF, and fitness. Trading logic
+MUST NOT move into FORGE.
 
-Post-Feature-014 audit (2026-08-16): Feature **025 Stage-1 Trading
-Gap-Close** and the **MVP-1 validation gate** are DONE; next delivery is
-**015 Controlled Real**, then Torque composition (016), then UGE/GE (019) —
-while freezing expansion of completed infrastructure features unless a
-concrete defect requires it.
+**Delivery order (operator lock 2026-09-04):** Prove Torque + UGE on
+**Simulation / Backtest only** first (find useful strategy × parameter ×
+composition programs without Real money). Then return to Feature **015**
+Controlled Real on Kraken. Do **not** place Real Kraken orders from Torque/UGE
+MVP. 002 + 013 Kraken gates remain satisfied for when 015 resumes.
+
+Post-Feature-014 audit (2026-08-16) remains: 025 and MVP-1 DONE. **Active
+next delivery is 016 → 019 (sim/search), then 015 Controlled Real.**
     
 This roadmap defines:
 
@@ -557,7 +560,7 @@ before 015**.
 | 013 | Private Account Integration (XT as-built; Kraken-first amendment) | **DONE** (XT read + Kraken private-read) |
 | 014 | Live Paper-Trading Hardening | DONE (**FREEZE** — expand only for concrete defects) |
 | 025 | Stage-1 Trading Gap-Close | DONE |
-| 015 | Real-Money Manual/Confirmed Execution | **IN PROGRESS** — Controlled Real on Kraken (002 + 013 Kraken gates satisfied) |
+| 015 | Real-Money Manual/Confirmed Execution | **DEFERRED / PAUSED** — resume after Torque+UGE sim/search MVP (002+013 gates already satisfied) |
 
 ---
 
@@ -755,12 +758,14 @@ Prefer a path that can later move from confirmed entries → automatic entries
 within hard risk limits **without** a second execution pipeline. Do **not**
 implement autonomous Real entries in Feature 015.
 
-**Status (honest):** Feature 015 remains **IN PROGRESS**. Existing XT-shaped
-Controlled Real code may remain for regression until Kraken execution is
-attached via Feature 012 `RealExecutionAdapter`. Do **not** mark DONE until
-operator acceptance of Controlled Real on Kraken (SC-001–SC-008 / quickstart).
+**Status (honest):** Feature 015 is **PAUSED** by operator lock (2026-09-04).
+002 + 013 Kraken gates are satisfied. Existing XT-shaped Controlled Real code
+may remain for regression. Resume Controlled Real on Kraken **after** Features
+**016** and **019** prove strategy-combination search on Simulation/Backtest.
+Do **not** mark 015 DONE until operator acceptance of Controlled Real on
+Kraken (SC-001–SC-008 / quickstart).
 
-Example (entries):
+Example (entries, when resumed):
 
 ```text
 Strategy → BUY
@@ -771,8 +776,7 @@ Operator confirms
 RealExecutionAdapter → Kraken
 ```
 
-Status: `IN PROGRESS` (002 + 013 Kraken gates **satisfied**; implement/finish
-Controlled Real on Kraken)
+Status: `DEFERRED / PAUSED` (sim Torque+UGE first; then Controlled Real on Kraken)
 
 ---
 
@@ -789,12 +793,15 @@ apps such as FORCE for ML and this trading app). This project registers what
 names like `rsi` / `macd` / composition ops **mean** for crypto trading and
 routes phenotypes into the existing pipeline.
 
-**Start Torque only after Feature 015 / MVP-2** (tiny controlled Real lifecycle
-proven). Do not let Torque/UGE delay the primary path to Controlled Real.
+**Start Torque now (after 002 + 013).** Operator priority: prove Torque +
+UGE search in **Simulation / Backtest** before Controlled Real (015). Feature
+015 is **paused/deferred** until a sim/search MVP shows the framework can find
+useful strategy combinations. Torque/UGE MVP MUST NOT place Real orders or
+wire RealExecutionAdapter.
 
 | ID | Feature | Status |
 |---|---|---|
-| 016 | Torque Trading Program Core | PLANNED (FORGE `torque`; min. composition; **absorbs** 018) |
+| 016 | Torque Trading Program Core | **PLANNED / NEXT** (FORGE `torque`; sim/Backtest; **absorbs** 018) |
 | 017 | Torque Capital Allocation | PLANNED (**DEFER** heavily — Risk/Portfolio own capital in Torque v1) |
 | 018 | Torque Signal Composition | PLANNED (**MERGE direction into 016**; keep ID; do not implement as a separate near-term feature) |
 
@@ -815,6 +822,9 @@ proven). Do not let Torque/UGE delay the primary path to Controlled Real.
    of indicator series unless specified).
 5. **Leaves** — first MVP binds **existing Feature 005/006 strategies**
    (and their parameters), not a parallel free-form OHLCV indicator engine.
+6. **Sim/Backtest first (2026-09-04)** — Torque/UGE MVP evaluates via
+   Simulation and/or Backtest only. Controlled Real (015) resumes after a
+   useful sim/search result. No RealExecutionAdapter / Kraken place from 016/019.
 
 ---
 
@@ -822,9 +832,10 @@ proven). Do not let Torque/UGE delay the primary path to Controlled Real.
 
 ### Goal
 
-Minimum useful Torque MVP after Controlled Real (015): compose existing
-strategy/signal primitives into programs that feed the **same** trading
-pipeline, using FORGE `torque` for program form.
+Minimum useful Torque MVP **before** Controlled Real (015): compose existing
+strategy/signal primitives into programs that feed the **same** Simulation /
+Backtest pipeline, using FORGE `torque` for program form. Prove combinations
+work safely offline; Real comes later.
 
 Spec: [`specs/016-torque-trading-program/`](../specs/016-torque-trading-program/).
 
@@ -921,7 +932,7 @@ milestone is offline/batch on historical windows).
 
 | ID | Feature | Status |
 |---|---|---|
-| 019 | Grammatical Evolution Search (UGE) | PLANNED (after 016; FORGE `uge`) |
+| 019 | Grammatical Evolution Search (UGE) | **PLANNED** (after 016; FORGE `uge`; sim/Backtest fitness) |
 | 020 | Evolution Experiments & Results | PLANNED (**DEFER** rich UI/persistence) |
 | 021 | Train / Validation / Test | PLANNED (**minimum accompanies first GE** — simple chronological) |
 | 022 | Advanced Fitness | PLANNED (**DEFER**) |
@@ -1315,14 +1326,17 @@ Do not implement these merely because they are listed here.
    MVP-1 validation gate       │
         │                      │
         ▼                      │
-015 Confirmed Real Execution   │
-        │                      │
+015 Confirmed Real Execution (PAUSED — after 016+019 sim)
+        │
         └──────────┬───────────┘
                    ▼
-          016 Torque Program Core (FORGE torque; min. composition; 018 merge)
+          016 Torque Program Core (FORGE torque; sim/Backtest FIRST)
                    │
                    ▼
-          019 UGE / GE Search (FORGE uge; + min. 021 train/val/test)
+          019 UGE / GE Search (FORGE uge; offline sim/Backtest)
+                   │
+                   ▼
+          015 resume Controlled Real on Kraken
                    │
                    ├── 017 Torque Capital  (DEFERRED)
                    ├── 018 richer composition (after 016 MVP if needed)
@@ -1394,13 +1408,16 @@ Fitness and BNF stay in CryptoAutoTrading.
 
 ## Gate A — Before Real Orders
 
-Before Feature 015:
+Before Feature 015 (when resumed after sim Torque+UGE MVP):
 
+- Features **016** and **019** sim/search MVP SHOULD have proven Torque+UGE
+  evaluation on Simulation/Backtest without Real orders (operator lock
+  2026-09-04);
 - Feature **025** Stage-1 Trading Gap-Close must be DONE (per-position TP/SL,
   bounded strategies, intentional Sim/Backtest semantics documented);
 - MVP-1 validation gate must pass (or only residual defects scheduled);
 - execution abstraction must work;
-- private XT integration must work (read path);
+- private account read (013 Kraken) must work;
 - Risk must remain authoritative;
 - capital must be explicit;
 - emergency stop must be tested;
@@ -1512,23 +1529,26 @@ Current completed foundation:
 Current active milestone:
 
 ```text
-015 → Controlled Real on Kraken (**active**; 002 + 013 Kraken gates done)
+016 → Torque MVP (FORGE torque; Simulation/Backtest; composition)
         ↓
-016 → Torque MVP (FORGE torque; composition; 018 merge direction)
+019 → UGE / GE (FORGE uge; offline search; + minimum 021)
         ↓
-019 → UGE / GE (FORGE uge; + minimum 021)
+015 → Controlled Real on Kraken (resume after sim/search MVP)
 ```
 
 Completed immediately prior:
 
 ```text
-025 → Stage-1 Trading Gap-Close   (DONE; before 015)
-MVP-1 validation gate             (DONE)
+013 → Kraken private-read amendment   (DONE)
+002 → Kraken public                   (DONE)
+025 → Stage-1 Trading Gap-Close       (DONE)
+MVP-1 validation gate                 (DONE)
 ```
 
 Deferred / destination (do not drive near-term work):
 
 ```text
+015 Controlled Real — PAUSED until 016+019 sim/search MVP
 017 Torque Capital Allocation — DEFER
 018 as separate phase — MERGE into 016 (keep ID)
 020 rich experiment UI — DEFER
@@ -1541,11 +1561,11 @@ realtime continuous UGE during live markets — DEFER (offline/batch first)
 The near-term objective is therefore:
 
 ```text
-controlled Real with confirmation (015)
+compose strategies with FORGE Torque on Sim/Backtest (016)
         ↓
-compose with FORGE Torque (016)
+search combinations with FORGE UGE offline (019 + 021 min)
         ↓
-search with FORGE UGE (019 + 021 min; offline first)
+then Controlled Real with confirmation (015)
 ```
 
 ---

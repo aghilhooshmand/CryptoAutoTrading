@@ -594,8 +594,10 @@ GE/UGE MUST NOT generate code that bypasses the authoritative trading pipeline.
 Every evaluated individual MUST be reproducible from its genotype, grammar,
 effective configuration, market-data window, and evaluation settings.
 
-First GE/UGE milestones SHOULD prefer offline/batch evaluation; continuous
-live re-search during markets is not required for early milestones.
+First GE/UGE milestones MUST prefer offline/batch Simulation or Backtest
+evaluation; continuous live re-search during markets is not required for early
+milestones. Controlled Real MAY be deferred until a Simulation/Backtest
+Torque+UGE MVP has proven useful, by explicit roadmap lock.
 
 ---
 

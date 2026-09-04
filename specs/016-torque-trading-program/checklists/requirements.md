@@ -19,5 +19,5 @@
 
 ## Notes
 
-- Implementation blocked until Feature 015 MVP-2.
+- Implementation may start after 002+013; Feature 015 is paused.
 - Exact Torque syntax and ParamSpec shapes deferred to `/speckit-plan` when 016 starts.
