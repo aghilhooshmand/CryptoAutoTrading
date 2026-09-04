@@ -21,9 +21,10 @@ complete.
 **Torque / UGE (locked 2026-09-04):** After Controlled Real (015), this project
 **calls** general FORGE packages — `torque` (program form / `check`) and
 `uge` (grammar-agnostic search) — the same reuse pattern as FORCE for ML.
-CryptoAutoTrading owns strategy meaning, Backtest evaluation, BNF, and
-fitness. Trading logic MUST NOT move into FORGE. Do not start 016/019 before
-015 MVP-2.
+Install/import only (**pip / editable dependency**). **MUST NOT copy, vendor,
+or paste FORGE source into this repo.** CryptoAutoTrading owns strategy
+meaning, Backtest evaluation, BNF, and fitness. Trading logic MUST NOT move
+into FORGE. Do not start 016/019 before 015 MVP-2.
 
 Post-Feature-014 audit (2026-08-16): Feature **025 Stage-1 Trading
 Gap-Close** and the **MVP-1 validation gate** are DONE; next delivery is
@@ -800,7 +801,8 @@ proven). Do not let Torque/UGE delay the primary path to Controlled Real.
 ### Locked decisions (session 2026-09-04)
 
 1. **Depend on FORGE** — install/import `torque` for well-formedness (`check`).
-   Do not reimplement a second Torque language in this repo.
+   Do not reimplement a second Torque language in this repo. **Do not copy or
+   vendor FORGE source trees here** — call the package only.
 2. **Domain stays here** — strategy catalogue, ParamSpec/bounds, Backtest,
    Controller/Risk binding, BNF, and fitness live in CryptoAutoTrading (same
    ownership split as FORCE vs Torque: FORGE owns form; the app owns meaning).
@@ -928,6 +930,7 @@ milestone is offline/batch on historical windows).
 ### Locked decisions (session 2026-09-04)
 
 1. **Call FORGE `uge`** — grammar-agnostic search engine; no crypto deps in UGE.
+   Install/import only; **do not copy or vendor UGE source into this repo**.
 2. **This project owns** BNF, constraints (depth, banned combos, param ranges),
    and fitness (PnL, Sharpe, drawdown, fees/slippage — exact set in 019).
 3. **Flow** — BNF → UGE phenotype string → `torque.check` → CryptoAutoTrading

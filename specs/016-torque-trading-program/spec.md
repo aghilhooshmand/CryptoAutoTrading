@@ -36,7 +36,8 @@ pattern).
 ## Behavior locks (non-negotiable)
 
 1. **FORGE dependency** — Feature 016 MUST use FORGE `torque` for well-formed
-   phenotype checking. MUST NOT fork a second Torque language.
+   phenotype checking via install/import. MUST NOT fork a second Torque
+   language. MUST NOT copy, vendor, or paste FORGE source into this repository.
 2. **Same pipeline** — Phenotypes MUST produce trading intent into
    Controller → Risk → Execution → Accounting (constitution XXXV). No direct
    balance mutation or exchange order calls from Torque.

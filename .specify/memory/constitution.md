@@ -561,8 +561,10 @@ Torque may describe compositions of strategies, parameters, time windows,
 capital allocations, and signal-composition logic.
 
 When a general Torque language package is available (FORGE `torque`), this
-project MUST use it for program form / well-formedness and MUST keep trading
-semantics, Backtest evaluation, and pipeline binding in CryptoAutoTrading.
+project MUST use it for program form / well-formedness via dependency
+(install/import) and MUST keep trading semantics, Backtest evaluation, and
+pipeline binding in CryptoAutoTrading. The project MUST NOT copy or vendor
+FORGE package source into this repository.
 
 Torque programs MUST ultimately produce trading intent that enters the same:
 

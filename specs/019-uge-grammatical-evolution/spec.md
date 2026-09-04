@@ -32,8 +32,9 @@ operator session 2026-09-04.
 
 ## Behavior locks (non-negotiable)
 
-1. **FORGE `uge`** is the search engine; MUST NOT reimplement a parallel GE
-   core in this repo.
+1. **FORGE `uge`** is the search engine via install/import; MUST NOT reimplement
+   a parallel GE core in this repo. MUST NOT copy, vendor, or paste FORGE/UGE
+   source into this repository.
 2. **BNF + fitness** MUST be owned by CryptoAutoTrading.
 3. Every individual MUST be evaluated through Feature **016** binding +
    Feature **004** Backtest (Controller/Risk intact). No bypass pipeline.
