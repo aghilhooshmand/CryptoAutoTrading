@@ -41,6 +41,8 @@ def test_evaluate_phenotype_success_shape():
     assert "effectiveLeaves" in out
     assert out["effectiveLeaves"][0]["strategyId"] == "rsi"
     assert out["metrics"]["tradeCount"] is not None
+    assert "rawSummary" not in out
+    assert set(out.keys()) == {"ok", "phenotype", "metrics", "effectiveLeaves"}
 
 
 def test_evaluate_phenotype_fail_closed_unknown_leaf():

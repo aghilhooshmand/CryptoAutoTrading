@@ -160,7 +160,6 @@ def evaluate_phenotype(
                 "buyAndHoldNetProfit": summary["buyAndHoldNetPnl"],
             },
             "effectiveLeaves": leaves,
-            "rawSummary": summary,
         }
     except TorqueBindError as exc:
         return {"ok": False, "error": exc.to_error_dict()}

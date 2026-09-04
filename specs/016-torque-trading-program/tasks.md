@@ -211,3 +211,12 @@ Task: "Implement check_phenotype wrapping torque.check in backend/app/torque_bin
 - Do not implement Feature 019 UGE loop or BNF grammar file here
 - Do not enable Real / place orders
 - Commit only when the operator asks
+
+---
+
+## Phase 7: Convergence
+
+**Purpose**: Close gaps found by `/speckit-converge` against current code vs
+spec/plan/tasks (2026-09-04).
+
+- [x] T026 Remove `rawSummary` from the public `evaluate_phenotype` success dict in `backend/app/torque_bind/evaluate.py`, or document it as a non-contract debug field in `specs/016-torque-trading-program/contracts/torque-bind-api.md` per contracts/torque-bind-api.md and FR-007 (`unrequested`)
