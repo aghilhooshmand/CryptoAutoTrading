@@ -554,10 +554,10 @@ before 015**.
 
 | ID | Feature | Status |
 |---|---|---|
-| 013 | Private Account Integration (XT as-built; Kraken-first amendment) | DONE (XT read); **Kraken private-read implemented** (close when validated) |
+| 013 | Private Account Integration (XT as-built; Kraken-first amendment) | **DONE** (XT read + Kraken private-read) |
 | 014 | Live Paper-Trading Hardening | DONE (**FREEZE** — expand only for concrete defects) |
 | 025 | Stage-1 Trading Gap-Close | DONE |
-| 015 | Real-Money Manual/Confirmed Execution | IN PROGRESS — **stop new XT live work**; Kraken Controlled Real next after 013 closure |
+| 015 | Real-Money Manual/Confirmed Execution | **IN PROGRESS** — Controlled Real on Kraken (002 + 013 Kraken gates satisfied) |
 
 ---
 
@@ -619,8 +619,7 @@ RealExecutionAdapter
 Kraken private adapter
 ```
 
-Status: `DONE` (XT read as-built); **Kraken private-read implemented**
-(mark amendment DONE when operator validation complete)
+Status: `DONE` (XT read as-built + Kraken private-read amendment)
 
 ---
 
@@ -772,7 +771,8 @@ Operator confirms
 RealExecutionAdapter → Kraken
 ```
 
-Status: `IN PROGRESS` (Kraken execution **blocked** on 002 + 013 Kraken work)
+Status: `IN PROGRESS` (002 + 013 Kraken gates **satisfied**; implement/finish
+Controlled Real on Kraken)
 
 ---
 
@@ -1505,14 +1505,14 @@ Current completed foundation:
 010 → DONE (minimal quote_asset wording; Risk semantics unchanged)
 011 → DONE
 012 → DONE (minimal venue_order_id additive; Sim/Backtest semantics unchanged)
-013 → DONE (XT read as-built); Kraken private-read amendment implemented (close when validated)
+013 → DONE (XT read as-built + Kraken private-read amendment)
 014 → DONE (freeze recovery expansion)
 ```
 
 Current active milestone:
 
 ```text
-015 → Controlled Real on Kraken (next after 013 Kraken private-read closure)
+015 → Controlled Real on Kraken (**active**; 002 + 013 Kraken gates done)
         ↓
 016 → Torque MVP (FORGE torque; composition; 018 merge direction)
         ↓

@@ -318,3 +318,11 @@ fills on Kraken.
       (FR-029)
 
 Do **not** start Feature 015 Kraken order placement in this phase.
+
+### Closure 2026-09-04
+
+Phase 9 complete. Automated gates: Kraken account unit/contract + XT
+regression + Real Account UI tests green. Live without keys:
+`GET /account/balances` → `credentials_missing`; `/market/pairs` still works;
+no `POST /account/orders`. Optional live-key smoke is operator-only.
+Feature 013 Kraken private-read amendment marked **DONE**.
