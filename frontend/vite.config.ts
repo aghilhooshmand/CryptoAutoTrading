@@ -16,6 +16,7 @@ export default defineConfig({
       "/portfolio": "http://127.0.0.1:8000",
       "/xt-account": "http://127.0.0.1:8000",
       "/account": "http://127.0.0.1:8000",
+      "/uge": "http://127.0.0.1:8000",
     },
   },
 });

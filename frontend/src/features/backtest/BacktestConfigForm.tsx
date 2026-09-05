@@ -18,6 +18,7 @@ import {
   defaultStrategyConfig,
   type StrategyConfigValue,
 } from "../strategy/StrategyConfigFields";
+import { listFrozenArtifacts, type FrozenArtifact } from "../../services/ugeApi";
 
 const INTERVALS: CandleInterval[] = ["1m", "5m", "15m", "1h", "4h", "1d"];
 
@@ -54,6 +55,22 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
   const [strategyError, setStrategyError] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [seeded, setSeeded] = useState(false);
+  const [frozenArtifacts, setFrozenArtifacts] = useState<FrozenArtifact[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const items = await listFrozenArtifacts();
+        if (!cancelled) setFrozenArtifacts(items);
+      } catch {
+        if (!cancelled) setFrozenArtifacts([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -178,6 +195,35 @@ export function BacktestConfigForm({ disabled, busy, error, onSubmit }: Props) {
         preferredStrategy={preferredStrategy}
         variant="backtest"
       />
+
+      {frozenArtifacts.length > 0 ? (
+        <div className="backtest-field-row" data-testid="frozen-phenotype-picker">
+          <label>
+            Load frozen UGE phenotype
+            <select
+              disabled={locked}
+              defaultValue=""
+              onChange={(e) => {
+                const id = e.target.value;
+                if (!id) return;
+                const art = frozenArtifacts.find((a) => a.id === id || a.path === id);
+                if (!art?.phenotype) return;
+                setStrategy({
+                  strategyId: "torque_phenotype",
+                  strategyParams: { phenotype: art.phenotype },
+                });
+              }}
+            >
+              <option value="">— select saved phenotype —</option>
+              {frozenArtifacts.map((a) => (
+                <option key={a.id ?? a.path} value={a.id ?? a.path ?? ""}>
+                  {(a.id ?? "artifact").slice(0, 8)}… fitness={String(a.trainFitness ?? "?")}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      ) : null}
 
       <fieldset className="backtest-fieldset" disabled={locked}>
         <legend>Market</legend>

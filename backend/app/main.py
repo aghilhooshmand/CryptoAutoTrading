@@ -13,6 +13,7 @@ from app.api.settings import router as settings_router
 from app.api.simulation import router as simulation_router
 from app.api.strategies import router as strategies_router
 from app.api.account import router as account_router
+from app.api.uge import router as uge_router
 from app.api.xt_account import router as xt_account_router
 from app.db import session as db_session
 from app.simulation.recovery import recover_orphan_sessions_async
@@ -25,6 +26,7 @@ from app.strategy import (  # noqa: F401
     macd,
     rsi,
 )
+from app.uge_search import phenotype_strategy as _torque_phenotype  # noqa: F401
 
 
 @asynccontextmanager
@@ -52,6 +54,7 @@ api_router.include_router(comparison_router)
 api_router.include_router(settings_router)
 api_router.include_router(portfolio_router)
 api_router.include_router(account_router)
+api_router.include_router(uge_router)
 api_router.include_router(xt_account_router)
 app.include_router(api_router)
 

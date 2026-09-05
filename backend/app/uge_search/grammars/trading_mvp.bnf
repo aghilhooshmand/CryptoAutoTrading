@@ -1,0 +1,18 @@
+# MVP Torque trading grammar for Feature 019 UGE (discrete params only).
+# Edit alternatives below to widen search; continuous ranges are out of MVP.
+# Phenotypes must be valid Feature 016 Torque source (keyword ParamDef names).
+
+<program> ::= <leaf> | <compose>
+
+<compose> ::= and(<leaf>, <leaf>) | or(<leaf>, <leaf>) | vote(<leaf>, <leaf>)
+
+<leaf> ::= rsi(period=<rsi_period>, oversold=30, overbought=70) | dual_ema(fastPeriod=<ema_fast>, slowPeriod=<ema_slow>) | macd(fastPeriod=<macd_fast>, slowPeriod=<macd_slow>, signalPeriod=<macd_sig>)
+
+<rsi_period> ::= 7 | 10 | 14 | 21
+
+<ema_fast> ::= 5 | 9 | 12
+<ema_slow> ::= 13 | 21 | 26
+
+<macd_fast> ::= 8 | 12
+<macd_slow> ::= 17 | 26
+<macd_sig> ::= 5 | 9

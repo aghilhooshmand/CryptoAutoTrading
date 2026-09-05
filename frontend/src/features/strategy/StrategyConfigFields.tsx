@@ -213,21 +213,33 @@ export function StrategyConfigFields({
         {selected.parameters.map((p) => {
           const current = value.strategyParams[p.name] ?? p.default;
           const isDecimal = p.type === "decimal_string";
+          const isString = p.type === "string";
           return (
-            <label key={p.name}>
+            <label key={p.name} className={isString ? "strategy-config__full" : undefined}>
               <span className="strategy-config__label">{paramLabel(p.name, p.label)}</span>
-              <input
-                type={isDecimal ? "text" : "number"}
-                inputMode={isDecimal ? "decimal" : "numeric"}
-                data-testid={`strategy-param-${p.name}`}
-                data-param-type={p.type}
-                value={current}
-                min={isDecimal ? undefined : p.minimum}
-                max={isDecimal ? undefined : p.maximum}
-                step={isDecimal ? "any" : 1}
-                disabled={disabled}
-                onChange={(e) => setParam(p.name, e.target.value, p.type)}
-              />
+              {isString ? (
+                <textarea
+                  data-testid={`strategy-param-${p.name}`}
+                  data-param-type={p.type}
+                  rows={3}
+                  value={String(current ?? "")}
+                  disabled={disabled}
+                  onChange={(e) => setParam(p.name, e.target.value, p.type)}
+                />
+              ) : (
+                <input
+                  type={isDecimal ? "text" : "number"}
+                  inputMode={isDecimal ? "decimal" : "numeric"}
+                  data-testid={`strategy-param-${p.name}`}
+                  data-param-type={p.type}
+                  value={current}
+                  min={isDecimal ? undefined : p.minimum}
+                  max={isDecimal ? undefined : p.maximum}
+                  step={isDecimal ? "any" : 1}
+                  disabled={disabled}
+                  onChange={(e) => setParam(p.name, e.target.value, p.type)}
+                />
+              )}
             </label>
           );
         })}

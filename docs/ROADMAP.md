@@ -34,8 +34,8 @@ composition programs without Real money). Then return to Feature **015**
 Controlled Real on Kraken. Do **not** place Real Kraken orders from Torque/UGE
 MVP. 002 + 013 Kraken gates remain satisfied for when 015 resumes.
 
-Post-Feature-014 audit (2026-08-16) remains: 025 and MVP-1 DONE. **016 Torque
-DONE.** **Active next delivery is 019 UGE (sim/search), then 015 Controlled Real.**
+Post-Feature-014 audit (2026-08-16) remains: 025 and MVP-1 DONE. **016 Torque DONE.** **019 UGE DONE.** **Active next delivery is 015 Controlled Real**
+(after sim/search MVP — now proven offline).
     
 This roadmap defines:
 
@@ -939,7 +939,8 @@ milestone is offline/batch on historical windows).
 
 | ID | Feature | Status |
 |---|---|---|
-| 019 | Grammatical Evolution Search (UGE) | **PLANNED** (after 016; FORGE `uge`; sim/Backtest fitness) |
+| 019 | Grammatical Evolution Search (UGE) | **DONE** (FORGE `uge`; train-only fitness; discrete BNF; freeze → Backtest UI; 021 min split) |
+
 | 020 | Evolution Experiments & Results | PLANNED (**DEFER** rich UI/persistence) |
 | 021 | Train / Validation / Test | PLANNED (**minimum accompanies first GE** — simple chronological) |
 | 022 | Advanced Fitness | PLANNED (**DEFER**) |
@@ -961,6 +962,9 @@ milestone is offline/batch on historical windows).
 ---
 
 ## 019 — Grammatical Evolution Search (UGE)
+
+**Status**: `DONE` (2026-09-05) — `backend/app/uge_search/` + freeze →
+Backtest UI (`torque_phenotype` / `/uge/frozen`).
 
 ### Goal
 

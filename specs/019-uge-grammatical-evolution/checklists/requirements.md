@@ -9,6 +9,7 @@
 - [x] Focused on search ownership and offline-first evaluation
 - [x] Mandatory sections present for a PLANNED feature
 - [x] Clarifications from 2026-09-04 encoded
+- [x] Clarifications from 2026-09-05 encoded
 
 ## Requirement Completeness
 
@@ -19,6 +20,9 @@
 
 ## Notes
 
-- Implementation blocked only until Feature 016 Torque MVP (sim/Backtest).
-- Feature 015 Controlled Real is paused until this sim/search MVP.
-- Exact fitness metrics and BNF text deferred to plan when 019 starts.
+- Feature **016** Torque MVP is **DONE** — 019 implementation may proceed.
+- Feature 015 Controlled Real remains paused until this sim/search MVP.
+- Session 2026-09-05: default fitness `netProfit − buyAndHoldNetProfit` with
+  configurable single-scalar allow-list; train-only selection; discrete BNF
+  params; frozen phenotype selectable in Backtest UI (Comparison multi-run
+  deferred). Sync `plan.md` / `research.md` before `/speckit-tasks` if needed.
