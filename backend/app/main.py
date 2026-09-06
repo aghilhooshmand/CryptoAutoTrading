@@ -27,11 +27,13 @@ from app.strategy import (  # noqa: F401
     rsi,
 )
 from app.uge_search import phenotype_strategy as _torque_phenotype  # noqa: F401
+from app.uge_search.frozen_catalogue import load_and_register_all
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     db_session.init_db()
+    load_and_register_all()
     db = db_session.SessionLocal()
     try:
         await recover_orphan_sessions_async(db)

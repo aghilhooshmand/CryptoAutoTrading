@@ -28,14 +28,16 @@ or paste FORGE source into this repo.** Local FORGE checkout (operator):
 strategy meaning, Backtest/Simulation evaluation, BNF, and fitness. Trading
 logic MUST NOT move into FORGE.
 
-**Delivery order (operator lock 2026-09-04):** Prove Torque + UGE on
-**Simulation / Backtest only** first (find useful strategy × parameter ×
-composition programs without Real money). Then return to Feature **015**
-Controlled Real on Kraken. Do **not** place Real Kraken orders from Torque/UGE
-MVP. 002 + 013 Kraken gates remain satisfied for when 015 resumes.
+**Delivery order (operator lock 2026-09-05):** **016 Torque** and **019 UGE**
+offline search are DONE. **Active next delivery is Feature 020** Evolution
+Experiments & Results (UGE lab UI), in three parts: **020a** run/stream/charts
+→ **020b** grammar + leaf/operator space → **020c** freeze into strategy list
+for Backtest / Simulation / Real selection. Lab MUST NOT auto-place Real
+orders. Feature **015** Controlled Real remains paused until 020 phases are
+accepted (or operator re-prioritises). 002 + 013 Kraken gates remain satisfied
+for when 015 resumes. Do **not** place Real Kraken orders from UGE itself.
 
-Post-Feature-014 audit (2026-08-16) remains: 025 and MVP-1 DONE. **016 Torque DONE.** **019 UGE DONE.** **Active next delivery is 015 Controlled Real**
-(after sim/search MVP — now proven offline).
+Post-Feature-014 audit (2026-08-16) remains: 025 and MVP-1 DONE. **016 Torque DONE.** **019 UGE DONE.** **Active next delivery is 020 Evolution Experiments** (UGE lab).
     
 This roadmap defines:
 
@@ -941,7 +943,7 @@ milestone is offline/batch on historical windows).
 |---|---|---|
 | 019 | Grammatical Evolution Search (UGE) | **DONE** (FORGE `uge`; train-only fitness; discrete BNF; freeze → Backtest UI; 021 min split) |
 
-| 020 | Evolution Experiments & Results | PLANNED (**DEFER** rich UI/persistence) |
+| 020 | Evolution Experiments & Results | **IN PROGRESS** (020a–c implemented; operator validate / converge) |
 | 021 | Train / Validation / Test | PLANNED (**minimum accompanies first GE** — simple chronological) |
 | 022 | Advanced Fitness | PLANNED (**DEFER**) |
 | 023 | Regime-Aware Programs | PLANNED (**DEFER**) |
@@ -1036,7 +1038,8 @@ Status: `PLANNED`
 
 ### Goal
 
-Make GE experimentation reproducible and inspectable.
+Make GE experimentation reproducible and inspectable in a **dedicated UGE lab
+UI** (not Python-only). Spec: `specs/020-evolution-experiments/`.
 
 Persist or reproducibly identify:
 
@@ -1057,23 +1060,33 @@ Persist or reproducibly identify:
 - best individuals;
 - runtime.
 
-Potential UI:
+UI (target):
 
 ```text
-Experiments
-├── configuration
-├── progress/results
-├── generations
+Evolution / Experiments
+├── configuration (UGE params; 020b: grammar + leaves/ops)
+├── progress (stream each generation)
+├── charts (fitness over generations)
 ├── best programs
-└── program inspection
+└── freeze → named strategy list entry (020c)
 ```
 
-### Direction (post-audit 2026-08-16)
+### Delivery parts (operator lock 2026-09-05)
 
-**DEFER** rich experiment UI and heavy persistence. First GE may use minimal
-reproducibility (seed/config/results) without a full Experiments product UI.
+1. **020a** — Configure usual UGE params; start/cancel; **stream each
+   generation**; charts; show best phenotype; persist run.
+2. **020b** — Set grammar; choose eligible strategies (leaves) and composition
+   operators.
+3. **020c** — Freeze phenotype into **strategy list**; operator selects it in
+   Backtest / Simulation / Real (lab never auto-starts Real).
 
-Status: `PLANNED` (deferred richness)
+### Direction
+
+Rich experiment UI is **in scope now** (supersedes 2026-08-16 “defer rich UI”
+for this feature). Still: no vendoring FORGE; no auto Real from UGE; 015 remains
+the Controlled Real gate for live money.
+
+Status: `IN PROGRESS` (specification)
 
 ---
 
@@ -1347,11 +1360,13 @@ Do not implement these merely because they are listed here.
           019 UGE / GE Search (FORGE uge; offline sim/Backtest)
                    │
                    ▼
+          020 Evolution Experiments (UGE lab: 020a→020b→020c)
+                   │
+                   ▼
           015 resume Controlled Real on Kraken
                    │
                    ├── 017 Torque Capital  (DEFERRED)
                    ├── 018 richer composition (after 016 MVP if needed)
-                   ├── 020 Experiment UI   (DEFERRED)
                    ├── 022 Advanced Fitness (DEFERRED)
                    ├── 023 Regime           (DEFERRED)
                    ▼
@@ -1559,10 +1574,9 @@ MVP-1 validation gate                 (DONE)
 Deferred / destination (do not drive near-term work):
 
 ```text
-015 Controlled Real — PAUSED until 016+019 sim/search MVP
+015 Controlled Real — PAUSED until 020 UGE lab accepted (or re-prioritised)
 017 Torque Capital Allocation — DEFER
 018 as separate phase — MERGE into 016 (keep ID)
-020 rich experiment UI — DEFER
 022 Advanced Fitness — DEFER
 023 Regime — DEFER
 024 Autonomous Real — destination only
@@ -1572,11 +1586,11 @@ realtime continuous UGE during live markets — DEFER (offline/batch first)
 The near-term objective is therefore:
 
 ```text
-compose strategies with FORGE Torque on Sim/Backtest (016)
-        ↓
-search combinations with FORGE UGE offline (019 + 021 min)
+020 UGE lab UI (a: run/stream/charts → b: grammar/leaves → c: freeze to strategies)
         ↓
 then Controlled Real with confirmation (015)
+
+(016 Torque + 019 offline UGE already DONE)
 ```
 
 ---

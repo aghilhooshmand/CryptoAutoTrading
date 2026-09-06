@@ -1,12 +1,12 @@
-"""Offline UGE runner (train-only selection)."""
+"""Extend offline UGE with generation hooks + cancel (Feature 020)."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any
+from typing import Any, Callable
 
-from uge import RankingProjection, UGEEngine
+from uge import Grammar, RankingProjection, UGEEngine
 
 from app.market_data.models import Candlestick
 from app.simulation.money import DEFAULT_FEE_RATE, DEFAULT_SLIPPAGE_RATE
@@ -19,6 +19,13 @@ from app.uge_search.fitness import (
 )
 from app.uge_search.grammar_mvp import GRAMMAR_ID, load_trading_mvp_grammar
 from app.uge_search.splits import chronological_split
+
+OnGeneration = Callable[[dict[str, Any]], None]
+CancelCheck = Callable[[], bool]
+
+
+class UgeSearchCancelled(Exception):
+    """Raised from a reporter when cancel is requested at a generation boundary."""
 
 
 @dataclass
@@ -36,6 +43,29 @@ class UgeRunResult:
     population_size: int
     n_generations: int
     raw_outcome: Any = None
+    train_candle_count: int | None = None
+
+
+def _snapshot_from_record(record: Any, population: Any, archive: Any) -> dict[str, Any]:
+    from uge.observe import compute_generation_stats
+    from uge import RankingProjection as RP
+
+    stats = compute_generation_stats(
+        record,
+        population,
+        archive,
+        ranking=RP("primary_index", {"index": 0}),
+        objective_index=0,
+    )
+    return {
+        "generation": int(record.generation),
+        "fitnessMax": stats.get("fitness_max"),
+        "fitnessAvg": stats.get("fitness_avg"),
+        "fitnessMin": stats.get("fitness_min"),
+        "bestPhenotype": stats.get("best_phenotype"),
+        "nInvalid": getattr(record, "n_invalid", None),
+        "nFailedEval": getattr(record, "n_failed_eval", None),
+    }
 
 
 def run_uge_search(
@@ -53,6 +83,10 @@ def run_uge_search(
     val_ratio: float = 0.2,
     test_ratio: float = 0.2,
     score_test: bool = False,
+    grammar: Grammar | None = None,
+    grammar_id: str | None = None,
+    on_generation: OnGeneration | None = None,
+    cancel_check: CancelCheck | None = None,
 ) -> UgeRunResult:
     """
     Run offline UGE on a candle snapshot.
@@ -69,7 +103,8 @@ def run_uge_search(
         val_ratio=val_ratio,
         test_ratio=test_ratio,
     )
-    grammar = load_trading_mvp_grammar()
+    g = grammar if grammar is not None else load_trading_mvp_grammar()
+    gid = grammar_id or GRAMMAR_ID
     evaluator = make_backtest_evaluator(
         split.train,
         fitness_id=fid,
@@ -84,19 +119,49 @@ def run_uge_search(
     engine.register("mate", "one_point")
     engine.register("mutate", "codon_flip")
     engine.register("mapping", "lazy")
-    outcome = engine.run(
-        grammar=grammar,
-        pop=population_size,
-        ngen=n_generations,
-        max_depth=max_depth,
-        seed=seed,
-        cxpb=0.8,
-        mutpb=0.2,
-        elite_size=1,
-        archive_capacity=5,
-        ranking_projection=RankingProjection("primary_index", {"index": 0}),
-    )
-    best = outcome.best_individual
+
+    cancelled = False
+    last_best_pheno: str | None = None
+    last_best_fit: float | None = None
+
+    def _reporter(record: Any, population: Any, archive: Any = None) -> None:
+        nonlocal cancelled, last_best_pheno, last_best_fit
+        snap = _snapshot_from_record(record, population, archive)
+        if snap.get("bestPhenotype"):
+            last_best_pheno = str(snap["bestPhenotype"])
+        if snap.get("fitnessMax") is not None:
+            try:
+                last_best_fit = float(snap["fitnessMax"])
+            except (TypeError, ValueError):
+                pass
+        if on_generation is not None:
+            on_generation(snap)
+        if cancel_check is not None and cancel_check():
+            cancelled = True
+            raise UgeSearchCancelled("cancel requested")
+
+    try:
+        outcome = engine.run(
+            grammar=g,
+            pop=population_size,
+            ngen=n_generations,
+            max_depth=max_depth,
+            seed=seed,
+            cxpb=0.8,
+            mutpb=0.2,
+            elite_size=1,
+            archive_capacity=5,
+            ranking_projection=RankingProjection("primary_index", {"index": 0}),
+            reporters=[_reporter],
+        )
+        status = outcome.status
+        termination_reason = outcome.termination_reason
+    except UgeSearchCancelled:
+        status = "cancelled"
+        termination_reason = "operator_cancel"
+        outcome = None
+
+    best = None if outcome is None else outcome.best_individual
     phenotype: str | None = None
     train_fit: float | None = None
     if best is not None and not best.mapping.invalid:
@@ -112,6 +177,9 @@ def run_uge_search(
                 fee_rate=fee_rate,
                 slippage_rate=slippage_rate,
             )
+    if phenotype is None and last_best_pheno:
+        phenotype = last_best_pheno
+        train_fit = last_best_fit
     val_fit: float | None = None
     test_fit: float | None = None
     if phenotype:
@@ -133,15 +201,15 @@ def run_uge_search(
                 slippage_rate=slippage_rate,
             )
     return UgeRunResult(
-        status=outcome.status,
-        termination_reason=outcome.termination_reason,
+        status=status if not cancelled else "cancelled",
+        termination_reason=termination_reason,
         best_phenotype=phenotype,
         train_fitness=train_fit,
         validation_fitness=val_fit,
         test_fitness=test_fit,
         fitness_id=fid,
         seed=seed,
-        grammar_id=GRAMMAR_ID,
+        grammar_id=gid,
         split={
             "trainRatio": train_ratio,
             "valRatio": val_ratio,
@@ -150,4 +218,5 @@ def run_uge_search(
         population_size=population_size,
         n_generations=n_generations,
         raw_outcome=outcome,
+        train_candle_count=len(split.train),
     )
