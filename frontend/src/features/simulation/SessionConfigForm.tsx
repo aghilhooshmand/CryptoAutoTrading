@@ -17,6 +17,7 @@ import {
   type StrategyConfigValue,
 } from "../strategy/StrategyConfigFields";
 import { InfoTooltip } from "../shared/InfoTooltip";
+import { getSessionPreset, SESSION_PRESETS, type SessionPresetId } from "./sessionPresets";
 
 export interface SessionConfigValues {
   mode: "simulation" | "real";
@@ -107,6 +108,7 @@ export function SessionConfigForm({
   const [seeded, setSeeded] = useState(false);
   const [portfolioAvailable, setPortfolioAvailable] = useState<string | null>(null);
   const [allocations, setAllocations] = useState<PortfolioAllocation[]>([]);
+  const [presetId, setPresetId] = useState<SessionPresetId>("custom");
 
   // Fresh open only: seed once on mount. Parent keeps form mounted across tabs.
   useEffect(() => {
@@ -161,7 +163,23 @@ export function SessionConfigForm({
   );
 
   function setField<K extends keyof SessionConfigValues>(key: K, value: string) {
+    setPresetId("custom");
     setValues((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function applyPreset(id: SessionPresetId) {
+    setPresetId(id);
+    if (id === "custom") return;
+    const preset = getSessionPreset(id);
+    if (preset.patch) {
+      setValues((prev) => ({
+        ...prev,
+        ...preset.patch,
+        // Keep symbol and strategy; presets only fill risk / capital / timing.
+        symbol: prev.symbol,
+      }));
+    }
+    setLocalError(null);
   }
 
   function handleSubmit(event: FormEvent) {
@@ -293,6 +311,33 @@ export function SessionConfigForm({
         variant="simulation"
       />
 
+      {!isReal ? (
+        <label className="sim-preset">
+          <FieldLabel
+            tipLabel="Session preset"
+            tipText="Choose a strategy first, then pick a setup. Presets fill capital, risk, duration, and costs only — they do not change your strategy. Any manual change to those fields switches to Custom."
+            tipTestId="tip-session-preset"
+          >
+            Setup preset
+          </FieldLabel>
+          <select
+            data-testid="sim-preset"
+            value={presetId}
+            disabled={disabled}
+            onChange={(e) => applyPreset(e.target.value as SessionPresetId)}
+          >
+            {SESSION_PRESETS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+          <span className="field-hint" data-testid="sim-preset-hint">
+            {getSessionPreset(presetId).description}
+          </span>
+        </label>
+      ) : null}
+
       <div className="sim-grid">
         <label>
           <FieldLabel>Symbol</FieldLabel>
@@ -328,7 +373,13 @@ export function SessionConfigForm({
         </label>
         {!isReal ? (
         <label>
-          <FieldLabel>Starting capital (USDT)</FieldLabel>
+          <FieldLabel
+            tipLabel="Starting capital"
+            tipText="Paper ledger size for this Simulation session (not XT cash). Allocated capital cannot exceed this."
+            tipTestId="tip-starting"
+          >
+            Starting capital (USDT)
+          </FieldLabel>
           <input
             data-testid="sim-starting"
             inputMode="decimal"
@@ -580,7 +631,13 @@ export function SessionConfigForm({
           </select>
         </label>
         <label>
-          <FieldLabel>Duration (seconds)</FieldLabel>
+          <FieldLabel
+            tipLabel="Duration"
+            tipText="Wall-clock session length in seconds. Session stops when this elapses, or sooner if profit/loss/trade limits hit."
+            tipTestId="tip-duration"
+          >
+            Duration (seconds)
+          </FieldLabel>
           <input
             data-testid="sim-duration"
             inputMode="numeric"

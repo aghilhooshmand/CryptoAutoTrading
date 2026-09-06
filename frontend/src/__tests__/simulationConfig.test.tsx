@@ -99,4 +99,23 @@ describe("simulation config validation", () => {
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByTestId("session-mode")).toHaveValue("simulation");
   });
+
+  it("applies Torque smoke preset fields", async () => {
+    const user = userEvent.setup();
+    render(<SessionConfigForm onSubmit={vi.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByTestId("sim-preset")).toBeInTheDocument();
+    });
+    await user.selectOptions(screen.getByTestId("sim-preset"), "torque_smoke");
+    expect(screen.getByTestId("sim-timeframe")).toHaveValue("1m");
+    expect(screen.getByTestId("sim-starting")).toHaveValue("200");
+    expect(screen.getByTestId("sim-allocated")).toHaveValue("200");
+    expect(screen.getByTestId("sim-max-position")).toHaveValue("100");
+    expect(screen.getByTestId("sim-profit-rate")).toHaveValue("0.02");
+    expect(screen.getByTestId("sim-loss-rate")).toHaveValue("0.05");
+    expect(screen.getByTestId("sim-max-trades")).toHaveValue("30");
+    expect(screen.getByTestId("sim-duration")).toHaveValue("900");
+    expect(screen.getByTestId("sim-decision-log-mode")).toHaveValue("full_audit");
+    expect(screen.getByTestId("sim-preset-hint")).toHaveTextContent(/Torque/i);
+  });
 });
