@@ -943,7 +943,7 @@ milestone is offline/batch on historical windows).
 |---|---|---|
 | 019 | Grammatical Evolution Search (UGE) | **DONE** (FORGE `uge`; train-only fitness; discrete BNF; freeze → Backtest UI; 021 min split) |
 
-| 020 | Evolution Experiments & Results | **IN PROGRESS** (020a–c implemented; operator validate / converge) |
+| 020 | Evolution Experiments & Results | **IN PROGRESS** (020a–c + converge T041–T044 done; re-converge / operator accept) |
 | 021 | Train / Validation / Test | PLANNED (**minimum accompanies first GE** — simple chronological) |
 | 022 | Advanced Fitness | PLANNED (**DEFER**) |
 | 023 | Regime-Aware Programs | PLANNED (**DEFER**) |

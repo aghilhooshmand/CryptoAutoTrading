@@ -55,6 +55,13 @@ async function parseError(res: Response): Promise<string> {
   }
 }
 
+export async function listExperiments(): Promise<Experiment[]> {
+  const res = await fetch("/uge/experiments");
+  if (!res.ok) throw new Error(await parseError(res));
+  const data = (await res.json()) as { experiments?: Experiment[] };
+  return data.experiments ?? [];
+}
+
 export async function createExperiment(body: ExperimentConfigBody): Promise<Experiment> {
   const res = await fetch("/uge/experiments", {
     method: "POST",

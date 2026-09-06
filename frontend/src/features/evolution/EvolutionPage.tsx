@@ -4,6 +4,7 @@ import {
   createExperiment,
   freezeExperiment,
   getExperiment,
+  listExperiments,
   type Experiment,
   type ExperimentConfigBody,
 } from "./evolutionApi";
@@ -15,6 +16,7 @@ const TERMINAL = new Set(["completed", "failed", "cancelled"]);
 
 export function EvolutionPage() {
   const [experiment, setExperiment] = useState<Experiment | null>(null);
+  const [recent, setRecent] = useState<Experiment[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const pollRef = useRef<number | null>(null);
@@ -26,16 +28,54 @@ export function EvolutionPage() {
     }
   }, []);
 
-  const refresh = useCallback(async (id: string) => {
-    const exp = await getExperiment(id);
-    setExperiment(exp);
-    if (TERMINAL.has(exp.status)) {
-      stopPoll();
-      setBusy(false);
+  const loadRecent = useCallback(async () => {
+    try {
+      const list = await listExperiments();
+      setRecent(list.slice(0, 20));
+    } catch {
+      /* list is best-effort for reconnect */
     }
-  }, [stopPoll]);
+  }, []);
 
-  useEffect(() => () => stopPoll(), [stopPoll]);
+  const startPolling = useCallback(
+    (id: string) => {
+      stopPoll();
+      pollRef.current = window.setInterval(() => {
+        void getExperiment(id)
+          .then((exp) => {
+            setExperiment(exp);
+            if (TERMINAL.has(exp.status)) {
+              stopPoll();
+              setBusy(false);
+              void loadRecent();
+            }
+          })
+          .catch((err) => {
+            setError(err instanceof Error ? err.message : "Poll failed");
+            stopPoll();
+            setBusy(false);
+          });
+      }, 1000);
+    },
+    [loadRecent, stopPoll],
+  );
+
+  const refresh = useCallback(
+    async (id: string) => {
+      const exp = await getExperiment(id);
+      setExperiment(exp);
+      if (TERMINAL.has(exp.status)) {
+        stopPoll();
+        setBusy(false);
+      }
+    },
+    [stopPoll],
+  );
+
+  useEffect(() => {
+    void loadRecent();
+    return () => stopPoll();
+  }, [loadRecent, stopPoll]);
 
   async function onStart(body: ExperimentConfigBody) {
     setError(null);
@@ -44,16 +84,29 @@ export function EvolutionPage() {
     try {
       const created = await createExperiment(body);
       setExperiment(created);
-      pollRef.current = window.setInterval(() => {
-        void refresh(created.id).catch((err) => {
-          setError(err instanceof Error ? err.message : "Poll failed");
-          stopPoll();
-          setBusy(false);
-        });
-      }, 1000);
+      setBusy(true);
+      startPolling(created.id);
+      void loadRecent();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Start failed");
       setBusy(false);
+    }
+  }
+
+  async function onSelectExperiment(id: string) {
+    setError(null);
+    try {
+      const exp = await getExperiment(id);
+      setExperiment(exp);
+      if (!TERMINAL.has(exp.status)) {
+        setBusy(true);
+        startPolling(id);
+      } else {
+        stopPoll();
+        setBusy(false);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Load failed");
     }
   }
 
@@ -62,6 +115,7 @@ export function EvolutionPage() {
     try {
       await cancelExperiment(experiment.id);
       await refresh(experiment.id);
+      void loadRecent();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Cancel failed");
     }
@@ -78,6 +132,35 @@ export function EvolutionPage() {
         then freeze the best phenotype into the strategy list for Backtest /
         Simulation. This lab never places Real orders.
       </p>
+      <div data-testid="evolution-recent-list" style={{ marginBottom: "1rem" }}>
+        <label>
+          Recent experiments (reconnect)
+          <select
+            value={experiment?.id ?? ""}
+            onChange={(e) => {
+              const id = e.target.value;
+              if (id) void onSelectExperiment(id);
+            }}
+            data-testid="evolution-recent-select"
+          >
+            <option value="">— select to resume / inspect —</option>
+            {recent.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.id} · {item.status}
+                {item.bestPhenotype ? ` · ${item.bestPhenotype.slice(0, 40)}` : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          onClick={() => void loadRecent()}
+          data-testid="evolution-recent-refresh"
+          style={{ marginLeft: "0.5rem" }}
+        >
+          Refresh list
+        </button>
+      </div>
       <ExperimentConfigForm
         disabled={busy && !terminal}
         onStart={onStart}
@@ -97,6 +180,7 @@ export function EvolutionPage() {
             const entry = await freezeExperiment(experiment.id, name);
             setError(null);
             void entry;
+            void loadRecent();
           }}
         />
       ) : null}

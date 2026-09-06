@@ -331,3 +331,14 @@ Task: "Frontend progress test in frontend/src/__tests__/evolutionProgress.test.t
 - Do not register named strategies in 020a tasks (US1/US2)
 - Keep 019 `run_uge_search` / `/uge/frozen` working
 - Commit only when operator asks
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: Close gaps found by `/speckit-converge` against spec/plan vs current code (2026-09-06).
+
+- [x] T041 [US3] Add discrete parameter-alternative editors to `frontend/src/features/evolution/ExperimentConfigForm.tsx` and send `paramAlternatives` via `evolutionApi.ts` / create body per FR-009 (partial)
+- [x] T042 [US2] Add experiment list + select to resume polling in `frontend/src/features/evolution/EvolutionPage.tsx` (and `listExperiments` in `evolutionApi.ts`) so reconnect mid-run works per Edge Cases (missing)
+- [x] T043 [P] [US1] Add create-path reject tests (short candle window, invalid splits) in `backend/tests/integration/test_uge_experiment_create.py` per US1/AC2 / T010 (missing)
+- [x] T044 [P] [US3] Add structured leaves/ops phenotype constraint integration test in `backend/tests/integration/test_uge_experiment_structured_grammar.py` per US3 / SC-004 / T023 (missing)

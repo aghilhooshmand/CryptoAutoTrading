@@ -30,6 +30,22 @@ describe("evolution config", () => {
     const body = onStart.mock.calls[0][0];
     expect(body.fitnessId).toBe("net_minus_bh");
     expect(body.populationSize).toBeGreaterThanOrEqual(2);
+    expect(body.paramAlternatives).toBeDefined();
+    expect(body.paramAlternatives["rsi.period"]).toContain(14);
+  });
+
+  it("rejects empty param alternatives for selected leaf", async () => {
+    const user = userEvent.setup();
+    const onStart = vi.fn();
+    render(<ExperimentConfigForm onStart={onStart} />);
+    // uncheck all RSI period options
+    for (const opt of [7, 10, 14, 21]) {
+      const el = screen.getByTestId(`evolution-param-rsi.period-${opt}`);
+      if ((el as HTMLInputElement).checked) await user.click(el);
+    }
+    await user.click(screen.getByTestId("evolution-start-btn"));
+    expect(screen.getByTestId("evolution-config-error")).toHaveTextContent(/alternative/i);
+    expect(onStart).not.toHaveBeenCalled();
   });
 });
 

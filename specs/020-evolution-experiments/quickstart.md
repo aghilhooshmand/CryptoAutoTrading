@@ -17,6 +17,8 @@ pytest -q \
   tests/unit/test_uge_grammar_builder.py \
   tests/unit/test_uge_frozen_catalogue.py \
   tests/integration/test_uge_experiment_stream.py \
+  tests/integration/test_uge_experiment_create.py \
+  tests/integration/test_uge_experiment_structured_grammar.py \
   tests/integration/test_frozen_catalogue_backtest.py \
   tests/contract/test_uge_experiments_api.py
 ```
@@ -24,7 +26,8 @@ pytest -q \
 ```bash
 cd frontend && npm test -- --run \
   src/__tests__/evolutionConfig.test.tsx \
-  src/__tests__/evolutionFreeze.test.tsx
+  src/__tests__/evolutionFreeze.test.tsx \
+  src/__tests__/evolutionReconnect.test.tsx
 ```
 
 ## Manual UI (020a–c)
