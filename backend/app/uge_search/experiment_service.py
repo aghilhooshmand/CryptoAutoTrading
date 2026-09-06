@@ -21,7 +21,7 @@ from app.uge_search.experiment_runner import (
     get_experiment_runner,
 )
 from app.uge_search.fitness import DEFAULT_FITNESS_ID, resolve_fitness_id
-from app.uge_search.grammar_builder import build_grammar
+from app.uge_search.grammar_builder import build_grammar, build_grammar_from_bnf
 from app.uge_search.grammar_mvp import GRAMMAR_ID, load_trading_mvp_grammar
 from app.uge_search.runner import run_uge_search
 from app.uge_search.splits import chronological_split
@@ -103,6 +103,9 @@ def validate_create_body(body: dict[str, Any]) -> dict[str, Any]:
         config["leaves"] = body.get("leaves")
         config["compositionOps"] = body.get("compositionOps")
         config["paramAlternatives"] = body.get("paramAlternatives")
+    raw_bnf = body.get("grammarBnf")
+    if raw_bnf is not None and str(raw_bnf).strip():
+        config["grammarBnf"] = str(raw_bnf)
     return config
 
 
@@ -124,6 +127,10 @@ async def _load_candles(config: dict[str, Any]) -> list[Any]:
 
 
 def _resolve_grammar(config: dict[str, Any]):
+    raw = config.get("grammarBnf")
+    if isinstance(raw, str) and raw.strip():
+        built = build_grammar_from_bnf(raw)
+        return built.grammar, built.grammar_id
     if config.get("leaves") is not None or config.get("compositionOps") is not None:
         built = build_grammar(
             leaves=config.get("leaves"),
@@ -241,6 +248,9 @@ def start_experiment_with_candles(
 
     meta = store.create_experiment_meta(config=config, status="queued")
     eid = str(meta["id"])
+    # Mark running before starting the worker so the API response is consistent
+    # and we avoid racing the worker's first meta write on a shared temp name.
+    store.update_meta(eid, {"status": "running", "startedAt": _now()})
 
     def target() -> None:
         _run_job(eid, config, candles)
@@ -253,7 +263,6 @@ def start_experiment_with_candles(
         )
         raise
 
-    store.update_meta(eid, {"status": "running", "startedAt": _now()})
     return store.read_meta(eid) or meta
 
 

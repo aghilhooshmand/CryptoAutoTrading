@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import json
+import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 DEFAULT_EXPERIMENTS_DIR = Path(__file__).resolve().parents[2] / "data" / "uge_experiments"
+
+# Protects read-modify-write on meta.json and unique-tmp atomic replaces.
+_META_LOCK = threading.RLock()
 
 
 def experiments_dir(base: Path | None = None) -> Path:
@@ -30,34 +34,45 @@ def experiment_path(experiment_id: str, base: Path | None = None) -> Path:
 
 
 def write_meta(experiment_id: str, meta: dict[str, Any], base: Path | None = None) -> Path:
+    """Atomically write meta.json using a unique temp name (safe under concurrency)."""
     root = experiment_path(experiment_id, base)
     root.mkdir(parents=True, exist_ok=True)
     path = root / "meta.json"
-    tmp = root / "meta.json.tmp"
+    tmp = root / f"meta.json.{uuid.uuid4().hex}.tmp"
     payload = json.dumps(meta, indent=2)
-    tmp.write_text(payload, encoding="utf-8")
-    tmp.replace(path)
+    with _META_LOCK:
+        try:
+            tmp.write_text(payload, encoding="utf-8")
+            tmp.replace(path)
+        finally:
+            if tmp.exists():
+                try:
+                    tmp.unlink()
+                except OSError:
+                    pass
     return path
 
 
 def read_meta(experiment_id: str, base: Path | None = None) -> dict[str, Any] | None:
     path = experiment_path(experiment_id, base) / "meta.json"
-    if not path.is_file():
-        return None
-    try:
-        text = path.read_text(encoding="utf-8")
-        if not text.strip():
+    with _META_LOCK:
+        if not path.is_file():
             return None
-        return json.loads(text)
-    except (OSError, json.JSONDecodeError):
-        return None
+        try:
+            text = path.read_text(encoding="utf-8")
+            if not text.strip():
+                return None
+            return json.loads(text)
+        except (OSError, json.JSONDecodeError):
+            return None
 
 
 def update_meta(experiment_id: str, patch: dict[str, Any], base: Path | None = None) -> dict[str, Any]:
-    meta = read_meta(experiment_id, base) or {}
-    meta.update(patch)
-    write_meta(experiment_id, meta, base)
-    return meta
+    with _META_LOCK:
+        meta = read_meta(experiment_id, base) or {}
+        meta.update(patch)
+        write_meta(experiment_id, meta, base)
+        return meta
 
 
 def append_generation(
@@ -70,8 +85,9 @@ def append_generation(
     path = root / "generations.jsonl"
     row = dict(snapshot)
     row.setdefault("recordedAt", _now())
-    with path.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(row) + "\n")
+    with _META_LOCK:
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(row) + "\n")
 
 
 def read_generations(experiment_id: str, base: Path | None = None) -> list[dict[str, Any]]:
@@ -79,7 +95,9 @@ def read_generations(experiment_id: str, base: Path | None = None) -> list[dict[
     if not path.is_file():
         return []
     out: list[dict[str, Any]] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
+    with _META_LOCK:
+        text = path.read_text(encoding="utf-8")
+    for line in text.splitlines():
         line = line.strip()
         if not line:
             continue

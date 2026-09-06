@@ -34,6 +34,30 @@ def test_store_append_and_read(tmp_path: Path):
     assert store.read_meta(eid, base=tmp_path)["id"] == eid
 
 
+def test_concurrent_meta_updates_do_not_raise(tmp_path: Path):
+    """Shared meta.json.tmp used to race; unique tmp + lock must stay clean."""
+    import threading
+
+    meta = store.create_experiment_meta(config={"seed": 1}, base=tmp_path)
+    eid = meta["id"]
+    errors: list[BaseException] = []
+
+    def bump(i: int) -> None:
+        try:
+            for _ in range(40):
+                store.update_meta(eid, {"generationCount": i}, base=tmp_path)
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    threads = [threading.Thread(target=bump, args=(i,)) for i in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert errors == []
+    assert store.read_meta(eid, base=tmp_path) is not None
+
+
 def test_singleton_rejects_second_start(tmp_path: Path, monkeypatch):
     runner = reset_experiment_runner_for_tests()
     started = []

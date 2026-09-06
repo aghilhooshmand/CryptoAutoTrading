@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from app.uge_search.errors import UgeSearchError
-from app.uge_search.grammar_builder import build_grammar
+from app.uge_search.grammar_builder import build_grammar, build_grammar_from_bnf
 from app.uge_search.runner import run_uge_search
 from tests.integration.test_uge_offline_run import build_fixture_candles
 
@@ -20,6 +20,27 @@ def test_build_grammar_restricts_ops():
 def test_empty_leaves_rejected():
     with pytest.raises(UgeSearchError):
         build_grammar(leaves=[], composition_ops=["and"])
+
+
+def test_build_grammar_from_bnf_roundtrip():
+    built = build_grammar(leaves=["rsi"], composition_ops=[])
+    again = build_grammar_from_bnf(built.bnf_text)
+    assert "<rsi_period>" in again.bnf_text
+    assert again.grammar is not None
+
+
+def test_build_grammar_from_bnf_rejects_empty():
+    with pytest.raises(UgeSearchError):
+        build_grammar_from_bnf("   ")
+
+
+def test_custom_param_alts_appear_in_bnf():
+    g = build_grammar(
+        leaves=["rsi"],
+        composition_ops=[],
+        param_alternatives={"rsi.period": [11, 22]},
+    )
+    assert "11 | 22" in g.bnf_text
 
 
 def test_structured_run_avoids_disallowed_leaf():

@@ -1789,3 +1789,52 @@ a {
   color: var(--ink);
 }
 
+.evolution-bnf-toggle {
+  margin-bottom: 0.55rem;
+}
+
+.evolution-bnf {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 12rem;
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  background: color-mix(in srgb, var(--panel) 55%, #fff);
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.evolution-bnf:read-only {
+  cursor: default;
+}
+
+.evolution-suggest {
+  min-height: 1.75rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.evolution-suggest:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.evolution-param-group label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+

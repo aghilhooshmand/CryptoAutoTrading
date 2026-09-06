@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Sequence
 
 from uge import Grammar
 
@@ -35,13 +35,25 @@ def _alts(values: Sequence[int]) -> str:
     return " | ".join(str(int(v)) for v in values)
 
 
+def build_grammar_from_bnf(bnf_text: str, *, grammar_id: str = "custom_bnf") -> BuiltGrammar:
+    """Parse operator-supplied BNF (advanced override)."""
+    text = (bnf_text or "").strip()
+    if not text:
+        raise UgeSearchError(INVALID_SEARCH_SPACE, "grammarBnf is empty")
+    try:
+        grammar = Grammar.from_text(text)
+    except Exception as exc:  # noqa: BLE001 — FORGE parse errors vary
+        raise UgeSearchError(INVALID_SEARCH_SPACE, f"Invalid grammar BNF: {exc}") from exc
+    return BuiltGrammar(grammar=grammar, grammar_id=grammar_id[:80], bnf_text=text)
+
+
 def build_grammar(
     leaves: Sequence[str] | None = None,
     composition_ops: Sequence[str] | None = None,
     param_alternatives: dict[str, Sequence[int]] | None = None,
 ) -> BuiltGrammar:
     """
-    Build a discrete-param BNF from structured controls (no raw operator BNF).
+    Build a discrete-param BNF from structured controls.
     """
     leaf_ids = [
         str(x).strip()
@@ -67,17 +79,33 @@ def build_grammar(
     alts = dict(DEFAULT_PARAM_ALTS)
     if param_alternatives:
         for key, vals in param_alternatives.items():
-            alts[str(key)] = [int(v) for v in vals]
+            cleaned = [int(v) for v in vals]
+            if not cleaned:
+                raise UgeSearchError(
+                    INVALID_SEARCH_SPACE, f"Parameter alternative list empty for {key}"
+                )
+            if any(n < 1 for n in cleaned):
+                raise UgeSearchError(
+                    INVALID_SEARCH_SPACE, f"Parameter alternatives must be >= 1 ({key})"
+                )
+            alts[str(key)] = cleaned
 
     leaf_forms: list[str] = []
+    param_lines: list[str] = []
     if "rsi" in leaf_ids:
-        leaf_forms.append(f"rsi(period=<rsi_period>, oversold=30, overbought=70)")
+        leaf_forms.append("rsi(period=<rsi_period>, oversold=30, overbought=70)")
+        param_lines.append(f"<rsi_period> ::= {_alts(alts['rsi.period'])}")
     if "dual_ema" in leaf_ids:
         leaf_forms.append("dual_ema(fastPeriod=<ema_fast>, slowPeriod=<ema_slow>)")
+        param_lines.append(f"<ema_fast> ::= {_alts(alts['dual_ema.fastPeriod'])}")
+        param_lines.append(f"<ema_slow> ::= {_alts(alts['dual_ema.slowPeriod'])}")
     if "macd" in leaf_ids:
         leaf_forms.append(
             "macd(fastPeriod=<macd_fast>, slowPeriod=<macd_slow>, signalPeriod=<macd_sig>)"
         )
+        param_lines.append(f"<macd_fast> ::= {_alts(alts['macd.fastPeriod'])}")
+        param_lines.append(f"<macd_slow> ::= {_alts(alts['macd.slowPeriod'])}")
+        param_lines.append(f"<macd_sig> ::= {_alts(alts['macd.signalPeriod'])}")
     leaf_rule = " | ".join(leaf_forms)
 
     compose_forms: list[str] = []
@@ -92,15 +120,11 @@ def build_grammar(
         program = "<leaf>"
         compose_block = ""
 
-    bnf = f"""# Structured grammar (Feature 020b) — system-built; not operator raw BNF.
+    param_block = "\n".join(param_lines)
+    bnf = f"""# Structured grammar (Feature 020b) — built from leaves / ops / param lists.
 <program> ::= {program}
 {compose_block}<leaf> ::= {leaf_rule}
-<rsi_period> ::= {_alts(alts['rsi.period'])}
-<ema_fast> ::= {_alts(alts['dual_ema.fastPeriod'])}
-<ema_slow> ::= {_alts(alts['dual_ema.slowPeriod'])}
-<macd_fast> ::= {_alts(alts['macd.fastPeriod'])}
-<macd_slow> ::= {_alts(alts['macd.slowPeriod'])}
-<macd_sig> ::= {_alts(alts['macd.signalPeriod'])}
+{param_block}
 """
     grammar = Grammar.from_text(bnf)
     gid = "structured_" + "_".join(sorted(leaf_ids)) + "_" + "-".join(sorted(ops) or ["leaf"])

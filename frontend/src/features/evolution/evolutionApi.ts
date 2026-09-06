@@ -18,6 +18,8 @@ export type ExperimentConfigBody = {
   leaves?: string[];
   compositionOps?: string[];
   paramAlternatives?: Record<string, number[]>;
+  /** Optional raw BNF override (advanced). When set, backend uses this grammar. */
+  grammarBnf?: string;
 };
 
 export type GenerationSnapshot = {

@@ -1,27 +1,15 @@
 import { useMemo, useState, type FormEvent } from "react";
 import type { ExperimentConfigBody } from "./evolutionApi";
+import {
+  PARAM_ALT_CATALOGUE,
+  buildBnfPreview,
+  defaultParamTexts,
+  parseParamList,
+} from "./grammarPreview";
 
 const LEAF_OPTIONS = ["dual_ema", "rsi", "macd"] as const;
 const OP_OPTIONS = ["and", "or", "vote"] as const;
 const INTERVALS = ["1m", "5m", "15m", "1h", "4h", "1d"] as const;
-
-/** Product-safe discrete alternatives (mirrors backend DEFAULT_PARAM_ALTS). */
-const PARAM_ALT_CATALOGUE: Record<string, { label: string; options: number[] }> = {
-  "rsi.period": { label: "RSI period", options: [7, 10, 14, 21] },
-  "dual_ema.fastPeriod": { label: "Dual EMA fast", options: [5, 9, 12] },
-  "dual_ema.slowPeriod": { label: "Dual EMA slow", options: [13, 21, 26] },
-  "macd.fastPeriod": { label: "MACD fast", options: [8, 12] },
-  "macd.slowPeriod": { label: "MACD slow", options: [17, 26] },
-  "macd.signalPeriod": { label: "MACD signal", options: [5, 9] },
-};
-
-function defaultSelectedAlts(): Record<string, number[]> {
-  const out: Record<string, number[]> = {};
-  for (const [key, meta] of Object.entries(PARAM_ALT_CATALOGUE)) {
-    out[key] = [...meta.options];
-  }
-  return out;
-}
 
 /** Parse datetime-local value to epoch ms (same as Backtest). */
 function toMs(localValue: string): number | null {
@@ -51,7 +39,9 @@ export function ExperimentConfigForm({ disabled, onStart, onCancel, canCancel }:
   const [endLocal, setEndLocal] = useState("2024-06-01T00:00");
   const [leaves, setLeaves] = useState<string[]>(["dual_ema", "rsi", "macd"]);
   const [ops, setOps] = useState<string[]>(["and", "or", "vote"]);
-  const [paramAlts, setParamAlts] = useState<Record<string, number[]>>(defaultSelectedAlts);
+  const [paramTexts, setParamTexts] = useState<Record<string, string>>(defaultParamTexts);
+  const [customBnfEnabled, setCustomBnfEnabled] = useState(false);
+  const [customBnf, setCustomBnf] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const visibleParamKeys = useMemo(() => {
@@ -61,19 +51,42 @@ export function ExperimentConfigForm({ disabled, onStart, onCancel, canCancel }:
     });
   }, [leaves]);
 
+  const parsedParams = useMemo(() => {
+    const out: Record<string, number[]> = {};
+    for (const key of Object.keys(PARAM_ALT_CATALOGUE)) {
+      out[key] = parseParamList(paramTexts[key] ?? "");
+    }
+    return out;
+  }, [paramTexts]);
+
+  const builtBnf = useMemo(
+    () => buildBnfPreview(leaves, ops, parsedParams),
+    [leaves, ops, parsedParams],
+  );
+
+  const displayBnf = customBnfEnabled ? customBnf : builtBnf;
+
   function toggle(list: string[], value: string, setter: (v: string[]) => void) {
     if (list.includes(value)) setter(list.filter((x) => x !== value));
     else setter([...list, value]);
   }
 
-  function toggleParamAlt(key: string, value: number) {
-    setParamAlts((prev) => {
-      const cur = prev[key] ?? [];
-      const next = cur.includes(value)
-        ? cur.filter((x) => x !== value)
-        : [...cur, value].sort((a, b) => a - b);
-      return { ...prev, [key]: next };
-    });
+  function setParamText(key: string, value: string) {
+    setParamTexts((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function appendSuggestion(key: string, value: number) {
+    const cur = parseParamList(paramTexts[key] ?? "");
+    if (cur.includes(value)) return;
+    const next = [...cur, value].sort((a, b) => a - b);
+    setParamText(key, next.join(", "));
+  }
+
+  function enableCustomBnf(checked: boolean) {
+    setCustomBnfEnabled(checked);
+    if (checked && !customBnf.trim()) {
+      setCustomBnf(builtBnf);
+    }
   }
 
   function submit(e: FormEvent) {
@@ -89,7 +102,7 @@ export function ExperimentConfigForm({ disabled, onStart, onCancel, canCancel }:
       setError("End must be after start");
       return;
     }
-    if (leaves.length === 0) {
+    if (!customBnfEnabled && leaves.length === 0) {
       setError("Select at least one strategy leaf");
       return;
     }
@@ -97,17 +110,28 @@ export function ExperimentConfigForm({ disabled, onStart, onCancel, canCancel }:
       setError("Split ratios must sum to 1");
       return;
     }
-    for (const key of visibleParamKeys) {
-      if (!paramAlts[key]?.length) {
-        setError(`Select at least one alternative for ${PARAM_ALT_CATALOGUE[key].label}`);
+    if (customBnfEnabled) {
+      if (!customBnf.trim()) {
+        setError("Custom grammar BNF is empty");
         return;
       }
+    } else {
+      for (const key of visibleParamKeys) {
+        if (!parsedParams[key]?.length) {
+          setError(
+            `Enter at least one number for ${PARAM_ALT_CATALOGUE[key].label} (e.g. 7, 14, 21)`,
+          );
+          return;
+        }
+      }
     }
+
     const paramAlternatives: Record<string, number[]> = {};
     for (const key of visibleParamKeys) {
-      paramAlternatives[key] = paramAlts[key];
+      paramAlternatives[key] = parsedParams[key];
     }
-    onStart({
+
+    const body: ExperimentConfigBody = {
       symbol,
       timeframe,
       startTime: new Date(startMs).toISOString(),
@@ -122,7 +146,11 @@ export function ExperimentConfigForm({ disabled, onStart, onCancel, canCancel }:
       leaves,
       compositionOps: ops,
       paramAlternatives,
-    });
+    };
+    if (customBnfEnabled) {
+      body.grammarBnf = customBnf;
+    }
+    onStart(body);
   }
 
   return (
@@ -279,7 +307,7 @@ export function ExperimentConfigForm({ disabled, onStart, onCancel, canCancel }:
 
       <fieldset
         className="backtest-fieldset"
-        disabled={disabled}
+        disabled={disabled || customBnfEnabled}
         data-testid="evolution-leaves"
       >
         <legend>Strategy leaves</legend>
@@ -289,7 +317,7 @@ export function ExperimentConfigForm({ disabled, onStart, onCancel, canCancel }:
               <input
                 type="checkbox"
                 checked={leaves.includes(id)}
-                disabled={disabled}
+                disabled={disabled || customBnfEnabled}
                 onChange={() => toggle(leaves, id, setLeaves)}
               />
               <span>{id}</span>
@@ -300,7 +328,7 @@ export function ExperimentConfigForm({ disabled, onStart, onCancel, canCancel }:
 
       <fieldset
         className="backtest-fieldset"
-        disabled={disabled}
+        disabled={disabled || customBnfEnabled}
         data-testid="evolution-ops"
       >
         <legend>Composition operators</legend>
@@ -310,7 +338,7 @@ export function ExperimentConfigForm({ disabled, onStart, onCancel, canCancel }:
               <input
                 type="checkbox"
                 checked={ops.includes(id)}
-                disabled={disabled}
+                disabled={disabled || customBnfEnabled}
                 onChange={() => toggle(ops, id, setOps)}
               />
               <span>{id}</span>
@@ -321,38 +349,76 @@ export function ExperimentConfigForm({ disabled, onStart, onCancel, canCancel }:
 
       <fieldset
         className="backtest-fieldset"
-        disabled={disabled}
+        disabled={disabled || customBnfEnabled}
         data-testid="evolution-param-alts"
       >
-        <legend>Discrete parameter alternatives</legend>
+        <legend>Parameter alternatives</legend>
         <p className="field-hint">
-          Only parameters for selected leaves are sent with the experiment.
+          Type comma-separated integers yourself (e.g. 7, 14, 21). Suggestions
+          append a value when clicked.
         </p>
         <div className="evolution-param-groups">
           {visibleParamKeys.map((key) => {
             const meta = PARAM_ALT_CATALOGUE[key];
-            const selected = paramAlts[key] ?? [];
             return (
               <div key={key} className="evolution-param-group">
-                <span className="evolution-param-label">{meta.label}</span>
+                <label>
+                  {meta.label}
+                  <input
+                    value={paramTexts[key] ?? ""}
+                    disabled={disabled || customBnfEnabled}
+                    onChange={(e) => setParamText(key, e.target.value)}
+                    placeholder={meta.suggestions.join(", ")}
+                    data-testid={`evolution-param-text-${key}`}
+                  />
+                </label>
                 <div className="evolution-check-grid">
-                  {meta.options.map((opt) => (
-                    <label key={opt} className="evolution-check">
-                      <input
-                        type="checkbox"
-                        checked={selected.includes(opt)}
-                        disabled={disabled}
-                        onChange={() => toggleParamAlt(key, opt)}
-                        data-testid={`evolution-param-${key}-${opt}`}
-                      />
-                      <span>{opt}</span>
-                    </label>
+                  {meta.suggestions.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      className="evolution-suggest"
+                      disabled={disabled || customBnfEnabled}
+                      onClick={() => appendSuggestion(key, opt)}
+                      data-testid={`evolution-param-${key}-${opt}`}
+                    >
+                      {opt}
+                    </button>
                   ))}
                 </div>
               </div>
             );
           })}
         </div>
+      </fieldset>
+
+      <fieldset className="backtest-fieldset" disabled={disabled}>
+        <legend>Final grammar (BNF)</legend>
+        <p className="field-hint">
+          Live preview of the grammar that will run. Enable custom edit only if
+          you need to override the structured build.
+        </p>
+        <label className="evolution-check evolution-bnf-toggle">
+          <input
+            type="checkbox"
+            checked={customBnfEnabled}
+            disabled={disabled}
+            onChange={(e) => enableCustomBnf(e.target.checked)}
+            data-testid="evolution-bnf-override"
+          />
+          <span>Edit grammar manually (advanced)</span>
+        </label>
+        <textarea
+          className="evolution-bnf"
+          value={displayBnf}
+          readOnly={!customBnfEnabled}
+          disabled={disabled}
+          spellCheck={false}
+          rows={14}
+          onChange={(e) => setCustomBnf(e.target.value)}
+          data-testid="evolution-bnf-text"
+          aria-label="Grammar BNF"
+        />
       </fieldset>
 
       {error ? (
