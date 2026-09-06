@@ -283,6 +283,12 @@ export function AutoTradingPage() {
         hidden={tab !== "evolution"}
         className="auto-trading-panel"
       >
+        <h2 className="auto-trading-panel-title">Evolution</h2>
+        <p className="auto-trading-lede">
+          Offline Grammatical Evolution over Torque programs. Watch each
+          generation, then freeze the best phenotype into the strategy list for
+          Backtest / Simulation. This lab never places Real orders.
+        </p>
         <EvolutionPage />
       </div>
 

@@ -1248,6 +1248,18 @@ a {
   cursor: not-allowed;
 }
 
+.backtest-actions button.secondary {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.backtest-actions button.danger {
+  background: #991b1b;
+  border-color: #991b1b;
+  color: #fff;
+}
+
 .backtest-run-items {
   list-style: none;
   margin: 0.65rem 0 0;
@@ -1695,3 +1707,85 @@ a {
     margin: 0 0.4rem 0.4rem;
   }
 }
+
+/* Evolution lab (Feature 020) — reuse Backtest/Simulation shells */
+.evolution-reconnect {
+  margin-bottom: 0;
+}
+
+.evolution-reconnect-row {
+  align-items: end;
+}
+
+.evolution-reconnect-actions {
+  display: flex;
+  align-items: flex-end;
+}
+
+.evolution-reconnect-actions button,
+.backtest-config button.secondary {
+  min-height: 2.5rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.45rem;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.evolution-check-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.85rem;
+}
+
+.evolution-check {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.4rem !important;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.evolution-check input {
+  min-height: auto !important;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  padding: 0 !important;
+  accent-color: var(--accent);
+}
+
+.evolution-param-groups {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.evolution-param-group {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.evolution-param-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.evolution-chart-wrap {
+  margin: 0.85rem 0;
+}
+
+.evolution-fitness-chart {
+  display: block;
+  width: 100%;
+  max-width: 32rem;
+  height: auto;
+  color: var(--ink);
+}
+

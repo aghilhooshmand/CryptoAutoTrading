@@ -126,60 +126,76 @@ export function EvolutionPage() {
 
   return (
     <div data-testid="evolution-page">
-      <h2 className="auto-trading-panel-title">Evolution (UGE lab)</h2>
-      <p className="auto-trading-lede">
-        Offline Grammatical Evolution over Torque programs. Watch each generation,
-        then freeze the best phenotype into the strategy list for Backtest /
-        Simulation. This lab never places Real orders.
-      </p>
-      <div data-testid="evolution-recent-list" style={{ marginBottom: "1rem" }}>
-        <label>
-          Recent experiments (reconnect)
-          <select
-            value={experiment?.id ?? ""}
-            onChange={(e) => {
-              const id = e.target.value;
-              if (id) void onSelectExperiment(id);
-            }}
-            data-testid="evolution-recent-select"
-          >
-            <option value="">— select to resume / inspect —</option>
-            {recent.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.id} · {item.status}
-                {item.bestPhenotype ? ` · ${item.bestPhenotype.slice(0, 40)}` : ""}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="button"
-          onClick={() => void loadRecent()}
-          data-testid="evolution-recent-refresh"
-          style={{ marginLeft: "0.5rem" }}
-        >
-          Refresh list
-        </button>
-      </div>
+      <section
+        className="backtest-config evolution-reconnect"
+        data-testid="evolution-recent-list"
+        aria-labelledby="evolution-reconnect-title"
+      >
+        <h3 id="evolution-reconnect-title" className="visually-hidden">
+          Recent experiments
+        </h3>
+        <fieldset className="backtest-fieldset">
+          <legend>Recent experiments</legend>
+          <p className="field-hint">
+            Select a run to resume polling or inspect a finished experiment.
+          </p>
+          <div className="backtest-field-row evolution-reconnect-row">
+            <label>
+              Experiment
+              <select
+                value={experiment?.id ?? ""}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  if (id) void onSelectExperiment(id);
+                }}
+                data-testid="evolution-recent-select"
+              >
+                <option value="">— select to resume / inspect —</option>
+                {recent.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.id} · {item.status}
+                    {item.bestPhenotype
+                      ? ` · ${item.bestPhenotype.slice(0, 40)}`
+                      : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="evolution-reconnect-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => void loadRecent()}
+                data-testid="evolution-recent-refresh"
+              >
+                Refresh list
+              </button>
+            </div>
+          </div>
+        </fieldset>
+      </section>
+
       <ExperimentConfigForm
         disabled={busy && !terminal}
         onStart={onStart}
         onCancel={onCancel}
         canCancel={Boolean(experiment && !terminal)}
       />
+
       {error ? (
         <p className="form-error" role="alert" data-testid="evolution-page-error">
           {error}
         </p>
       ) : null}
+
       <ExperimentProgress experiment={experiment} />
+
       {canFreeze ? (
         <FreezeStrategyForm
           onFreeze={async (name) => {
             if (!experiment) return;
-            const entry = await freezeExperiment(experiment.id, name);
+            await freezeExperiment(experiment.id, name);
             setError(null);
-            void entry;
             void loadRecent();
           }}
         />

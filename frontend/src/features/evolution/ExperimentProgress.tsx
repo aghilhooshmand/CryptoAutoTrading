@@ -6,9 +6,9 @@ type Props = {
 
 function FitnessChart({ generations }: { generations: GenerationSnapshot[] }) {
   if (!generations.length) return null;
-  const w = 320;
-  const h = 120;
-  const pad = 8;
+  const w = 480;
+  const h = 140;
+  const pad = 10;
   const xs = generations.map((g) => g.generation);
   const maxX = Math.max(...xs, 1);
   const vals = generations.flatMap((g) =>
@@ -34,50 +34,105 @@ function FitnessChart({ generations }: { generations: GenerationSnapshot[] }) {
     .join(" ");
 
   return (
-    <svg
-      width={w}
-      height={h}
-      role="img"
-      aria-label="Fitness over generations"
-      data-testid="evolution-fitness-chart"
-    >
-      <rect width={w} height={h} fill="transparent" stroke="currentColor" opacity={0.2} />
-      {maxLine ? (
-        <polyline fill="none" stroke="currentColor" strokeWidth={2} points={maxLine} />
-      ) : null}
-      {avgLine ? (
-        <polyline
-          fill="none"
-          stroke="currentColor"
+    <div className="evolution-chart-wrap">
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        role="img"
+        aria-label="Fitness over generations"
+        data-testid="evolution-fitness-chart"
+        className="evolution-fitness-chart"
+      >
+        <rect
+          width={w}
+          height={h}
+          fill="transparent"
+          stroke="var(--line)"
           strokeWidth={1}
-          strokeDasharray="4 3"
-          points={avgLine}
-          opacity={0.7}
         />
-      ) : null}
-    </svg>
+        {maxLine ? (
+          <polyline
+            fill="none"
+            stroke="var(--accent)"
+            strokeWidth={2}
+            points={maxLine}
+          />
+        ) : null}
+        {avgLine ? (
+          <polyline
+            fill="none"
+            stroke="var(--muted)"
+            strokeWidth={1.5}
+            strokeDasharray="4 3"
+            points={avgLine}
+          />
+        ) : null}
+      </svg>
+      <p className="field-hint">Solid = best fitness · Dashed = mean fitness</p>
+    </div>
   );
 }
 
 export function ExperimentProgress({ experiment }: Props) {
   if (!experiment) {
-    return <p className="auto-trading-lede">No experiment running.</p>;
+    return (
+      <section
+        className="backtest-results"
+        data-testid="evolution-progress"
+        aria-labelledby="evolution-progress-title"
+      >
+        <h3 id="evolution-progress-title">Experiment progress</h3>
+        <p className="note">No experiment running.</p>
+      </section>
+    );
   }
+
   const gens = experiment.generations ?? [];
+
   return (
-    <div data-testid="evolution-progress">
-      <p>
-        Status: <strong data-testid="evolution-status">{experiment.status}</strong>
-        {experiment.terminationReason ? ` (${experiment.terminationReason})` : ""}
-      </p>
+    <section
+      className="backtest-results"
+      data-testid="evolution-progress"
+      aria-labelledby="evolution-progress-title"
+    >
+      <h3 id="evolution-progress-title">Experiment progress</h3>
+      <dl className="sim-dl">
+        <div>
+          <dt>Status</dt>
+          <dd data-testid="evolution-status">
+            {experiment.status}
+            {experiment.terminationReason ? ` (${experiment.terminationReason})` : ""}
+          </dd>
+        </div>
+        {experiment.bestPhenotype ? (
+          <div>
+            <dt>Best phenotype</dt>
+            <dd data-testid="evolution-best-phenotype">
+              <code>{experiment.bestPhenotype}</code>
+              {experiment.trainFitness != null ? ` · train ${experiment.trainFitness}` : ""}
+              {experiment.validationFitness != null
+                ? ` · val ${experiment.validationFitness}`
+                : ""}
+            </dd>
+          </div>
+        ) : null}
+        {experiment.generationCount != null ? (
+          <div>
+            <dt>Generations recorded</dt>
+            <dd>{experiment.generationCount}</dd>
+          </div>
+        ) : null}
+      </dl>
+
       {experiment.errorMessage ? (
         <p className="form-error" role="alert">
           {experiment.errorMessage}
         </p>
       ) : null}
+
       <FitnessChart generations={gens} />
+
       <div className="table-wrap">
-        <table data-testid="evolution-generations-table">
+        <table data-testid="evolution-generations-table" className="comparison-table">
           <thead>
             <tr>
               <th>Gen</th>
@@ -100,15 +155,6 @@ export function ExperimentProgress({ experiment }: Props) {
           </tbody>
         </table>
       </div>
-      {experiment.bestPhenotype ? (
-        <p data-testid="evolution-best-phenotype">
-          Best phenotype: <code>{experiment.bestPhenotype}</code>
-          {experiment.trainFitness != null ? ` (train ${experiment.trainFitness})` : ""}
-          {experiment.validationFitness != null
-            ? ` · val ${experiment.validationFitness}`
-            : ""}
-        </p>
-      ) : null}
-    </div>
+    </section>
   );
 }

@@ -3,6 +3,7 @@ import type { ExperimentConfigBody } from "./evolutionApi";
 
 const LEAF_OPTIONS = ["dual_ema", "rsi", "macd"] as const;
 const OP_OPTIONS = ["and", "or", "vote"] as const;
+const INTERVALS = ["1m", "5m", "15m", "1h", "4h", "1d"] as const;
 
 /** Product-safe discrete alternatives (mirrors backend DEFAULT_PARAM_ALTS). */
 const PARAM_ALT_CATALOGUE: Record<string, { label: string; options: number[] }> = {
@@ -61,7 +62,9 @@ export function ExperimentConfigForm({ disabled, onStart, onCancel, canCancel }:
   function toggleParamAlt(key: string, value: number) {
     setParamAlts((prev) => {
       const cur = prev[key] ?? [];
-      const next = cur.includes(value) ? cur.filter((x) => x !== value) : [...cur, value].sort((a, b) => a - b);
+      const next = cur.includes(value)
+        ? cur.filter((x) => x !== value)
+        : [...cur, value].sort((a, b) => a - b);
       return { ...prev, [key]: next };
     });
   }
@@ -106,180 +109,248 @@ export function ExperimentConfigForm({ disabled, onStart, onCancel, canCancel }:
   }
 
   return (
-    <form className="evolution-config" onSubmit={submit} data-testid="evolution-config-form">
-      <div className="backtest-field-row">
-        <label>
-          Population
-          <input
-            type="number"
-            min={2}
-            value={populationSize}
-            disabled={disabled}
-            onChange={(e) => setPopulationSize(Number(e.target.value))}
-            data-testid="evolution-pop"
-          />
-        </label>
-        <label>
-          Generations
-          <input
-            type="number"
-            min={1}
-            value={nGenerations}
-            disabled={disabled}
-            onChange={(e) => setNGenerations(Number(e.target.value))}
-            data-testid="evolution-ngen"
-          />
-        </label>
-        <label>
-          Seed
-          <input
-            type="number"
-            value={seed}
-            disabled={disabled}
-            onChange={(e) => setSeed(Number(e.target.value))}
-            data-testid="evolution-seed"
-          />
-        </label>
-        <label>
-          Fitness
-          <select
-            value={fitnessId}
-            disabled={disabled}
-            onChange={(e) => setFitnessId(e.target.value)}
-            data-testid="evolution-fitness"
-          >
-            <option value="net_minus_bh">net − buy&amp;hold</option>
-            <option value="net_profit">net profit</option>
-          </select>
-        </label>
-      </div>
-      <div className="backtest-field-row">
-        <label>
-          Symbol
-          <input value={symbol} disabled={disabled} onChange={(e) => setSymbol(e.target.value)} />
-        </label>
-        <label>
-          Timeframe
-          <input
-            value={timeframe}
-            disabled={disabled}
-            onChange={(e) => setTimeframe(e.target.value)}
-          />
-        </label>
-        <label>
-          Start
-          <input
-            value={startTime}
-            disabled={disabled}
-            onChange={(e) => setStartTime(e.target.value)}
-            data-testid="evolution-start"
-          />
-        </label>
-        <label>
-          End
-          <input
-            value={endTime}
-            disabled={disabled}
-            onChange={(e) => setEndTime(e.target.value)}
-            data-testid="evolution-end"
-          />
-        </label>
-      </div>
-      <div className="backtest-field-row">
-        <label>
-          Train
-          <input
-            type="number"
-            step="0.05"
-            value={trainRatio}
-            disabled={disabled}
-            onChange={(e) => setTrainRatio(Number(e.target.value))}
-          />
-        </label>
-        <label>
-          Val
-          <input
-            type="number"
-            step="0.05"
-            value={valRatio}
-            disabled={disabled}
-            onChange={(e) => setValRatio(Number(e.target.value))}
-          />
-        </label>
-        <label>
-          Test
-          <input
-            type="number"
-            step="0.05"
-            value={testRatio}
-            disabled={disabled}
-            onChange={(e) => setTestRatio(Number(e.target.value))}
-          />
-        </label>
-      </div>
-      <fieldset data-testid="evolution-leaves">
-        <legend>Strategy leaves</legend>
-        {LEAF_OPTIONS.map((id) => (
-          <label key={id} style={{ marginRight: "1rem" }}>
+    <form
+      className="backtest-config"
+      onSubmit={submit}
+      data-testid="evolution-config-form"
+    >
+      <h3 className="visually-hidden">Evolution experiment configuration</h3>
+
+      <fieldset className="backtest-fieldset" disabled={disabled}>
+        <legend>Market window</legend>
+        <div className="backtest-field-row">
+          <label>
+            Symbol
             <input
-              type="checkbox"
-              checked={leaves.includes(id)}
+              value={symbol}
               disabled={disabled}
-              onChange={() => toggle(leaves, id, setLeaves)}
-            />{" "}
-            {id}
+              onChange={(e) => setSymbol(e.target.value)}
+              placeholder="btc_usdt"
+            />
           </label>
-        ))}
-      </fieldset>
-      <fieldset data-testid="evolution-ops">
-        <legend>Composition operators</legend>
-        {OP_OPTIONS.map((id) => (
-          <label key={id} style={{ marginRight: "1rem" }}>
-            <input
-              type="checkbox"
-              checked={ops.includes(id)}
+          <label>
+            Timeframe
+            <select
+              value={timeframe}
               disabled={disabled}
-              onChange={() => toggle(ops, id, setOps)}
-            />{" "}
-            {id}
-          </label>
-        ))}
-      </fieldset>
-      <fieldset data-testid="evolution-param-alts">
-        <legend>Discrete parameter alternatives</legend>
-        {visibleParamKeys.map((key) => {
-          const meta = PARAM_ALT_CATALOGUE[key];
-          const selected = paramAlts[key] ?? [];
-          return (
-            <div key={key} style={{ marginBottom: "0.5rem" }}>
-              <span>{meta.label}: </span>
-              {meta.options.map((opt) => (
-                <label key={opt} style={{ marginRight: "0.75rem" }}>
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(opt)}
-                    disabled={disabled}
-                    onChange={() => toggleParamAlt(key, opt)}
-                    data-testid={`evolution-param-${key}-${opt}`}
-                  />{" "}
-                  {opt}
-                </label>
+              onChange={(e) => setTimeframe(e.target.value)}
+            >
+              {INTERVALS.map((iv) => (
+                <option key={iv} value={iv}>
+                  {iv}
+                </option>
               ))}
-            </div>
-          );
-        })}
+            </select>
+          </label>
+          <label>
+            Start (UTC ISO)
+            <input
+              value={startTime}
+              disabled={disabled}
+              onChange={(e) => setStartTime(e.target.value)}
+              data-testid="evolution-start"
+            />
+          </label>
+          <label>
+            End (UTC ISO)
+            <input
+              value={endTime}
+              disabled={disabled}
+              onChange={(e) => setEndTime(e.target.value)}
+              data-testid="evolution-end"
+            />
+          </label>
+        </div>
       </fieldset>
+
+      <fieldset className="backtest-fieldset" disabled={disabled}>
+        <legend>Search parameters</legend>
+        <div className="backtest-field-row">
+          <label>
+            Population
+            <input
+              type="number"
+              min={2}
+              value={populationSize}
+              disabled={disabled}
+              onChange={(e) => setPopulationSize(Number(e.target.value))}
+              data-testid="evolution-pop"
+            />
+          </label>
+          <label>
+            Generations
+            <input
+              type="number"
+              min={1}
+              value={nGenerations}
+              disabled={disabled}
+              onChange={(e) => setNGenerations(Number(e.target.value))}
+              data-testid="evolution-ngen"
+            />
+          </label>
+          <label>
+            Seed
+            <input
+              type="number"
+              value={seed}
+              disabled={disabled}
+              onChange={(e) => setSeed(Number(e.target.value))}
+              data-testid="evolution-seed"
+            />
+          </label>
+          <label>
+            Fitness
+            <select
+              value={fitnessId}
+              disabled={disabled}
+              onChange={(e) => setFitnessId(e.target.value)}
+              data-testid="evolution-fitness"
+            >
+              <option value="net_minus_bh">net − buy&amp;hold</option>
+              <option value="net_profit">net profit</option>
+            </select>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset className="backtest-fieldset" disabled={disabled}>
+        <legend>Train / validation / test split</legend>
+        <p className="field-hint">Ratios must sum to 1.</p>
+        <div className="backtest-field-row">
+          <label>
+            Train
+            <input
+              type="number"
+              step="0.05"
+              min={0}
+              max={1}
+              value={trainRatio}
+              disabled={disabled}
+              onChange={(e) => setTrainRatio(Number(e.target.value))}
+            />
+          </label>
+          <label>
+            Validation
+            <input
+              type="number"
+              step="0.05"
+              min={0}
+              max={1}
+              value={valRatio}
+              disabled={disabled}
+              onChange={(e) => setValRatio(Number(e.target.value))}
+            />
+          </label>
+          <label>
+            Test
+            <input
+              type="number"
+              step="0.05"
+              min={0}
+              max={1}
+              value={testRatio}
+              disabled={disabled}
+              onChange={(e) => setTestRatio(Number(e.target.value))}
+            />
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset
+        className="backtest-fieldset"
+        disabled={disabled}
+        data-testid="evolution-leaves"
+      >
+        <legend>Strategy leaves</legend>
+        <div className="evolution-check-grid">
+          {LEAF_OPTIONS.map((id) => (
+            <label key={id} className="evolution-check">
+              <input
+                type="checkbox"
+                checked={leaves.includes(id)}
+                disabled={disabled}
+                onChange={() => toggle(leaves, id, setLeaves)}
+              />
+              <span>{id}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset
+        className="backtest-fieldset"
+        disabled={disabled}
+        data-testid="evolution-ops"
+      >
+        <legend>Composition operators</legend>
+        <div className="evolution-check-grid">
+          {OP_OPTIONS.map((id) => (
+            <label key={id} className="evolution-check">
+              <input
+                type="checkbox"
+                checked={ops.includes(id)}
+                disabled={disabled}
+                onChange={() => toggle(ops, id, setOps)}
+              />
+              <span>{id}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset
+        className="backtest-fieldset"
+        disabled={disabled}
+        data-testid="evolution-param-alts"
+      >
+        <legend>Discrete parameter alternatives</legend>
+        <p className="field-hint">
+          Only parameters for selected leaves are sent with the experiment.
+        </p>
+        <div className="evolution-param-groups">
+          {visibleParamKeys.map((key) => {
+            const meta = PARAM_ALT_CATALOGUE[key];
+            const selected = paramAlts[key] ?? [];
+            return (
+              <div key={key} className="evolution-param-group">
+                <span className="evolution-param-label">{meta.label}</span>
+                <div className="evolution-check-grid">
+                  {meta.options.map((opt) => (
+                    <label key={opt} className="evolution-check">
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(opt)}
+                        disabled={disabled}
+                        onChange={() => toggleParamAlt(key, opt)}
+                        data-testid={`evolution-param-${key}-${opt}`}
+                      />
+                      <span>{opt}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </fieldset>
+
       {error ? (
         <p className="form-error" role="alert" data-testid="evolution-config-error">
           {error}
         </p>
       ) : null}
-      <div className="backtest-field-row">
+
+      <div className="backtest-actions">
         <button type="submit" disabled={disabled} data-testid="evolution-start-btn">
           Start evolution
         </button>
         {canCancel ? (
-          <button type="button" onClick={onCancel} data-testid="evolution-cancel-btn">
+          <button
+            type="button"
+            className="danger"
+            onClick={onCancel}
+            data-testid="evolution-cancel-btn"
+          >
             Cancel
           </button>
         ) : null}
