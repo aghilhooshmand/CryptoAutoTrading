@@ -23,6 +23,13 @@ function defaultSelectedAlts(): Record<string, number[]> {
   return out;
 }
 
+/** Parse datetime-local value to epoch ms (same as Backtest). */
+function toMs(localValue: string): number | null {
+  if (!localValue) return null;
+  const ms = Date.parse(localValue);
+  return Number.isFinite(ms) ? ms : null;
+}
+
 type Props = {
   disabled?: boolean;
   onStart: (body: ExperimentConfigBody) => void;
@@ -40,8 +47,8 @@ export function ExperimentConfigForm({ disabled, onStart, onCancel, canCancel }:
   const [testRatio, setTestRatio] = useState(0.2);
   const [symbol, setSymbol] = useState("btc_usdt");
   const [timeframe, setTimeframe] = useState("1h");
-  const [startTime, setStartTime] = useState("2024-01-01T00:00:00Z");
-  const [endTime, setEndTime] = useState("2024-06-01T00:00:00Z");
+  const [startLocal, setStartLocal] = useState("2024-01-01T00:00");
+  const [endLocal, setEndLocal] = useState("2024-06-01T00:00");
   const [leaves, setLeaves] = useState<string[]>(["dual_ema", "rsi", "macd"]);
   const [ops, setOps] = useState<string[]>(["and", "or", "vote"]);
   const [paramAlts, setParamAlts] = useState<Record<string, number[]>>(defaultSelectedAlts);
@@ -72,6 +79,16 @@ export function ExperimentConfigForm({ disabled, onStart, onCancel, canCancel }:
   function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    const startMs = toMs(startLocal);
+    const endMs = toMs(endLocal);
+    if (startMs == null || endMs == null) {
+      setError("Start and end are required");
+      return;
+    }
+    if (endMs <= startMs) {
+      setError("End must be after start");
+      return;
+    }
     if (leaves.length === 0) {
       setError("Select at least one strategy leaf");
       return;
@@ -93,8 +110,8 @@ export function ExperimentConfigForm({ disabled, onStart, onCancel, canCancel }:
     onStart({
       symbol,
       timeframe,
-      startTime,
-      endTime,
+      startTime: new Date(startMs).toISOString(),
+      endTime: new Date(endMs).toISOString(),
       populationSize,
       nGenerations,
       seed,
@@ -143,20 +160,24 @@ export function ExperimentConfigForm({ disabled, onStart, onCancel, canCancel }:
             </select>
           </label>
           <label>
-            Start (UTC ISO)
+            Start
             <input
-              value={startTime}
+              type="datetime-local"
+              value={startLocal}
               disabled={disabled}
-              onChange={(e) => setStartTime(e.target.value)}
+              onChange={(e) => setStartLocal(e.target.value)}
+              required
               data-testid="evolution-start"
             />
           </label>
           <label>
-            End (UTC ISO)
+            End
             <input
-              value={endTime}
+              type="datetime-local"
+              value={endLocal}
               disabled={disabled}
-              onChange={(e) => setEndTime(e.target.value)}
+              onChange={(e) => setEndLocal(e.target.value)}
+              required
               data-testid="evolution-end"
             />
           </label>
